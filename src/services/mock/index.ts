@@ -7,6 +7,9 @@ import type {
   BookingSubmission,
   BuildingClassification,
   ChoosePathRequest,
+  DealCard,
+  DealCardPatch,
+  DealStage,
   EnergyMix,
   FiberProximity,
   GridTier,
@@ -24,12 +27,14 @@ import type {
   SignUpRequest,
   SlaTier,
   SubstationDistance,
+  UserRole,
   WorkloadType,
 } from "@/models";
 import type { ApiClient } from "../contracts";
 import { apiConfig } from "../config";
 import { ApiError } from "../http";
 import { computeQuote } from "@/lib/booking/quote";
+import { mockDealCards, mockDealColumns } from "./salesFixtures";
 import {
   analyzeStage,
   buildSchedule,
@@ -64,9 +69,25 @@ function reference(prefix: string): string {
   return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+/**
+ * Mutable copy of the seed deals so drag-and-drop persists for the session.
+ * Module-scoped rather than per-call: the board reads it back after every move,
+ * and a fresh array each time would undo the user's last action.
+ */
+let salesCards: DealCard[] = [...mockDealCards];
+
+/**
+ * Mock role assignment so both sides of the staff guard are testable without a
+ * backend: anyone signing in with a @cloudpanda.example address gets the sales
+ * role, everyone else is a customer.
+ */
+function mockRoleFor(email: string): UserRole {
+  return email.toLowerCase().endsWith("@cloudpanda.example") ? "sales" : "customer";
+}
+
 function session(email: string, fullName: string): AuthSession {
   return {
-    user: { ...mockUser, email, fullName },
+    user: { ...mockUser, email, fullName, role: mockRoleFor(email) },
     tokens: {
       accessToken: `mock.access.${Date.now()}`,
       refreshToken: `mock.refresh.${Date.now()}`,
@@ -406,6 +427,57 @@ export const mockApi: ApiClient = {
   dashboard: {
     getSummary: () => delay(mockDashboard),
     getReceipt: (ref: string) => delay({ ...mockReceipt, reference: ref }),
+  },
+
+  sales: {
+    listColumns: () => delay(mockDealColumns),
+
+    listCards: () => delay(salesCards),
+
+    getCard: (id: string) => {
+      const card = salesCards.find((deal) => deal.id === id);
+      if (!card) {
+        return Promise.reject(
+          new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }),
+        );
+      }
+      return delay(card);
+    },
+
+    updateCard: (id: string, patch: DealCardPatch) => {
+      const index = salesCards.findIndex((deal) => deal.id === id);
+      if (index === -1) {
+        return Promise.reject(
+          new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }),
+        );
+      }
+
+      const updated: DealCard = {
+        ...salesCards[index]!,
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      };
+      salesCards = salesCards.map((deal, i) => (i === index ? updated : deal));
+      return delay(updated);
+    },
+
+    moveCard: (id: string, toColumnId: DealStage, order?: number) => {
+      const card = salesCards.find((deal) => deal.id === id);
+      if (!card) {
+        return Promise.reject(
+          new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }),
+        );
+      }
+
+      const updated: DealCard = {
+        ...card,
+        columnId: toColumnId,
+        order: order ?? card.order,
+        updatedAt: new Date().toISOString(),
+      };
+      salesCards = salesCards.map((deal) => (deal.id === id ? updated : deal));
+      return delay(updated);
+    },
   },
 
   leads: {

@@ -55,4 +55,16 @@ export const endpoints = {
   leads: {
     create: "/leads",
   },
+
+  /**
+   * Sales pipeline — internal, staff only. Paths follow the REST shape the
+   * Kanban library's fetch adapter expects, so it can be pointed straight at
+   * them if we ever drop our own adapter.
+   */
+  sales: {
+    columns: "/sales/columns",
+    cards: "/sales/cards",
+    cardById: (id: string) => `/sales/cards/${id}`,
+    moveCard: (id: string) => `/sales/cards/${id}/move`,
+  },
 } as const;

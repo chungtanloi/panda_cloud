@@ -7,13 +7,34 @@ export type UserPath =
   | "investor" // AI Token Investment
   | "hyperscaler"; // Hyperscale Data Center
 
+/**
+ * Staff roles, distinct from `UserPath`.
+ *
+ * `UserPath` says which product a **customer** is buying; `UserRole` says what
+ * an account may **do**. They are orthogonal — a sales rep has a role and no
+ * path. Added 2026-08-12 for the sales pipeline; before that the system had no
+ * concept of an internal user at all.
+ *
+ * `customer` is the default and must remain so: an account with no explicit
+ * role must never be treated as staff.
+ */
+export type UserRole = "customer" | "sales" | "admin";
+
 export interface User {
   id: string;
   email: string;
   fullName: string;
   company?: string;
+  /** Which product track a customer picked. Absent for staff. */
   path?: UserPath;
+  /** Defaults to "customer" when the backend omits it. */
+  role?: UserRole;
   createdAt: IsoDateTime;
+}
+
+/** True when the account may open internal tooling such as the sales board. */
+export function isStaff(user: User | null): boolean {
+  return user?.role === "sales" || user?.role === "admin";
 }
 
 export interface AuthTokens {

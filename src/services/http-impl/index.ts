@@ -11,6 +11,10 @@ import type {
   WorkloadType,
   ChoosePathRequest,
   DashboardSummary,
+  DealCard,
+  DealCardPatch,
+  DealColumn,
+  DealStage,
   GpuModel,
   CapexProjection,
   DeliverySchedule,
@@ -153,5 +157,21 @@ export const httpApi: ApiClient = {
   leads: {
     create: (payload: LeadRequest) =>
       http.post<LeadResponse>(endpoints.leads.create, payload, { anonymous: true }),
+  },
+
+  // Staff only — every call carries the bearer token, and the backend must
+  // reject non-sales roles with 403 rather than relying on the UI guard.
+  sales: {
+    listColumns: () => http.get<DealColumn[]>(endpoints.sales.columns),
+
+    listCards: () => http.get<DealCard[]>(endpoints.sales.cards),
+
+    getCard: (id: string) => http.get<DealCard>(endpoints.sales.cardById(id)),
+
+    updateCard: (id: string, patch: DealCardPatch) =>
+      http.patch<DealCard>(endpoints.sales.cardById(id), patch),
+
+    moveCard: (id: string, toColumnId: DealStage, order?: number) =>
+      http.post<DealCard>(endpoints.sales.moveCard(id), { toColumnId, order }),
   },
 };

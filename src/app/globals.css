@@ -112,6 +112,39 @@
 }
 
 @layer components {
+  /**
+   * Theme for @kanban/library.
+   *
+   * The library styles itself from four CSS variables, declared as
+   * `rgb(var(--kanban-*) / <alpha-value>)`. The values must therefore be bare
+   * "r g b" triplets — not hex, not `rgb()` — or every colour silently
+   * resolves to nothing and the board renders unstyled.
+   *
+   * Scoped to .kanban-scope rather than :root so the board can be restyled
+   * without touching the rest of the app.
+   */
+  .kanban-scope {
+    --kanban-bg: 17 19 24; /* base    #111318 */
+    --kanban-surface: 30 32 36; /* card    #1e2024 */
+    --kanban-border: 51 53 57; /* muted   #333539 */
+    --kanban-accent: 0 242 255; /* accent  #00f2ff */
+  }
+
+  /**
+   * Source filter on the sales board.
+   *
+   * Cards are hidden with CSS rather than unmounted, so scroll position and any
+   * in-flight drag survive a filter change. `data-deal-source` is set by the
+   * card renderer.
+   */
+  .kanban-scope[data-source-filter="assessment"] [data-deal-source]:not([data-deal-source="assessment"]),
+  .kanban-scope[data-source-filter="booking"] [data-deal-source]:not([data-deal-source="booking"]),
+  .kanban-scope[data-source-filter="investment"] [data-deal-source]:not([data-deal-source="investment"]),
+  .kanban-scope[data-source-filter="hyperscale"] [data-deal-source]:not([data-deal-source="hyperscale"]),
+  .kanban-scope[data-source-filter="lead_form"] [data-deal-source]:not([data-deal-source="lead_form"]) {
+    display: none;
+  }
+
   /* The soft cyan radial wash used behind auth and transactional screens. */
   .ambient-wash {
     background-image: radial-gradient(

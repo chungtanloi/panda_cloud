@@ -5,6 +5,10 @@ import type {
   AuthTokens,
   ChoosePathRequest,
   DashboardSummary,
+  DealCard,
+  DealCardPatch,
+  DealColumn,
+  DealStage,
   GpuModel,
   BookingDraft,
   BookingRequestResult,
@@ -114,6 +118,23 @@ export interface LeadService {
   create(payload: LeadRequest): Promise<LeadResponse>;
 }
 
+/**
+ * Sales pipeline. **Staff only** — every method requires an authenticated user
+ * whose role is `sales` or `admin`.
+ *
+ * There is deliberately no `create`: deal cards are created by the backend
+ * alongside the submission that produced them, never by a client.
+ */
+export interface SalesService {
+  listColumns(): Promise<DealColumn[]>;
+  listCards(): Promise<DealCard[]>;
+  /** Heavier record for the detail panel — full answers, notes, history. */
+  getCard(id: string): Promise<DealCard>;
+  updateCard(id: string, patch: DealCardPatch): Promise<DealCard>;
+  /** Separate from update so the backend can reorder siblings atomically. */
+  moveCard(id: string, toColumnId: DealStage, order?: number): Promise<DealCard>;
+}
+
 /** The complete surface exposed by `services/api.ts`. */
 export interface ApiClient {
   auth: AuthService;
@@ -123,4 +144,5 @@ export interface ApiClient {
   hyperscale: HyperscaleService;
   dashboard: DashboardService;
   leads: LeadService;
+  sales: SalesService;
 }

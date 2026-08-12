@@ -540,7 +540,149 @@ Errors: `422` field validation · `429` rate limited.
 
 ---
 
-## 9. Notes for the backend team
+## 9. Sales pipeline — _staff only_
+
+Backs the internal Kanban board at `/dashboard/sales`.
+
+> ⚠ **Every endpoint in this section must reject non-staff tokens with `403`.**
+> The frontend hides the UI from customers, but that is a convenience, not a
+> control — anyone can call these paths directly with a valid customer token.
+> Authorise on `role`, server-side, on every request.
+
+### 9.1 Role on the user object
+
+`User` gained an optional `role` (§ 2):
+
+```json
+{ "id": "usr_01H8XQ", "email": "…", "fullName": "…", "role": "sales" }
+```
+
+`role` ∈ `customer` | `sales` | `admin`. **Omit it, or send `customer`, for
+customer accounts** — the frontend treats a missing role as `customer`, never
+as staff.
+
+`path` (the product track) and `role` are independent: a sales rep has a role
+and no path.
+
+### 9.2 Cards are created by you, not by the client
+
+There is **no create endpoint**, deliberately.
+
+When a customer completes a flow, create the deal card **in the same
+transaction** that stores the submission:
+
+| Flow | Trigger |
+|---|---|
+| Land Owner Assessment | `POST /assessments` |
+| GPU Cluster Booking | `POST /bookings` |
+| AI Token Investment | `POST /investments` |
+| Hyperscale | `POST /hyperscale-requests` |
+| Lead form / Submit Request | `POST /leads` |
+
+Two separate writes would let the submission succeed while the card fails,
+leaving a real customer that no one in sales can see. New cards start in the
+`lead` column.
+
+### 9.3 `GET /sales/columns`
+
+```json
+{
+  "data": [
+    { "id": "lead", "title": "Lead", "order": 0, "color": "#94a3b8" },
+    { "id": "negotiation", "title": "Negotiation", "order": 3, "color": "#fb923c", "cardLimit": 8 }
+  ]
+}
+```
+
+Served from the database rather than hard-coded so sales ops can change the
+pipeline without a deploy. `id` ∈ `lead` | `qualified` | `proposal` |
+`negotiation` | `won` | `lost`. `cardLimit` is an optional WIP cap.
+
+### 9.4 `GET /sales/cards`
+
+Returns every card the caller may see. List payload — keep it light; notes and
+full submission answers belong in § 9.5.
+
+```json
+{
+  "data": [
+    {
+      "id": "deal_01",
+      "title": "Northwind Energy — 120ha greenfield",
+      "columnId": "lead",
+      "order": 0,
+      "createdAt": "…", "updatedAt": "…",
+      "source": "assessment",
+      "reference": "CP-ASM-4821",
+      "companyName": "Northwind Energy",
+      "contactName": "Jane Cooper",
+      "email": "jane@northwind.example",
+      "phone": "+1 555-0142",
+      "dealValueUsd": 4820000,
+      "probability": 45,
+      "closeDate": "2026-11-30",
+      "ownerId": "usr_sales_02",
+      "submissionId": "asm_7f21c",
+      "highlights": [
+        { "label": "Viability", "value": "78/100" },
+        { "label": "Capacity", "value": "10-50 MW" }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Notes |
+|---|---|
+| `columnId` | The stage. Named this way because the board library requires the key. |
+| `order` | Position within the column. Sent by the client on move; you own the reconciliation. |
+| `source` | `assessment` · `booking` · `investment` · `hyperscale` · `lead_form`. Drives the badge and the filter. |
+| `reference` | The same human-readable reference the customer sees. |
+| `dealValueUsd` | Raw USD. Omit when the flow produced no figure — do **not** send `0`, which displays as a real zero-value deal. |
+| `probability` | 0–100. Owned by sales, not by the wizard. Omit until set. |
+| `submissionId` | Lets sales open the original answers instead of re-asking the customer. |
+| `highlights` | Pre-formatted key figures lifted from the submission. Three are shown on the card; the rest appear in the panel. |
+
+### 9.5 `GET /sales/cards/{id}`
+
+The full record, including `notes` and any heavier fields the list omits. Same
+shape as § 9.4.
+
+### 9.6 `PATCH /sales/cards/{id}`
+
+Sales-owned fields only:
+
+```json
+{ "probability": 60, "closeDate": "2026-11-30", "notes": "Call booked for Thursday." }
+```
+
+Also accepts `title`, `ownerId` and `dealValueUsd`. Returns the updated card.
+
+**Reject attempts to modify customer-submitted data** (`contactName`, `email`,
+`source`, `reference`, `submissionId`) — the board is a working surface, not a
+place to rewrite what a customer told us.
+
+### 9.7 `POST /sales/cards/{id}/move`
+
+```json
+{ "toColumnId": "qualified", "order": 2 }
+```
+
+Separate from `PATCH` so sibling reordering happens in one transaction. Returns
+the updated card.
+
+Errors: `409` when the destination column is at its `cardLimit` — the board
+surfaces this as a rejected drop and reverts the card.
+
+### 9.8 Deletion
+
+Not implemented, and it should stay that way. A deal that came from a real
+submission belongs in `lost`, not erased — deleting it destroys the audit trail
+linking a customer's request to its outcome.
+
+---
+
+## 10. Notes for the backend team
 
 1. **CORS** — allow the frontend origin with `Authorization` on the allowed-headers
    list, and permit `GET, POST, PUT, PATCH, DELETE, OPTIONS`.

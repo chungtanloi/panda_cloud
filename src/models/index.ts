@@ -6,3 +6,4 @@ export * from "./investment";
 export * from "./hyperscale";
 export * from "./dashboard";
 export * from "./lead";
+export * from "./sales";
