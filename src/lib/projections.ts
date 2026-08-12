@@ -4,6 +4,7 @@ import type {
   DeliverySchedule,
   HyperscaleDraft,
   ProjectStage,
+  RegionFacts,
   StageAnalysis,
 } from "@/models/hyperscale";
 import type { InvestmentDraft, SettlementQuote, VolumeProjection } from "@/models/investment";
@@ -121,7 +122,7 @@ export function projectCapex(draft: HyperscaleDraft): CapexProjection {
   };
 }
 
-export function listRegions() {
+export function listRegions(): RegionFacts[] {
   return HYPERSCALE_REGIONS.map((region) => ({
     id: region.id,
     label: region.label,
