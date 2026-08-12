@@ -22,7 +22,8 @@ import {
   SOCIAL_PROOF,
 } from "@/config/marketingSections";
 import { cn } from "@/lib/cn";
-
+import { GlobalNetworkGlobe } from "@/components/globe";
+import { networkNodesToGlobeLocations } from "@/components/globe/networkAdapter";
 /**
  * Landing page — Figma node 1:3 ("Main Content" inside frame 1:2).
  *
@@ -306,6 +307,28 @@ function MetricsSection() {
   return (
     <section className="flex flex-col justify-center border-t border-line-faint bg-muted px-[24px] py-[48px] lg:min-h-[calc(100svh-73px)] lg:px-[64px] lg:py-[64px]">
       <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-[48px] lg:flex-row">
+        <Reveal delay={120} className="w-full flex-1">
+          <h3 className="font-sans text-[32px] font-semibold leading-[38.4px] tracking-[-0.64px] text-white">
+            {NETWORK.title}
+          </h3>
+
+          <p className="pt-[23px] font-sans text-[16px] leading-[25.6px] text-ink-dim">
+            {NETWORK.body}
+          </p>
+
+          <div className="pt-[40px]">
+            <GlobalNetworkGlobe
+              locations={networkNodesToGlobeLocations(NETWORK.nodes)}
+              autoRotate
+              rotationSpeed={0.15}
+              showConnections
+              showPulse
+              interactive
+              intensity={0.75}
+            />
+          </div>
+        </Reveal>
+
         <div className="grid w-full flex-1 grid-cols-1 gap-[32px] sm:grid-cols-2">
           {METRICS.map((metric, index) => (
             <Reveal key={metric.label} delay={index * 60}>
@@ -321,40 +344,6 @@ function MetricsSection() {
             </Reveal>
           ))}
         </div>
-
-        <Reveal delay={120} className="w-full flex-1">
-          <h3 className="font-sans text-[32px] font-semibold leading-[38.4px] tracking-[-0.64px] text-white">
-            {NETWORK.title}
-          </h3>
-
-          <p className="pt-[23px] font-sans text-[16px] leading-[25.6px] text-ink-dim">
-            {NETWORK.body}
-          </p>
-
-          <ul className="flex flex-col gap-[16px] pt-[40px]">
-            {NETWORK.nodes.map((node) => (
-              <li
-                key={node.region}
-                className={cn(
-                  "card-highlight hover-lift flex items-center justify-between rounded-panel bg-card p-[17px]",
-                  node.primary
-                    ? "border-2 border-l-2 border-accent pl-[18px]"
-                    : "border border-line-hair",
-                )}
-              >
-                <span className="flex items-center gap-[8px] font-sans text-[16px] font-bold leading-[24px] text-white">
-                  {node.primary ? (
-                    <span aria-hidden className="pulse-dot size-[8px] rounded-full bg-accent" />
-                  ) : null}
-                  {node.region}
-                </span>
-                <span className="rounded-full bg-muted px-[12px] py-[4px] font-mono text-[12px] leading-[16px] text-ink-dim">
-                  {node.tier}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Reveal>
       </div>
     </section>
   );

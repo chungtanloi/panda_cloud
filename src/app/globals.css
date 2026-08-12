@@ -416,7 +416,7 @@
     animation: nav-scan 3.2s ease-in-out infinite;
   }
 }
-
+.global-network-globe { --accent-cyan: var(--accent); }
 @keyframes orb-drift {
   0%,
   100% {

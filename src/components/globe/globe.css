@@ -1,0 +1,130 @@
+/*
+  Drop-in styles for GlobalNetworkGlobe.
+  Uses CSS custom properties so it can pick up the site's existing tokens —
+  override --gng-cyan / --gng-bg in a parent if the project already defines
+  an accent color variable (see INTEGRATION.md).
+*/
+
+.global-network-globe {
+  --gng-cyan: var(--accent-cyan, #67e8f9);
+  --gng-bg: transparent;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  padding-block: 0.5rem 1rem;
+}
+
+.globe-canvas-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+.globe-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.globe-tooltip {
+  position: absolute;
+  transform: translate(-50%, -130%);
+  background: rgba(6, 14, 20, 0.92);
+  border: 1px solid rgba(103, 232, 249, 0.35);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: #e6fbff;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.18);
+  animation: gng-tooltip-in 120ms ease-out;
+  z-index: 5;
+}
+
+@keyframes gng-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -120%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -130%);
+  }
+}
+
+.globe-tooltip__name {
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+}
+
+.globe-tooltip__type {
+  color: var(--gng-cyan);
+  opacity: 0.9;
+}
+
+.globe-tooltip__detail {
+  color: rgba(230, 251, 255, 0.55);
+  font-size: 0.65rem;
+}
+
+.global-network-globe__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1rem;
+  font-size: 0.8rem;
+  color: rgba(230, 251, 255, 0.72);
+}
+
+.global-network-globe__list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.global-network-globe__list li .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--gng-cyan);
+  box-shadow: 0 0 6px rgba(103, 232, 249, 0.7);
+}
+
+.global-network-globe__list li.is-hovered,
+.global-network-globe__list li.is-active {
+  color: #ffffff;
+}
+
+.global-network-globe__list li.is-active .dot {
+  box-shadow: 0 0 10px rgba(103, 232, 249, 1);
+}
+
+@media (max-width: 768px) {
+  .globe-canvas-wrap {
+    max-width: 240px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-tooltip {
+    animation: none;
+  }
+}
