@@ -7,7 +7,7 @@ import { TopNavBar } from "@/components/layout/TopNavBar";
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-base">
+    <div className="flex min-h-screen flex-col">
       <TopNavBar />
       <main className="flex-1">{children}</main>
       <Footer />

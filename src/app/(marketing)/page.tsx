@@ -11,6 +11,9 @@ import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { CountUp } from "@/components/motion/CountUp";
 import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
+import { AIScan } from "@/components/effects/AIScan";
+import { DataFlowConnector } from "@/components/effects/DataFlowConnector";
+import { InfraHud } from "@/components/effects/InfraHud";
 import { ABOUT, ECOSYSTEM, HERO, METRICS, NETWORK, SERVICES } from "@/config/landing";
 import {
   LANDING_FAQ,
@@ -36,7 +39,9 @@ export default function LandingPage() {
   return (
     <>
       <HeroSection />
+      <DataFlowConnector label="DATA" />
       <AboutSection />
+      <DataFlowConnector label="COMPUTE" />
       <EcosystemSection />
 
       {/* --- Sections below are additions, not from the Figma file.
@@ -73,6 +78,7 @@ export default function LandingPage() {
         </ViewportSection>
       </div>
 
+      <DataFlowConnector label="AI" />
       <MetricsSection />
 
       <div className="mx-auto flex w-full max-w-[1440px] flex-col px-[24px] lg:px-[64px]">
@@ -95,6 +101,7 @@ function HeroSection() {
   return (
     <section className="relative flex items-center overflow-hidden py-[48px] lg:min-h-[calc(100svh-73px)] lg:py-[64px]">
       <AnimatedBackdrop stars />
+      <AIScan />
 
       {/* Radial depth overlay — node 1:49 */}
       <div
@@ -141,7 +148,7 @@ function HeroSection() {
                 in docs/FIGMA_SCREEN_MAP.md. */}
             <Link
               href={HERO.primaryCta.href}
-              className="inline-flex items-center gap-[8px] rounded-panel px-[32px] py-[16px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-deep transition-colors hover:text-accent"
+              className="cta-connect inline-flex items-center gap-[8px] rounded-panel px-[32px] py-[16px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-deep transition-colors hover:text-accent"
             >
               {HERO.primaryCta.label}
               <ArrowRight />
@@ -156,13 +163,26 @@ function HeroSection() {
           </div>
         </Reveal>
 
-        <Reveal delay={120}>
+        <Reveal delay={120} className="relative">
           {/* Figma height is 552px; capped with a viewport-relative max so the
               two-column hero still fits one screen on a 1080p laptop. */}
           <AssetPlaceholder
             node="1:70"
             label="Hero globe visual"
             className="h-[552px] max-h-[min(552px,52svh)] w-full max-w-[600px] rounded-panel shadow-[0px_0px_40px_0px_rgba(0,242,255,0.3)]"
+          />
+
+          {/* Decorative "system is running" HUD — demo figures, not backend
+              data. Hidden below lg so it never crowds the mobile layout. */}
+          <InfraHud
+            className="absolute bottom-[16px] left-[16px] hidden lg:flex"
+            title="GPU CLUSTER"
+            metrics={[
+              { label: "COMPUTE", percent: 82 },
+              { label: "NETWORK", percent: 76 },
+            ]}
+            counter={{ label: "ACTIVE NODES", value: 128 }}
+            statusLines={["SYSTEM ONLINE", "PROCESSING"]}
           />
         </Reveal>
       </div>

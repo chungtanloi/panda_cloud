@@ -252,6 +252,169 @@
   .starfield {
     animation: starfield 90s linear infinite;
   }
+
+  /* -------------------------------------------------------------------------
+   * AI infrastructure enhancement layer (src/components/effects).
+   * Same restraint as the block above: short durations, low opacity, no new
+   * color tokens — everything reuses the existing cyan accent.
+   * ---------------------------------------------------------------------- */
+
+  /* CursorGlow.tsx — trailing ring, positioned via transform in JS. */
+  .cursor-glow-ring {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    border: 1px solid rgba(0, 242, 255, 0.35);
+    box-shadow: 0 0 14px 1px rgba(0, 242, 255, 0.12);
+    opacity: 0;
+    transition:
+      opacity 200ms ease-out,
+      width 200ms ease-out,
+      height 200ms ease-out,
+      border-color 200ms ease-out;
+    will-change: transform;
+  }
+  .cursor-glow-ring[data-active="true"] {
+    opacity: 1;
+  }
+  .cursor-glow-ring[data-variant="interactive"] {
+    width: 40px;
+    height: 40px;
+    border-color: rgba(0, 242, 255, 0.6);
+    box-shadow: 0 0 20px 2px rgba(0, 242, 255, 0.2);
+  }
+
+  /* AIScan.tsx — one sweep, triggered on a timer, never looping. */
+  .ai-scan-line {
+    height: 120px;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 242, 255, 0) 0%,
+      rgba(0, 242, 255, 0.06) 45%,
+      rgba(0, 242, 255, 0.14) 50%,
+      rgba(0, 242, 255, 0.06) 55%,
+      rgba(0, 242, 255, 0) 100%
+    );
+    animation: ai-scan-sweep 2.6s cubic-bezier(0.4, 0, 0.2, 1) 1;
+  }
+
+  /* DataFlowConnector.tsx — hairline + single node between sections. */
+  .data-flow-connector {
+    --flow-alpha: 0.16;
+  }
+  .data-flow-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 242, 255, 0) 0%,
+      rgba(0, 242, 255, var(--flow-alpha)) 50%,
+      rgba(0, 242, 255, 0) 100%
+    );
+  }
+  .data-flow-node {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: rgba(0, 242, 255, 0.25);
+    transform: translate(-50%, -50%) scale(1);
+    transition:
+      background 500ms ease-out,
+      box-shadow 500ms ease-out,
+      transform 500ms ease-out;
+  }
+  .data-flow-connector[data-lit="true"] .data-flow-node {
+    background: rgba(0, 242, 255, 0.9);
+    box-shadow: 0 0 10px 2px rgba(0, 242, 255, 0.35);
+    animation: data-flow-pulse 2.4s ease-in-out 1;
+  }
+  .data-flow-label {
+    position: absolute;
+    left: calc(50% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 500ms ease-out 200ms;
+  }
+  .data-flow-connector[data-lit="true"] .data-flow-label {
+    opacity: 0.8;
+  }
+
+  /* InfraHud.tsx — progress bars ease toward their new width on drift. */
+  .infra-hud-bar {
+    transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .infra-hud {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .infra-hud[data-revealed="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* CTA "establishing connection" sweep — opt-in via .cta-connect. */
+  .cta-connect {
+    position: relative;
+    isolation: isolate;
+  }
+  .cta-connect::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.16) 50%,
+      transparent 80%
+    );
+    background-size: 220% 100%;
+    background-position: 120% 0;
+    opacity: 0;
+    transition:
+      opacity 250ms ease-out,
+      background-position 450ms ease-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .cta-connect:hover::after,
+  .cta-connect:focus-visible::after {
+    opacity: 1;
+    background-position: -20% 0;
+  }
+
+  /* Nav active-link underline — faint scanning highlight. */
+  .nav-scan-underline {
+    position: relative;
+  }
+  .nav-scan-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      rgba(0, 242, 255, 0) 0%,
+      rgba(0, 242, 255, 0.9) 50%,
+      rgba(0, 242, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: nav-scan 3.2s ease-in-out infinite;
+  }
 }
 
 @keyframes orb-drift {
@@ -301,6 +464,45 @@
   }
 }
 
+@keyframes ai-scan-sweep {
+  0% {
+    transform: translateY(-120px);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+@keyframes data-flow-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  35% {
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes nav-scan {
+  0%,
+  100% {
+    background-position: 200% 0;
+  }
+  50% {
+    background-position: -100% 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Reveal must not leave content invisible when motion is disabled. */
   .reveal {
@@ -319,5 +521,19 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* The layer above collapses transitions to ~0ms, which is enough for most
+     of the new effects; these three also need to be hidden outright since a
+     zero-duration sweep/ring would otherwise still flash once. */
+  .ai-scan-line,
+  .cursor-glow-ring,
+  .nav-scan-underline::after {
+    display: none !important;
+  }
+
+  .infra-hud {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

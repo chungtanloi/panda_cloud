@@ -43,7 +43,7 @@ export function TopNavBar() {
                 className={cn(
                   "font-sans text-[16px] leading-[25.6px] transition-colors",
                   isActive
-                    ? "border-b-2 border-accent pb-[1px] font-bold text-accent"
+                    ? "nav-scan-underline border-b-2 border-accent pb-[1px] font-bold text-accent"
                     : "px-[12px] text-ink-dim hover:text-ink",
                 )}
               >

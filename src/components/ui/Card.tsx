@@ -8,10 +8,21 @@ import { cn } from "@/lib/cn";
 export function Card({
   className,
   children,
+  interactive,
   ...rest
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  /**
+   * Opt into the circuit background's "data pulse" treatment: nearby traces
+   * converge on this card when the pointer arrives, as if it were receiving
+   * data (e.g. a Kanban card, a live stat panel). Purely visual, off by
+   * default, and adds nothing but a data attribute — the animation itself
+   * lives entirely in CircuitBackground / config/circuit.ts.
+   */
+  interactive?: boolean;
+}) {
   return (
     <div
+      data-circuit-attract={interactive ? "" : undefined}
       className={cn(
         "relative rounded-card border border-line-card bg-surface p-card backdrop-blur-card",
         className,

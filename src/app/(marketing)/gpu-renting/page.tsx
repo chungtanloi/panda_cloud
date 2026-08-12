@@ -12,6 +12,8 @@ import { HowItWorks } from "@/components/marketing/sections/HowItWorks";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
+import { AIScan } from "@/components/effects/AIScan";
+import { InfraHud } from "@/components/effects/InfraHud";
 import {
   GPU_HERO,
   GPU_OFFERS,
@@ -40,6 +42,7 @@ export default function GpuRentingPage() {
       {/* Hero — node 2:6 */}
       <Reveal as="section" className="relative flex flex-col items-center text-center">
         <AnimatedBackdrop stars />
+        <AIScan />
 
         <span className="relative inline-flex items-center gap-[8px] rounded-full border border-accent/30 bg-accent-soft px-[13px] py-[5px]">
           <span aria-hidden className="pulse-dot size-[8px] rounded-full bg-accent" />
@@ -69,7 +72,7 @@ export default function GpuRentingPage() {
         <div className="relative flex flex-wrap items-center justify-center gap-[16px] pt-[32px]">
           <Link
             href={GPU_HERO.primaryCta.href}
-            className="inline-flex items-center gap-[8px] rounded-full bg-accent px-[32px] py-[17px] font-sans text-[16px] font-bold leading-[24px] text-accent-fg transition-opacity hover:opacity-90"
+            className="cta-connect inline-flex items-center gap-[8px] rounded-full bg-accent px-[32px] py-[17px] font-sans text-[16px] font-bold leading-[24px] text-accent-fg transition-opacity hover:opacity-90"
           >
             {GPU_HERO.primaryCta.label}
             <ArrowRight />
@@ -106,6 +109,18 @@ export default function GpuRentingPage() {
           style={{
             backgroundImage: "linear-gradient(to top, #0c0e12 0%, rgba(12,14,18,0) 100%)",
           }}
+        />
+
+        {/* Decorative "infrastructure monitoring" HUD — demo figures only. */}
+        <InfraHud
+          className="absolute right-[24px] top-[24px] hidden lg:flex"
+          title="INFRASTRUCTURE"
+          metrics={[
+            { label: "GPU UTILIZATION", percent: 91 },
+            { label: "COMPUTE", percent: 84 },
+            { label: "NETWORK", percent: 76 },
+          ]}
+          counter={{ label: "ACTIVE NODES", value: 128 }}
         />
       </Reveal>
       </ViewportSection>

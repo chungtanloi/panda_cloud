@@ -45,6 +45,22 @@ export function Footer() {
           © 2024 Cloud Panda Inc. All systems operational.
         </p>
       </div>
+
+      {/* Decorative only — reflects the "All systems operational" line above
+          as a terminal-style status strip. Not a source of new information. */}
+      <div
+        aria-hidden
+        className="mx-auto flex w-full max-w-[1440px] flex-wrap items-center gap-x-[24px] gap-y-[8px] border-t border-line-band px-[24px] pb-[24px] pt-[16px] font-mono text-[10px] leading-[10px] tracking-[1.2px] text-ink-mute lg:px-[64px]"
+      >
+        <span className="flex items-center gap-[8px]">
+          <span className="pulse-dot size-[5px] rounded-full bg-accent" />
+          NETWORK ONLINE
+        </span>
+        <span className="flex items-center gap-[8px]">
+          <span className="pulse-dot size-[5px] rounded-full bg-accent" />
+          INFRASTRUCTURE ACTIVE
+        </span>
+      </div>
     </footer>
   );
 }

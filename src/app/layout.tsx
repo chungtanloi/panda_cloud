@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { AuthProvider } from "@/controllers/AuthContext";
+import { CircuitBackground } from "@/components/effects/CircuitBackground";
+import { CursorGlow } from "@/components/effects/CursorGlow";
 import "./globals.css";
 
 /**
@@ -25,7 +27,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={GeistSans.variable}>
       <body className="min-h-screen bg-base text-ink antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        {/* Decorative, global — behind every route. Consumes the existing
+            circuit engine/config as-is; see src/components/effects. */}
+        <CircuitBackground />
+        <CursorGlow />
+        <div className="relative z-10">
+          <AuthProvider>{children}</AuthProvider>
+        </div>
       </body>
     </html>
   );
