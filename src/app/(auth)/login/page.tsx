@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
@@ -24,8 +24,27 @@ import { normalizeError } from "@/services/api";
  * field rules in lib/validation, and all I/O behind services/api.
  */
 export default function LoginPage() {
+  // useSearchParams requires a Suspense boundary under the App Router.
+  return (
+    <Suspense>
+      <LoginView />
+    </Suspense>
+  );
+}
+
+function LoginView() {
   const router = useRouter();
+  const params = useSearchParams();
   const { login } = useAuth();
+
+  /**
+   * Where to go after signing in. Only same-origin relative paths are
+   * accepted — an absolute URL here would be an open-redirect vector.
+   */
+  const rawReturnTo = params.get("returnTo");
+  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
+    ? rawReturnTo
+    : null;
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -45,8 +64,9 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(form.values);
-      // Users who have not picked a track land on "Choose Your Path" first.
-      router.push(user.path ? "/dashboard" : "/choose-path");
+      // A returnTo takes precedence — the user was interrupted mid-task.
+      // Otherwise, users who have not picked a track go to "Choose Your Path".
+      router.push(returnTo ?? (user.path ? "/dashboard" : "/choose-path"));
     } catch (cause) {
       const error = normalizeError(cause);
       form.applyServerError(error);
@@ -110,7 +130,10 @@ export default function LoginPage() {
 
         <p className="pt-[8px] text-center font-sans text-[16px] leading-[25.6px] text-ink-dim">
           Need an account?{" "}
-          <Link href="/signup" className="text-accent hover:underline">
+          <Link
+            href={returnTo ? `/signup?returnTo=${encodeURIComponent(returnTo)}` : "/signup"}
+            className="text-accent hover:underline"
+          >
             Get started
           </Link>
         </p>

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { DecorativeCorners } from "@/components/layout/DecorativeCorners";
 import { Badge } from "@/components/ui/Badge";
@@ -26,8 +26,24 @@ import { normalizeError } from "@/services/api";
  * the Land Owner Assessment flow rather than the dashboard.
  */
 export default function SignUpPage() {
+  // useSearchParams requires a Suspense boundary under the App Router.
+  return (
+    <Suspense>
+      <SignUpView />
+    </Suspense>
+  );
+}
+
+function SignUpView() {
   const router = useRouter();
+  const params = useSearchParams();
   const { signUp } = useAuth();
+
+  /** Same-origin relative paths only — guards against open redirects. */
+  const rawReturnTo = params.get("returnTo");
+  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
+    ? rawReturnTo
+    : null;
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -48,7 +64,10 @@ export default function SignUpPage() {
     setSubmitting(true);
     try {
       await signUp(form.values);
-      router.push("/assessment");
+      // The design routes new sign-ups straight into the Land Owner
+      // Assessment; a returnTo overrides that when the user was interrupted
+      // mid-flow (e.g. downloading their report).
+      router.push(returnTo ?? "/assessment");
     } catch (cause) {
       const error = normalizeError(cause);
       form.applyServerError(error);
@@ -141,7 +160,10 @@ export default function SignUpPage() {
 
         <p className="pt-[32px] text-center font-sans text-[14px] leading-[21px] text-ink-dim">
           Already have an account?{" "}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link
+            href={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : "/login"}
+            className="text-accent hover:underline"
+          >
             Log in
           </Link>
         </p>

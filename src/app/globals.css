@@ -135,6 +135,58 @@
     box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.05);
   }
 
+  /* Range slider styled to match the accent language. Native <input type=range>
+     is used so keyboard control and screen-reader semantics come for free;
+     only the track and thumb are restyled. */
+  .circuit-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 20px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .circuit-range::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent) 0%,
+      var(--color-accent) var(--fill, 0%),
+      var(--color-raised) var(--fill, 0%),
+      var(--color-raised) 100%
+    );
+  }
+  .circuit-range::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--color-accent) 0%,
+      var(--color-accent) var(--fill, 0%),
+      var(--color-raised) var(--fill, 0%),
+      var(--color-raised) 100%
+    );
+  }
+  .circuit-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -6px;
+    border-radius: 9999px;
+    background: var(--color-accent);
+    box-shadow: var(--glow-accent);
+    border: 3px solid var(--color-base);
+  }
+  .circuit-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: var(--color-accent);
+    box-shadow: var(--glow-accent);
+    border: 3px solid var(--color-base);
+  }
+
   /* 256px blurred accent orb used in preview panels (Figma node 2:1107). */
   .ambient-orb {
     width: 256px;

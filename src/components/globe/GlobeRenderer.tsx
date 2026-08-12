@@ -217,12 +217,19 @@ export function GlobeRenderer({
       // Draws a poly-line where each segment gets its own opacity, so the
       // ring visibly fades as it curves around the back of the sphere.
       function strokeGradientPath(points: { x: number; y: number; z: number }[]) {
+        // Re-narrow inside this nested declaration: TypeScript does not carry
+        // the outer null-check into a function that could be invoked later.
+        if (!ctx) return;
+
         ctx.lineWidth = 1;
         for (let i = 1; i < points.length; i++) {
           const a = points[i - 1];
           const b = points[i];
+          if (!a || !b) continue; // noUncheckedIndexedAccess
+
           const avgZ = (a.z + b.z) / 2;
           if (avgZ < -0.75) continue; // skip the far side entirely
+
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
@@ -273,6 +280,8 @@ export function GlobeRenderer({
       for (let i = 1; i < equatorPts.length; i++) {
         const a = equatorPts[i - 1];
         const b = equatorPts[i];
+        if (!a || !b) continue; // noUncheckedIndexedAccess
+
         const avgZ = (a.z + b.z) / 2;
         if (avgZ < -0.6) continue;
         ctx.beginPath();

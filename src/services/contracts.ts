@@ -6,13 +6,25 @@ import type {
   ChoosePathRequest,
   DashboardSummary,
   GpuModel,
+  BookingDraft,
   BookingRequestResult,
   BookingQuote,
   BookingSubmission,
+  WorkloadRecommendation,
+  WorkloadType,
+  CapexProjection,
+  DeliverySchedule,
+  HyperscaleDraft,
   HyperscaleResult,
   HyperscaleSubmission,
+  InvestmentDraft,
   InvestmentResult,
   InvestmentSubmission,
+  ProjectStage,
+  RegionFacts,
+  SettlementQuote,
+  StageAnalysis,
+  VolumeProjection,
   LeadRequest,
   LeadResponse,
   LivePreview,
@@ -55,21 +67,39 @@ export interface AssessmentService {
 export interface BookingService {
   /** Catalogue for the GPU Hardware step. */
   listGpuModels(): Promise<GpuModel[]>;
-  /** Live price estimate shown while the wizard is in progress. */
-  quote(payload: Partial<BookingSubmission>): Promise<BookingQuote>;
+  /** Architecture recommendation shown on the Workload step. */
+  recommend(workload: WorkloadType): Promise<WorkloadRecommendation>;
+  /**
+   * Live run-rate. Accepts a partial draft — the wizard calls this on every
+   * change, so it must be cheap and free of side effects.
+   */
+  quote(payload: BookingDraft): Promise<BookingQuote>;
   submit(payload: BookingSubmission): Promise<BookingRequestResult>;
   getRequest(id: string): Promise<BookingRequestResult>;
 }
 
 export interface InvestmentService {
-  /** Current token price for the Volume step. */
+  /** Current token price, polled by the Volume step. */
   getRate(): Promise<TokenRate>;
+  /** Live projection panel on the Volume step. */
+  project(amountUsd: number): Promise<VolumeProjection>;
+  /** Settlement Details panel on the Payment step. */
+  settlement(draft: InvestmentDraft): Promise<SettlementQuote>;
   uploadKycDocument(file: File): Promise<UploadedDocument>;
   submit(payload: InvestmentSubmission): Promise<InvestmentResult>;
   getInvestment(id: string): Promise<InvestmentResult>;
 }
 
 export interface HyperscaleService {
+  /** Telemetry panel on the Project Stage step. */
+  analyzeStage(stage: ProjectStage): Promise<StageAnalysis>;
+  /** Live CapEx projection on the Capacity & Cooling step. */
+  projectCapex(draft: HyperscaleDraft): Promise<CapexProjection>;
+  /** Regions offered on the Geography step, with their power and cooling. */
+  listRegions(): Promise<RegionFacts[]>;
+  /** Auto-generated delivery schedule for the chosen go-live date. */
+  buildSchedule(draft: HyperscaleDraft): Promise<DeliverySchedule>;
+  uploadRfpDocument(file: File): Promise<UploadedDocument>;
   submit(payload: HyperscaleSubmission): Promise<HyperscaleResult>;
   getRequest(id: string): Promise<HyperscaleResult>;
 }

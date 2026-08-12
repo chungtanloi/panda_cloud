@@ -1,67 +1,147 @@
 import type { IsoDateTime } from "./common";
 
 /**
- * Hyperscale Data Center — 4-step wizard.
+ * Hyperscale Data Center — a four-step wizard.
+ *
  * Project Stage (1) → Capacity & Cooling (2) → Geography & Timeline (3)
  * → RFP & Consultation (4)
  *
- * PROVISIONAL: verified against Figma as each screen is implemented.
+ * ⚠ The exported screens read "STEP 2 OF 4" then "STEP 3 OF 5", and both
+ * steps 2 and 3 have a "Proceed to Network(ing)" button although no Networking
+ * screen exists. Confirmed with the product owner on 2026-08-12 that the flow
+ * is **four steps** and those button labels were leftovers; they now name the
+ * screen they actually lead to.
  */
 
-export type ProjectStage = "concept" | "site_selected" | "permitted" | "under_construction";
+/* ------------------------------ Step 1 ------------------------------ */
+
+export type ProjectStage = "greenfield" | "retrofit" | "modular" | "turnkey";
 
 export interface ProjectStageStep {
   stage: ProjectStage;
 }
 
-export type CoolingType = "air" | "liquid_immersion" | "direct_to_chip" | "hybrid";
-
-export interface CapacityCoolingStep {
-  /** Target IT load in megawatts. */
-  itLoadMw: number;
-  cooling: CoolingType;
-  /** Target Power Usage Effectiveness, e.g. 1.15. */
-  targetPue: number;
+/** Telemetry panel on step 1. */
+export interface StageAnalysis {
+  /** Pre-formatted, e.g. "24-36 Months". */
+  estimatedTimeline: string;
+  /** Free-text impact summary. */
+  impact: string;
+  /** 0–100 readiness bar. */
+  buildReadiness: number;
 }
 
-export interface GeographyTimelineStep {
-  country: string;
+/* ------------------------------ Step 2 ------------------------------ */
+
+export type CoolingArchitecture =
+  | "air_hot_cold"
+  | "liquid_dtc"
+  | "immersion"
+  | "hybrid";
+
+export interface CapacityStep {
+  /** Target IT load in megawatts, 10 – 250. */
+  targetCapacityMw: number;
+  cooling: CoolingArchitecture;
+}
+
+/** Live CapEx projection on step 2. */
+export interface CapexProjection {
+  categories: CapexCategory[];
+  /** Sum of `categories`. */
+  totalUsd: number;
+  /** Shown as a caveat under the total. */
+  note: string;
+}
+
+export interface CapexCategory {
+  label: string;
+  amountUsd: number;
+  /** Highlighted in accent — the cooling line in the design. */
+  emphasis?: boolean;
+}
+
+/* ------------------------------ Step 3 ------------------------------ */
+
+export interface GeographyStep {
+  /** Region id, e.g. "us_east_1". */
   region: string;
-  /** Target go-live date. */
-  targetOnlineDate: string;
-  /** Whether the site must be in a specific latency zone. */
-  latencyCritical: boolean;
+  /** Target go-live date, ISO-8601 date. */
+  targetGoLive: string;
 }
 
-export interface RfpConsultationStep {
-  fullName: string;
-  email: string;
-  company: string;
-  role: string;
-  /** Free-text requirements captured on the final step. */
-  requirements?: string;
-  requestConsultation: boolean;
+export interface RegionFacts {
+  id: string;
+  label: string;
+  /** Pre-formatted, e.g. "140 MW". */
+  availablePower: string;
+  /** Pre-formatted, e.g. "Liquid-to-Chip". */
+  coolingType: string;
 }
+
+/** Auto-generated Gantt shown beside the form. */
+export interface DeliverySchedule {
+  phases: SchedulePhase[];
+  /** Days added to the critical path by the chosen date. 0 when on track. */
+  criticalPathDelayDays: number;
+  /** Set when the target date triggers the expedite premium. */
+  expediteWarning?: string;
+}
+
+export interface SchedulePhase {
+  label: string;
+  detail: string;
+  /** Month index the bar starts at, 0-based. */
+  startMonth: number;
+  /** Length of the bar in months. */
+  durationMonths: number;
+  status: "active" | "pending";
+}
+
+/* ------------------------------ Step 4 ------------------------------ */
+
+export interface RfpStep {
+  /** Object ids from the upload endpoint. */
+  documentIds: string[];
+  requestConsultation: boolean;
+  /** Chosen slot, when a consultation was booked. */
+  consultationSlot?: string;
+}
+
+/** Terminal-style processing log on step 4. */
+export interface RfpProcessingLog {
+  entries: RfpLogEntry[];
+  status: "idle" | "processing" | "complete" | "failed";
+}
+
+export interface RfpLogEntry {
+  /** Pre-formatted timestamp, e.g. "10:42:01". */
+  time: string;
+  message: string;
+  /** Renders in accent when the step passed. */
+  outcome?: "pass" | "fail";
+}
+
+/* --------------------------- Aggregate draft ------------------------ */
 
 export interface HyperscaleDraft {
   projectStage?: Partial<ProjectStageStep>;
-  capacityCooling?: Partial<CapacityCoolingStep>;
-  geographyTimeline?: Partial<GeographyTimelineStep>;
-  rfpConsultation?: Partial<RfpConsultationStep>;
+  capacity?: Partial<CapacityStep>;
+  geography?: Partial<GeographyStep>;
+  rfp?: Partial<RfpStep>;
 }
 
 export interface HyperscaleSubmission {
   projectStage: ProjectStageStep;
-  capacityCooling: CapacityCoolingStep;
-  geographyTimeline: GeographyTimelineStep;
-  rfpConsultation: RfpConsultationStep;
+  capacity: CapacityStep;
+  geography: GeographyStep;
+  rfp: RfpStep;
 }
 
 export interface HyperscaleResult {
   id: string;
   reference: string;
   status: "received" | "in_review" | "scheduled";
-  /** Populated once a consultation slot is booked. */
   consultationAt?: IsoDateTime;
   createdAt: IsoDateTime;
 }

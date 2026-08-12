@@ -22,6 +22,7 @@ export const endpoints = {
 
   booking: {
     gpuModels: "/gpu-models",
+    recommend: "/bookings/recommend",
     quote: "/bookings/quote",
     submit: "/bookings",
     byId: (id: string) => `/bookings/${id}`,
@@ -29,12 +30,19 @@ export const endpoints = {
 
   investment: {
     rate: "/investments/rate",
+    project: "/investments/project",
+    settlement: "/investments/settlement",
     kycDocuments: "/investments/kyc-documents",
     submit: "/investments",
     byId: (id: string) => `/investments/${id}`,
   },
 
   hyperscale: {
+    stageAnalysis: "/hyperscale/stage-analysis",
+    capex: "/hyperscale/capex",
+    regions: "/hyperscale/regions",
+    schedule: "/hyperscale/schedule",
+    documents: "/hyperscale/documents",
     submit: "/hyperscale-requests",
     byId: (id: string) => `/hyperscale-requests/${id}`,
   },

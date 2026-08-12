@@ -1,48 +1,87 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Input, Select } from "@/components/ui/Field";
+import { useAsync } from "@/controllers/useAsync";
 import { useForm } from "@/controllers/useForm";
-import { PATH_OPTIONS } from "@/config/paths";
+import {
+  LEAD_BUDGETS,
+  LEAD_FORM,
+  LEAD_INTERESTS,
+  LEAD_LOCATIONS,
+  LEAD_TIMELINES,
+} from "@/config/lead";
 import { email as emailRule, required } from "@/lib/validation";
-import type { LeadRequest } from "@/models/lead";
-import type { UserPath } from "@/models/auth";
+import type { LeadBudget, LeadInterest, LeadRequest, LeadTimeline } from "@/models/lead";
 import { api, normalizeError } from "@/services/api";
+import { cn } from "@/lib/cn";
 import { SectionHeading } from "./SectionHeading";
 
 /**
- * Lead-capture form. Added section — not in the Figma file.
+ * Lead capture, in two display modes over one model and one endpoint.
  *
- * Follows the same rules as every other form in the app: validation from
- * lib/validation, state from useForm, and submission through services/api so
- * it works against the mock adapter today and the real backend later with no
- * code change. Contract: docs/API_CONTRACT.md § 8.
+ *   "compact" — the short form embedded in marketing pages: name, email,
+ *               interest, message. Long forms depress completion, so the
+ *               marketing pages ask for the minimum.
+ *   "full"    — the Submit Request screen (`Submit.png`): adds company, phone,
+ *               GPU type, quantity, timeline, budget and location.
+ *
+ * Both send `LeadRequest` to `POST /leads`. Keeping one component means the
+ * validation rules and option lists cannot drift between the two.
  */
 export function ContactForm({
-  eyebrow = "Get in touch",
+  variant = "compact",
+  eyebrow,
   title,
   subtitle,
-  defaultInterest = "land_owner",
+  defaultInterests = [],
+  /** Where to go after a successful submit. Omit to show inline confirmation. */
+  redirectTo,
 }: {
+  variant?: "compact" | "full";
   eyebrow?: string;
   title: string;
   subtitle?: string;
-  defaultInterest?: UserPath;
+  defaultInterests?: LeadInterest[];
+  redirectTo?: (reference: string) => string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const isFull = variant === "full";
+
   const [submitting, setSubmitting] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<LeadRequest>(
-    { fullName: "", email: "", company: "", interest: defaultInterest, message: "" },
     {
-      fullName: required("Full name"),
+      contactName: "",
+      email: "",
+      interests: defaultInterests,
+      companyName: "",
+      phone: "",
+      gpuType: "",
+      quantity: undefined,
+      timeline: undefined,
+      budget: undefined,
+      locationPreference: "",
+      useCase: "",
+    },
+    {
+      contactName: required("Contact name"),
       email: emailRule(),
+      interests: (value) => (value.length === 0 ? "Select at least one interest." : undefined),
     },
   );
+
+  function toggleInterest(interest: LeadInterest) {
+    const next = form.values.interests.includes(interest)
+      ? form.values.interests.filter((item) => item !== interest)
+      : [...form.values.interests, interest];
+    form.setField("interests", next);
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -52,6 +91,10 @@ export function ContactForm({
     setSubmitting(true);
     try {
       const result = await api.leads.create({ ...form.values, source: pathname });
+      if (redirectTo) {
+        router.push(redirectTo(result.reference));
+        return;
+      }
       setReference(result.reference);
       form.reset();
     } catch (cause) {
@@ -64,95 +107,154 @@ export function ContactForm({
   }
 
   return (
-    <section className="flex flex-col gap-[48px]">
+    <section className="flex flex-col gap-[40px]">
       <SectionHeading eyebrow={eyebrow} title={title} subtitle={subtitle} />
 
-      <Reveal className="mx-auto w-full max-w-[720px]">
+      <Reveal className={cn("mx-auto w-full", isFull ? "max-w-[880px]" : "max-w-[720px]")}>
         <div className="card-highlight rounded-card border border-line-hair bg-card p-[33px]">
           {reference ? (
-            <div role="status" className="flex flex-col items-center gap-[12px] py-[24px] text-center">
-              <span className="grid size-[48px] place-items-center rounded-full border border-accent/30 bg-accent-soft text-accent">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-                  <path
-                    d="M4 10.5 8 14.5 16 6"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              <p className="font-sans text-[20px] font-medium leading-[28px] text-white">
-                Thanks — we&apos;ll be in touch.
-              </p>
-              <p className="font-sans text-[14px] leading-[22px] text-ink-dim">
-                Your reference is{" "}
-                <span className="font-mono text-accent">{reference}</span>.
-              </p>
-              <button
-                type="button"
-                onClick={() => setReference(null)}
-                className="pt-[8px] font-sans text-[14px] text-accent hover:underline"
-              >
-                Send another enquiry
-              </button>
-            </div>
+            <SubmittedNotice reference={reference} onReset={() => setReference(null)} />
           ) : (
             <form className="flex flex-col gap-[20px]" onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 gap-[20px] sm:grid-cols-2">
+                {isFull ? (
+                  <Input
+                    label={LEAD_FORM.fields.companyName.label}
+                    autoComplete="organization"
+                    placeholder={LEAD_FORM.fields.companyName.placeholder}
+                    value={form.values.companyName ?? ""}
+                    onChange={(e) => form.setField("companyName", e.target.value)}
+                  />
+                ) : null}
+
                 <Input
-                  label="Full name"
+                  label={LEAD_FORM.fields.contactName.label}
                   autoComplete="name"
-                  placeholder="Jane Cooper"
-                  value={form.values.fullName}
-                  onChange={(e) => form.setField("fullName", e.target.value)}
-                  onBlur={() => form.blurField("fullName")}
-                  error={form.touched.fullName ? form.errors.fullName : undefined}
+                  placeholder={LEAD_FORM.fields.contactName.placeholder}
+                  value={form.values.contactName}
+                  onChange={(e) => form.setField("contactName", e.target.value)}
+                  onBlur={() => form.blurField("contactName")}
+                  error={form.touched.contactName ? form.errors.contactName : undefined}
                 />
 
                 <Input
-                  label="Work email"
+                  label={LEAD_FORM.fields.email.label}
                   type="email"
                   autoComplete="email"
-                  placeholder="jane@company.com"
+                  placeholder={LEAD_FORM.fields.email.placeholder}
                   value={form.values.email}
                   onChange={(e) => form.setField("email", e.target.value)}
                   onBlur={() => form.blurField("email")}
                   error={form.touched.email ? form.errors.email : undefined}
                 />
 
-                <Input
-                  label="Company"
-                  autoComplete="organization"
-                  placeholder="Northwind Energy"
-                  value={form.values.company ?? ""}
-                  onChange={(e) => form.setField("company", e.target.value)}
-                />
-
-                <Select
-                  label="I'm interested in"
-                  value={form.values.interest}
-                  onChange={(e) => form.setField("interest", e.target.value as UserPath)}
-                  options={PATH_OPTIONS.map((option) => ({
-                    value: option.id,
-                    label: option.title,
-                  }))}
-                />
+                {isFull ? (
+                  <Input
+                    label={LEAD_FORM.fields.phone.label}
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder={LEAD_FORM.fields.phone.placeholder}
+                    value={form.values.phone ?? ""}
+                    onChange={(e) => form.setField("phone", e.target.value)}
+                  />
+                ) : null}
               </div>
+
+              {/* Interests — multi-select chips, as in the design. */}
+              <fieldset className="flex flex-col gap-[10px]">
+                <legend className="font-sans text-[12px] font-medium uppercase leading-[12px] tracking-[0.6px] text-ink-dim">
+                  {LEAD_FORM.fields.interests.label}
+                </legend>
+
+                <div className="flex flex-wrap gap-[8px]">
+                  {LEAD_INTERESTS.map((interest) => {
+                    const active = form.values.interests.includes(interest.value);
+                    return (
+                      <button
+                        key={interest.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => toggleInterest(interest.value)}
+                        className={cn(
+                          "rounded-full border px-[14px] py-[8px] font-sans text-[12px] leading-[16px] transition-colors",
+                          active
+                            ? "border-accent bg-accent-soft text-accent"
+                            : "border-line-soft bg-white/[0.03] text-ink-dim hover:border-accent/40",
+                        )}
+                      >
+                        {interest.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {form.errors.interests ? (
+                  <p role="alert" className="font-sans text-[12px] text-red-400">
+                    {form.errors.interests}
+                  </p>
+                ) : null}
+              </fieldset>
+
+              {isFull ? (
+                <>
+                  <div className="grid grid-cols-1 gap-[20px] sm:grid-cols-2">
+                    <GpuTypeSelect
+                      value={form.values.gpuType ?? ""}
+                      onChange={(value) => form.setField("gpuType", value)}
+                    />
+
+                    <Input
+                      label={LEAD_FORM.fields.quantity.label}
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      placeholder={LEAD_FORM.fields.quantity.placeholder}
+                      value={form.values.quantity ?? ""}
+                      onChange={(e) =>
+                        form.setField(
+                          "quantity",
+                          e.target.value === "" ? undefined : Number(e.target.value),
+                        )
+                      }
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-[20px] sm:grid-cols-3">
+                    <Select
+                      label={LEAD_FORM.fields.timeline.label}
+                      value={form.values.timeline ?? ""}
+                      onChange={(e) => form.setField("timeline", e.target.value as LeadTimeline)}
+                      options={[{ value: "", label: "Select…" }, ...LEAD_TIMELINES]}
+                    />
+                    <Select
+                      label={LEAD_FORM.fields.budget.label}
+                      value={form.values.budget ?? ""}
+                      onChange={(e) => form.setField("budget", e.target.value as LeadBudget)}
+                      options={[{ value: "", label: "Select…" }, ...LEAD_BUDGETS]}
+                    />
+                    <Select
+                      label={LEAD_FORM.fields.location.label}
+                      value={form.values.locationPreference ?? ""}
+                      onChange={(e) => form.setField("locationPreference", e.target.value)}
+                      options={LEAD_LOCATIONS}
+                    />
+                  </div>
+                </>
+              ) : null}
 
               <div className="flex w-full flex-col gap-[8px]">
                 <label
-                  htmlFor="lead-message"
+                  htmlFor="lead-use-case"
                   className="font-sans text-[12px] font-medium uppercase leading-[12px] tracking-[0.6px] text-ink-dim"
                 >
-                  Message
+                  {LEAD_FORM.fields.useCase.label}
                 </label>
                 <textarea
-                  id="lead-message"
-                  rows={4}
-                  placeholder="Tell us about your capacity, timeline, or workload."
-                  value={form.values.message ?? ""}
-                  onChange={(e) => form.setField("message", e.target.value)}
+                  id="lead-use-case"
+                  rows={isFull ? 5 : 4}
+                  placeholder={LEAD_FORM.fields.useCase.placeholder}
+                  value={form.values.useCase ?? ""}
+                  onChange={(e) => form.setField("useCase", e.target.value)}
                   className="w-full resize-y rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[16px] leading-normal text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
                 />
               </div>
@@ -167,7 +269,7 @@ export function ContactForm({
                 type="submit"
                 disabled={submitting}
                 aria-busy={submitting || undefined}
-                className="mt-[4px] inline-flex items-center justify-center gap-[8px] rounded-full bg-accent px-[32px] py-[16px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-fg transition-all duration-200 hover:-translate-y-[2px] hover:drop-shadow-[0px_0px_20px_rgba(0,242,255,0.45)] disabled:pointer-events-none disabled:opacity-40"
+                className="mt-[4px] inline-flex items-center justify-center gap-[8px] self-start rounded-full bg-accent px-[32px] py-[14px] font-sans text-[14px] font-bold leading-[20px] text-accent-fg transition-all duration-200 hover:-translate-y-[2px] hover:drop-shadow-[0px_0px_20px_rgba(0,242,255,0.45)] disabled:pointer-events-none disabled:opacity-40"
               >
                 {submitting ? (
                   <span
@@ -175,16 +277,83 @@ export function ContactForm({
                     className="size-[14px] animate-spin rounded-full border-2 border-current border-t-transparent"
                   />
                 ) : null}
-                Send enquiry
+                {LEAD_FORM.submitLabel}
+                <span aria-hidden>↗</span>
               </button>
 
-              <p className="text-center font-sans text-[12px] leading-[18px] text-ink-faint">
-                We reply within one business day. No marketing lists.
+              <p className="font-sans text-[12px] leading-[18px] text-ink-faint">
+                {LEAD_FORM.reassurance}
               </p>
             </form>
           )}
         </div>
       </Reveal>
     </section>
+  );
+}
+
+/**
+ * Reads the live GPU catalogue so the list cannot drift from what is sold.
+ *
+ * Fetches directly rather than reading BookingContext — this form also appears
+ * on marketing pages, which are outside the booking provider.
+ */
+function GpuTypeSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const fetchModels = useCallback(() => api.booking.listGpuModels(), []);
+  const { data } = useAsync(fetchModels, { immediate: [] });
+  const models = data ?? [];
+
+  return (
+    <Select
+      label={LEAD_FORM.fields.gpuType.label}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      options={[
+        { value: "", label: LEAD_FORM.fields.gpuType.placeholder },
+        ...models.map((model) => ({
+          value: model.id,
+          label: `${model.name} ${model.memory}`,
+        })),
+      ]}
+    />
+  );
+}
+
+function SubmittedNotice({ reference, onReset }: { reference: string; onReset: () => void }) {
+  return (
+    <div role="status" className="flex flex-col items-center gap-[12px] py-[24px] text-center">
+      <span className="grid size-[48px] place-items-center rounded-full border border-accent/30 bg-accent-soft text-accent">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
+          <path
+            d="M4 10.5 8 14.5 16 6"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+
+      <p className="font-sans text-[20px] font-medium leading-[28px] text-white">
+        Thanks — we&apos;ll be in touch.
+      </p>
+      <p className="font-sans text-[14px] leading-[22px] text-ink-dim">
+        Your reference is <span className="font-mono text-accent">{reference}</span>.
+      </p>
+
+      <button
+        type="button"
+        onClick={onReset}
+        className="pt-[8px] font-sans text-[14px] text-accent hover:underline"
+      >
+        Send another enquiry
+      </button>
+    </div>
   );
 }

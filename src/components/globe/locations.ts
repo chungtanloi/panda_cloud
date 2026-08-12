@@ -63,8 +63,15 @@ export function buildConnections(
   }
 
   for (let i = 0; i < locations.length; i++) {
+    const a = locations[i];
+    if (!a) continue;
+
     for (let j = i + 1; j < locations.length; j++) {
-      pairs.push([locations[i], locations[j]]);
+      // `noUncheckedIndexedAccess` is on, so indexed reads are widened with
+      // `| undefined` and must be narrowed before use.
+      const b = locations[j];
+      if (!b) continue;
+      pairs.push([a, b]);
     }
   }
   return pairs;

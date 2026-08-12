@@ -20,27 +20,35 @@ export interface NetworkNode {
   primary?: boolean;
 }
 
-/** Converts the existing NETWORK.nodes shape into GlobeLocation[]. */
+/**
+ * Converts the existing NETWORK.nodes shape into GlobeLocation[].
+ *
+ * Accepts a readonly array because the source (`NETWORK.nodes` in
+ * config/landing.ts) is declared `as const` and must stay immutable.
+ */
 export function networkNodesToGlobeLocations(
-  nodes: NetworkNode[]
+  nodes: readonly NetworkNode[],
 ): GlobeLocation[] {
-  return nodes
-    .map((node) => {
-      const coords = REGION_COORDS[node.region];
-      if (!coords) {
-        console.warn(
-          `[GlobalNetworkGlobe] No coordinates for region "${node.region}" — add it to REGION_COORDS in networkAdapter.ts.`
-        );
-        return null;
-      }
-      return {
-        id: node.region.toLowerCase().replace(/\s+/g, "-"),
-        name: node.region,
-        lat: coords.lat,
-        lng: coords.lng,
-        type: node.tier,
-        isHub: node.primary,
-      } satisfies GlobeLocation;
-    })
-    .filter((l): l is GlobeLocation => l !== null);
+  const locations: GlobeLocation[] = [];
+
+  for (const node of nodes) {
+    const coords = REGION_COORDS[node.region];
+    if (!coords) {
+      console.warn(
+        `[GlobalNetworkGlobe] No coordinates for region "${node.region}" — add it to REGION_COORDS in networkAdapter.ts.`,
+      );
+      continue;
+    }
+
+    locations.push({
+      id: node.region.toLowerCase().replace(/\s+/g, "-"),
+      name: node.region,
+      lat: coords.lat,
+      lng: coords.lng,
+      type: node.tier,
+      isHub: node.primary,
+    });
+  }
+
+  return locations;
 }

@@ -47,7 +47,7 @@ export default function BuyGpuPage() {
         <ContactForm
           title="Request a purchase quote"
           subtitle="Tell us the configuration and we'll come back with pricing and lead times."
-          defaultInterest="gpu_renter"
+          defaultInterests={["buy_gpu"]}
         />
       </ViewportSection>
 

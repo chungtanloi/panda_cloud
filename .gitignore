@@ -13,3 +13,14 @@ yarn-error.log*
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# Design reference material dropped into the project root while building.
+# These are screenshots and Figma exports, not source — keep them out of the
+# repository. The 100MB+ PDF in particular would bloat every clone forever.
+# Committed assets belong in public/assets (see docs/FIGMA_ASSETS.md).
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp
+/*.pdf
+

@@ -3,16 +3,28 @@ import type {
   AssessmentSubmission,
   AuthSession,
   AuthTokens,
+  BookingDraft,
   BookingQuote,
   BookingRequestResult,
   BookingSubmission,
+  WorkloadRecommendation,
+  WorkloadType,
   ChoosePathRequest,
   DashboardSummary,
   GpuModel,
+  CapexProjection,
+  DeliverySchedule,
+  HyperscaleDraft,
   HyperscaleResult,
   HyperscaleSubmission,
+  InvestmentDraft,
   InvestmentResult,
   InvestmentSubmission,
+  ProjectStage,
+  RegionFacts,
+  SettlementQuote,
+  StageAnalysis,
+  VolumeProjection,
   LeadRequest,
   LeadResponse,
   LivePreview,
@@ -64,8 +76,14 @@ export const httpApi: ApiClient = {
   booking: {
     listGpuModels: () => http.get<GpuModel[]>(endpoints.booking.gpuModels, { anonymous: true }),
 
-    quote: (payload: Partial<BookingSubmission>) =>
-      http.post<BookingQuote>(endpoints.booking.quote, payload),
+    recommend: (workload: WorkloadType) =>
+      http.get<WorkloadRecommendation>(endpoints.booking.recommend, {
+        query: { workload },
+        anonymous: true,
+      }),
+
+    quote: (payload: BookingDraft) =>
+      http.post<BookingQuote>(endpoints.booking.quote, payload, { anonymous: true }),
 
     submit: (payload: BookingSubmission) =>
       http.post<BookingRequestResult>(endpoints.booking.submit, payload),
@@ -75,6 +93,15 @@ export const httpApi: ApiClient = {
 
   investment: {
     getRate: () => http.get<TokenRate>(endpoints.investment.rate, { anonymous: true }),
+
+    project: (amountUsd: number) =>
+      http.get<VolumeProjection>(endpoints.investment.project, {
+        query: { amountUsd },
+        anonymous: true,
+      }),
+
+    settlement: (draft: InvestmentDraft) =>
+      http.post<SettlementQuote>(endpoints.investment.settlement, draft, { anonymous: true }),
 
     uploadKycDocument: (file: File) => {
       const form = new FormData();
@@ -89,6 +116,27 @@ export const httpApi: ApiClient = {
   },
 
   hyperscale: {
+    analyzeStage: (stage: ProjectStage) =>
+      http.get<StageAnalysis>(endpoints.hyperscale.stageAnalysis, {
+        query: { stage },
+        anonymous: true,
+      }),
+
+    projectCapex: (draft: HyperscaleDraft) =>
+      http.post<CapexProjection>(endpoints.hyperscale.capex, draft, { anonymous: true }),
+
+    listRegions: () =>
+      http.get<RegionFacts[]>(endpoints.hyperscale.regions, { anonymous: true }),
+
+    buildSchedule: (draft: HyperscaleDraft) =>
+      http.post<DeliverySchedule>(endpoints.hyperscale.schedule, draft, { anonymous: true }),
+
+    uploadRfpDocument: (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return http.post<UploadedDocument>(endpoints.hyperscale.documents, form);
+    },
+
     submit: (payload: HyperscaleSubmission) =>
       http.post<HyperscaleResult>(endpoints.hyperscale.submit, payload),
 

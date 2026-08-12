@@ -110,11 +110,12 @@ export default function EnergyLandPage() {
           <FaqAccordion title="Questions land owners ask" items={ENERGY_FAQ} />
         </ViewportSection>
 
-        <ViewportSection>
+        {/* Linked to as /energy-land#enquiry from the assessment report. */}
+        <ViewportSection id="enquiry">
           <ContactForm
             title="Talk to the site team"
             subtitle="Tell us about your parcel and we'll come back with an indicative view."
-            defaultInterest="land_owner"
+            defaultInterests={["energy_land"]}
           />
         </ViewportSection>
 

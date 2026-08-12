@@ -143,63 +143,157 @@ regardless of the response.
 
 ## 3. Land Owner Assessment
 
-### `POST /assessments/preview`
+> ⚠ **BREAKING CHANGE — 2026-08-12.** This section was rewritten after the full
+> screen set became available. The flow is **five steps**, not three.
+>
+> | Change | Detail |
+> |---|---|
+> | Added | Step 4 `facilities` — was missing entirely |
+> | Added | `powerCapacity.substationDistance`, `powerCapacity.voltage` |
+> | Renamed | `landProfile.areaHectares` → `areaAcres` (the UI asks for acres) |
+> | Removed | `landProfile.hasGridAccess`, `powerCapacity.availableMw`, `powerCapacity.hasSubstation`, `powerCapacity.leadTimeMonths` — none appear in the design |
+> | Reshaped | `/assessments/preview` now accepts a **partial** draft and returns a **partial** result |
+> | Reshaped | `AssessmentResult` — see § 3.3 |
+>
+> The five steps are: Land Profile → Power Capacity → Energy Source →
+> Facilities & Infrastructure → Assessment Report.
 
-Drives the **Live Output** panel on step 3. Called on every change to the energy
-mix or PPA toggle, so it must be fast and side-effect free.
+### 3.0 Enums
 
-Request:
+| Field | Values |
+|---|---|
+| `landUse` | `greenfield` · `brownfield` · `industrial` · `agricultural` |
+| `gridTier` | `sub_10mw` · `10_50mw` · `50_200mw` · `over_200mw` |
+| `substationDistance` | `on_site` · `under_1km` · `1_5km` · `over_5km` |
+| `voltage` | `under_66kv` · `66_138kv` · `138_345kv` · `over_345kv` |
+| `energyMix` | `standard_grid` · `renewable_100` · `hybrid` |
+| `buildingClassification` | `none` · `warehouse` · `industrial` · `office` · `purpose_built` |
+| `fiberProximity` | `on_site` · `under_1km` · `1_5km` · `over_5km` · `unknown` |
+
+### 3.1 `POST /assessments/preview` — _public_
+
+Drives the **Live Output** panel on **every** step. Called (debounced 350ms) on
+each change, so it must be fast, cacheable and side-effect free.
+
+The request is a **partial draft** — whatever the user has filled in so far:
+
 ```json
-{ "energyMix": "renewable_100", "ppaAvailable": true, "availableMw": 48.2 }
+{
+  "landProfile": { "areaAcres": 455, "landUse": "industrial" },
+  "powerCapacity": { "gridTier": "10_50mw", "substationDistance": "under_1km", "voltage": "138_345kv" },
+  "energySource": { "energyMix": "renewable_100", "ppaAvailable": true },
+  "facilities": { "buildingSqft": 0, "buildingClassification": "none", "fiberProximity": "under_1km" }
+}
 ```
-`energyMix` ∈ `standard_grid` | `renewable_100` | `hybrid`
+
+The response is **also partial**. Return a metric **only** once its step has
+enough input; omit it otherwise.
+
+```json
+{
+  "data": {
+    "landViabilityScore": 87,
+    "landFactors": [
+      { "label": "Size Factor", "value": "+42" },
+      { "label": "Zoning Multiplier", "value": "1.5x" }
+    ],
+    "mwDensity": 0.07,
+    "infrastructureCapexUsd": 41400000,
+    "capexBreakdown": { "substation": "estimated", "transmission": "pending" },
+    "esgScore": "A-",
+    "esgPercent": 82,
+    "carbonFootprintTco2e": 12.4,
+    "renewableRatioPercent": 100,
+    "facilityReadiness": 48,
+    "projectedPue": 1.2,
+    "rackDensityKw": 40,
+    "networkCapacity": "400 Gbps"
+  }
+}
+```
+
+| Field | Step | Notes |
+|---|---|---|
+| `landViabilityScore` | 1 | 0–100 |
+| `landFactors[]` | 1 | Pre-formatted labels/values for the two contribution bars |
+| `mwDensity` | 2 | Megawatts per acre |
+| `infrastructureCapexUsd` | 2 | Raw USD; the UI formats it as `$41.4M` |
+| `capexBreakdown` | 2 | Per-component: `pending` · `estimated` · `confirmed` |
+| `esgScore` / `esgPercent` | 3 | Letter grade inside the ring; percent drives the arc |
+| `facilityReadiness` | 4 | 0–100 |
+| `projectedPue` | 4 | e.g. `1.15` |
+| `rackDensityKw` | 4 | kW per rack |
+| `networkCapacity` | 4 | Pre-formatted, e.g. `"400 Gbps"` |
+
+> **Omission is meaningful.** The UI renders an em-dash for any absent metric.
+> Do not send `0` or `null` as a placeholder — that would display as a real
+> measurement of zero.
+
+**The calculation model is yours.** The mock adapter
+(`src/services/mock/index.ts`) contains plausible placeholder formulas purely so
+the wizard is demonstrable; they carry no engineering authority and should be
+replaced, not ported.
+
+### 3.2 `POST /assessments`
+
+Request — all five input steps, complete:
+
+```json
+{
+  "landProfile": { "areaAcres": 455, "landUse": "industrial", "location": "Can Tho, Vietnam" },
+  "powerCapacity": { "gridTier": "10_50mw", "substationDistance": "under_1km", "voltage": "138_345kv" },
+  "energySource": { "energyMix": "renewable_100", "ppaAvailable": true },
+  "facilities": { "buildingSqft": 120000, "buildingClassification": "warehouse", "fiberProximity": "under_1km" }
+}
+```
+
+`location` is optional; every other field is required.
+
+`201 Created` → an `AssessmentResult` (§ 3.3).
+
+Errors: `422` field validation.
+
+> **No authentication required.** Per the product decision on 2026-08-12 the
+> assessment is open to anonymous visitors; sign-up is prompted only when the
+> PDF report is downloaded. Rate-limit this endpoint accordingly.
+
+### 3.3 `GET /assessments/{id}`
 
 `200 OK`:
 ```json
 {
   "data": {
-    "esgScore": "A-", "esgPercent": 82,
-    "carbonFootprintTco2e": 12.4, "renewableRatioPercent": 100
-  }
-}
-```
-
-`esgScore` is a letter grade shown inside the ring. `esgPercent` (0–100) drives
-the arc length.
-
-### `POST /assessments`
-
-Request:
-```json
-{
-  "landProfile": { "location": "Can Tho, Vietnam", "areaHectares": 120, "landUse": "greenfield", "hasGridAccess": true },
-  "powerCapacity": { "availableMw": 48.2, "gridTier": "10_50mw", "hasSubstation": true, "leadTimeMonths": 14 },
-  "energySource": { "energyMix": "renewable_100", "ppaAvailable": true }
-}
-```
-
-Enums: `landUse` ∈ `greenfield`|`brownfield`|`industrial`|`agricultural` ·
-`gridTier` ∈ `sub_10mw`|`10_50mw`|`50_200mw`|`over_200mw`
-
-`201 Created`:
-```json
-{
-  "data": {
-    "id": "asm_7f21c", "status": "complete",
-    "esgScore": "A-", "esgPercent": 82,
-    "carbonFootprintTco2e": 12.4, "renewableRatioPercent": 100,
-    "estimatedAnnualRevenueUsd": 4820000,
-    "recommendations": ["Secure a long-term PPA…"],
+    "id": "asm_7f21c",
+    "status": "complete",
+    "viabilityScore": 78,
+    "viabilityLabel": "Status: Favorable",
+    "mwDensityRange": "10-50",
+    "timelineMonths": "14-18",
+    "capexEstimateUsd": 42000000,
+    "risks": [
+      {
+        "title": "Grid Interconnection Delays",
+        "body": "Local utility grid required for loads exceeding 20MW…",
+        "severity": "high"
+      }
+    ],
+    "reportUrl": "https://…/asm_7f21c.pdf",
     "createdAt": "2026-08-12T06:30:00Z"
   }
 }
 ```
 
-Errors: `401` · `422`.
+| Field | Notes |
+|---|---|
+| `viabilityScore` | 0–100, rendered as `78/100` |
+| `viabilityLabel` | Chip text under the score, e.g. `"Status: Favorable"` |
+| `mwDensityRange` | Pre-formatted range string, e.g. `"10-50"` |
+| `timelineMonths` | Pre-formatted range in months, e.g. `"14-18"` |
+| `capexEstimateUsd` | Raw USD; the UI formats it as `$42M` |
+| `risks[].severity` | `low` · `medium` · `high` — drives the badge colour |
+| `reportUrl` | **Omit until the PDF exists.** The download button stays disabled while absent, rather than downloading an empty file. |
 
-### `GET /assessments/{id}`
-
-`200 OK`: same `AssessmentResult`. Errors: `401` · `403` not owner · `404`.
+Errors: `403` not owner · `404`.
 
 ---
 

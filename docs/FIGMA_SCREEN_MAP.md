@@ -14,8 +14,8 @@ Open a node directly: `https://www.figma.com/design/pCxGT1lfFqO2CiDXEmrTk7/Untit
 | GPU Renting | `2:2` | `/gpu-renting` | ✅ images pending export |
 | Buy GPU | `2:218` | `/buy-gpu` | ✅ images pending export |
 | Energy & Land | `2:379` | `/energy-land` | ✅ backdrop photo pending export |
-| Financing | `2:531` | `/financing` | ⬜ |
-| Infrastructure | `2:700` | `/infrastructure` | ⬜ |
+| Financing | `2:531` | `/financing` | ⚠ from screenshot — verify strings |
+| Infrastructure | `2:700` | `/infrastructure` | ⚠ from screenshot — verify strings |
 | Html → Body (variant) | `2:2397` | — to identify | ⬜ |
 | Html → Body (variant) | `2:2932` | — to identify | ⬜ |
 
@@ -31,11 +31,23 @@ Open a node directly: `https://www.figma.com/design/pCxGT1lfFqO2CiDXEmrTk7/Untit
 
 | Screen | Node | Route | Status |
 |---|---|---|---|
-| Intro | `2:1152` | `/assessment` | ⬜ |
-| Step 1 — Land Profile | `2:1325` | `/assessment/land-profile` | ⬜ |
-| Step 2 — Power Capacity | `2:1207` | `/assessment/power-capacity` | ⬜ |
-| Step 3 — Energy Source | `2:1020` | `/assessment/energy-source` | 🟡 tokens + shell extracted |
-| Results | `2:1545` | `/assessment/results` | ⬜ |
+| Intro | `2:1152` | `/assessment` | ✅ from screenshot |
+| Step 1 — Land Profile | `2:1325` | `/assessment/land-profile` | ✅ from screenshot |
+| Step 2 — Power Capacity | `2:1207` | `/assessment/power-capacity` | ✅ from screenshot |
+| Step 3 — Energy Source | `2:1020` | `/assessment/energy-source` | ✅ full Figma MCP export |
+| Step 4 — Facilities & Infrastructure | *unknown* | `/assessment/facilities` | ⚠ built from written report, no design |
+| Step 5 — Assessment Report | `2:1545` | `/assessment/results` | ✅ from screenshot |
+
+**Land flow notes**
+
+- The flow is **five steps**. Step 4 was missing from the original node list and
+  was identified from the written system report.
+- The three steps with designs do **not** share a header treatment: step 1 uses
+  a caption plus a solid underline, steps 2 and 4 use an eyebrow plus a
+  percentage, step 3 uses a segmented bar. Implemented as designed. If this was
+  unintentional drift, unifying it means editing `StepHeader` only.
+- Access: open to anonymous visitors. Sign-up is requested **only** at PDF
+  download, enforced in `components/assessment/ReportDownload.tsx`.
 
 ## GPU Cluster Booking
 
