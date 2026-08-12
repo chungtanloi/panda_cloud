@@ -1,0 +1,323 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Design tokens — sourced from Figma file pCxGT1lfFqO2CiDXEmrTk7.
+ * These are the single source of truth for colour. Components must reference
+ * the Tailwind aliases (bg-surface, text-ink, …) rather than raw hex values.
+ * ------------------------------------------------------------------------- */
+:root {
+  /* Surfaces */
+  --color-base: #111318;
+  --color-deep: #0c0e12;
+  --color-surface: rgba(26, 26, 26, 0.8);
+  --color-surface-alt: rgba(30, 32, 36, 0.9); /* Log In card, node 2:933 */
+  --color-surface-auth: rgba(51, 53, 57, 0.6); /* Sign Up card, node 2:892 */
+  --color-surface-soft: rgba(26, 26, 26, 0.6); /* Path cards, node 2:976 */
+  --color-surface-solid: #1a1a1a; /* Dashboard search field, node 2:1483 */
+  --color-card: #1e2024; /* Marketing cards, node 1:7 */
+  --color-band: #1a1c20; /* About section band, node 1:71 */
+  --color-glass: rgba(12, 14, 18, 0.85); /* GPU spec cards, node 2:47 */
+  --color-glass-hi: rgba(18, 22, 28, 0.9); /* Featured spec card, node 2:80 */
+  --color-panel: rgba(26, 28, 32, 0.6); /* Buy GPU cards + table, node 2:234 */
+  --color-panel-head: rgba(30, 32, 36, 0.5); /* Table header row, node 2:296 */
+  --color-raised: #282a2e;
+  --color-muted: #333539;
+
+  /* Accent */
+  --color-accent: #00f2ff;
+  --color-accent-fg: #002022;
+  --color-accent-soft: rgba(0, 242, 255, 0.1);
+  --color-accent-line: rgba(0, 242, 255, 0.2);
+  --color-accent-dim: #00dbe7; /* Footer links + copyright, nodes 1:171 / 1:173 */
+  --color-accent-deep: #006a71; /* Nav "Get Started", node 1:196 */
+
+  /* Text */
+  --color-ink: #e2e2e8;
+  --color-ink-dim: #b9cacb;
+  --color-ink-faint: #3a494b; /* Log In placeholder, node 2:946 */
+  --color-ink-placeholder: #849495; /* Sign Up placeholder, node 2:909 */
+  --color-ink-search: #6b7280; /* Dashboard search placeholder, node 2:1485 */
+  --color-ink-bright: #d1d5db; /* GPU page body copy, node 2:15 */
+  --color-ink-mute: #9ca3af; /* Spec labels + inactive tabs, node 2:36 */
+
+  /* Borders */
+  --color-line: rgba(58, 73, 75, 0.3);
+  --color-line-strong: rgba(58, 73, 75, 0.5);
+  --color-line-faint: rgba(58, 73, 75, 0.2);
+  --color-line-card: rgba(255, 255, 255, 0.2); /* Wizard cards, node 2:1052 */
+  --color-line-soft: rgba(255, 255, 255, 0.1); /* Path cards, node 2:976 */
+  --color-line-hair: rgba(255, 255, 255, 0.05); /* Marketing cards, node 1:7 */
+  --color-line-band: rgba(58, 73, 75, 0.1); /* About section rules, node 1:71 */
+
+  /* Ambient effects */
+  --glow-accent: 0 0 10px rgba(0, 242, 255, 0.4);
+  --ambient-radial: rgba(0, 242, 255, 0.03);
+
+  /* Typography.
+     Geist is bundled by the `geist` package, which sets --font-geist-sans on
+     <html> (the same element as :root) — re-exported here under a stable name
+     so the vendor package never leaks into the Tailwind config or components.
+
+     The display face uses a local stack: Liberation Serif (Linux), Times New
+     Roman (Windows/macOS) and Tinos are metric-compatible, so text wraps
+     identically to the Figma file on any OS with no font download. */
+  --font-body: var(--font-geist-sans);
+  --font-display: "Liberation Serif", "Tinos", "Times New Roman", Times, serif;
+  /* Node-status chips on the landing page use Liberation Mono (node 1:37);
+     Cousine is its metric-compatible stand-in, Courier New the OS fallback. */
+  --font-mono: "Liberation Mono", "Cousine", "Courier New", ui-monospace, monospace;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--color-base);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html {
+    /* `proximity`, not `mandatory`: the browser only snaps when the user
+       already stopped near a boundary, so long sections and in-page anchors
+       stay scrollable instead of fighting the user. Only elements that opt in
+       with .snap-section are affected — other pages are untouched. */
+    scroll-snap-type: y proximity;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    /* --font-display is already a full stack; see :root above. */
+    font-family: var(--font-display);
+  }
+
+  /* Remove the browser's default number-input spinners — the design uses
+     plain text fields for all numeric entry. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Visible focus ring using the accent colour, matching the design's
+     cyan-forward interaction language. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* The soft cyan radial wash used behind auth and transactional screens. */
+  .ambient-wash {
+    background-image: radial-gradient(
+      circle at 50% 50%,
+      var(--ambient-radial) 0%,
+      rgba(0, 242, 255, 0) 60%
+    );
+  }
+
+  /* Cyan gradient text used for hero and metric figures.
+     Figma nodes 1:57 / 1:9 — linear-gradient(122deg, #00dbe7, #00f2ff). */
+  .text-gradient-accent {
+    background-image: linear-gradient(122.31deg, #00dbe7 0%, #00f2ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* 1px top highlight on marketing cards (nodes 1:7, 1:103, …). */
+  .card-highlight {
+    box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.05);
+  }
+
+  /* 256px blurred accent orb used in preview panels (Figma node 2:1107). */
+  .ambient-orb {
+    width: 256px;
+    height: 256px;
+    border-radius: 9999px;
+    background-color: var(--color-accent);
+    filter: blur(50px);
+    opacity: 0.1;
+    pointer-events: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Motion layer
+ *
+ * Tuned for "subtle / enterprise": short durations, small displacement. These
+ * effects are an addition on top of the Figma design, requested separately —
+ * they change no colour, size or spacing token.
+ *
+ * Everything here is disabled by the prefers-reduced-motion block at the end
+ * of this file.
+ * ------------------------------------------------------------------------- */
+@layer components {
+  /* Scroll reveal — the element starts offset and is released by Reveal.tsx
+     adding [data-revealed="true"]. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 400ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+  .reveal[data-revealed="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Card hover — 1px lift plus an accent edge. Kept deliberately small so it
+     reads as responsive rather than bouncy. */
+  .hover-lift {
+    transition:
+      transform 200ms ease-out,
+      border-color 200ms ease-out,
+      box-shadow 200ms ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 242, 255, 0.4);
+    box-shadow: 0 0 24px -6px rgba(0, 242, 255, 0.25);
+  }
+
+  /* Mouse spotlight. SpotlightCard.tsx writes --mx / --my as percentages. */
+  .spotlight {
+    position: relative;
+  }
+  .spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      320px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(0, 242, 255, 0.08),
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 250ms ease-out;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .spotlight:hover::before {
+    opacity: 1;
+  }
+
+  /* Slow drift for the ambient accent orbs. */
+  .orb-drift {
+    animation: orb-drift 18s ease-in-out infinite;
+  }
+  .orb-drift-slow {
+    animation: orb-drift 26s ease-in-out infinite reverse;
+  }
+
+  /* Live-status dot. */
+  .pulse-dot {
+    animation: pulse-dot 2.4s ease-in-out infinite;
+  }
+
+  /* Sweep across gradient text. Applied on top of .text-gradient-accent. */
+  .gradient-sweep {
+    background-size: 200% 100%;
+    animation: gradient-sweep 6s ease-in-out infinite;
+  }
+
+  /* Skeleton shimmer, replacing the flat pulse. */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.04),
+      transparent
+    );
+    animation: shimmer 1.8s infinite;
+  }
+
+  /* Drifting starfield, sized by the component that uses it. */
+  .starfield {
+    animation: starfield 90s linear infinite;
+  }
+}
+
+@keyframes orb-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-18px, 14px, 0) scale(1.06);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.5);
+  }
+  50% {
+    opacity: 0.65;
+    box-shadow: 0 0 0 5px rgba(0, 242, 255, 0);
+  }
+}
+
+@keyframes gradient-sweep {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes starfield {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 400px 400px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Reveal must not leave content invisible when motion is disabled. */
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+    scroll-snap-type: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
