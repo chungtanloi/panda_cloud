@@ -144,6 +144,40 @@
   .kanban-scope[data-source-filter="lead_form"] [data-deal-source]:not([data-deal-source="lead_form"]) {
     display: none;
   }
+  .kanban-scope[data-source-filter="manual"] [data-deal-source]:not([data-deal-source="manual"]) {
+    display: none;
+  }
+
+  /* Keep the wide six-column pipeline inside its own viewport. */
+  .kanban-scope > div,
+  .kanban-scope [class*="overflow-x-auto"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .kanban-scope [class*="overflow-x-auto"] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent-deep) var(--color-deep);
+  }
+  .kanban-scope > .flex.h-full.flex-col > .flex.h-full.overflow-x-auto {
+    height: auto !important;
+    min-height: 0;
+    flex: 1 1 0%;
+    overscroll-behavior-x: contain;
+  }
+  .kanban-scope .w-72 > div:last-child {
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .kanban-scope [class*="overflow-x-auto"]::-webkit-scrollbar,
+  .kanban-scope .w-72 > div:last-child::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .kanban-scope [class*="overflow-x-auto"]::-webkit-scrollbar-thumb,
+  .kanban-scope .w-72 > div:last-child::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: var(--color-accent-deep);
+  }
 
   /* The soft cyan radial wash used behind auth and transactional screens. */
   .ambient-wash {

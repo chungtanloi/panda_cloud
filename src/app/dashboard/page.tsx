@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ErrorState, LoadingState, Skeleton } from "@/components/ui/states";
 import { useAsync } from "@/controllers/useAsync";
 import { api } from "@/services/api";
+import { CustomerOverviewExtras } from "@/components/workspace/DashboardView";
 
 /**
  * Figma node 2:1480 — "Main Content Canvas".
@@ -95,6 +96,7 @@ export default function DashboardPage() {
                 />
               </Reveal>
             </section>
+            <CustomerOverviewExtras />
           </>
         )}
       </div>

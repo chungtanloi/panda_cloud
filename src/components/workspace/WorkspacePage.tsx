@@ -1,0 +1,4 @@
+import { StatCard } from "@/components/shared/StatCard";
+export function WorkspacePage({ eyebrow, title, description, stats, children }: { eyebrow: string; title: string; description: string; stats?: { label: string; value: string; detail?: string }[]; children?: React.ReactNode }) {
+  return <main className="mx-auto box-border w-full max-w-[1500px] overflow-x-hidden p-5 pt-20 sm:p-8 sm:pt-20 lg:p-10"><header className="mb-8"><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-accent">{eyebrow}</p><h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{title}</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-ink-dim">{description}</p></header>{stats ? <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map((stat) => <StatCard key={stat.label} {...stat} />)}</section> : null}{children}</main>;
+}

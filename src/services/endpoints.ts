@@ -61,6 +61,14 @@ export const endpoints = {
    * Kanban library's fetch adapter expects, so it can be pointed straight at
    * them if we ever drop our own adapter.
    */
+  /**
+   * Workspace list screens. One path, the resource kind as a segment — the
+   * response carries its own column definitions. See models/workspace.ts.
+   */
+  workspace: {
+    resource: (kind: string) => `/workspace/resources/${kind}`,
+  },
+
   sales: {
     columns: "/sales/columns",
     cards: "/sales/cards",

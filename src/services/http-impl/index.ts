@@ -12,10 +12,13 @@ import type {
   ChoosePathRequest,
   DashboardSummary,
   DealCard,
+  DealCardCreate,
   DealCardPatch,
   DealColumn,
   DealStage,
   GpuModel,
+  ResourceTable,
+  WorkspaceResourceKind,
   CapexProjection,
   DeliverySchedule,
   HyperscaleDraft,
@@ -40,6 +43,7 @@ import type {
   UploadedDocument,
   User,
 } from "@/models";
+import { normalizeUserRole } from "@/models";
 import type { ApiClient } from "../contracts";
 import { endpoints } from "../endpoints";
 import { http } from "../http";
@@ -52,17 +56,17 @@ import { http } from "../http";
 export const httpApi: ApiClient = {
   auth: {
     login: (payload: LoginRequest) =>
-      http.post<AuthSession>(endpoints.auth.login, payload, { anonymous: true }),
+      http.post<AuthSession>(endpoints.auth.login, payload, { anonymous: true }).then(normalizeSession),
 
     signUp: (payload: SignUpRequest) =>
-      http.post<AuthSession>(endpoints.auth.signUp, payload, { anonymous: true }),
+      http.post<AuthSession>(endpoints.auth.signUp, payload, { anonymous: true }).then(normalizeSession),
 
     refresh: (refreshToken: string) =>
       http.post<AuthTokens>(endpoints.auth.refresh, { refreshToken }, { anonymous: true }),
 
-    me: () => http.get<User>(endpoints.auth.me),
+    me: () => http.get<User>(endpoints.auth.me).then(normalizeUser),
 
-    choosePath: (payload: ChoosePathRequest) => http.put<User>(endpoints.auth.choosePath, payload),
+    choosePath: (payload: ChoosePathRequest) => http.put<User>(endpoints.auth.choosePath, payload).then(normalizeUser),
 
     logout: () => http.post<void>(endpoints.auth.logout),
   },
@@ -159,6 +163,11 @@ export const httpApi: ApiClient = {
       http.post<LeadResponse>(endpoints.leads.create, payload, { anonymous: true }),
   },
 
+  workspace: {
+    getResource: (kind: WorkspaceResourceKind) =>
+      http.get<ResourceTable>(endpoints.workspace.resource(kind)),
+  },
+
   // Staff only — every call carries the bearer token, and the backend must
   // reject non-sales roles with 403 rather than relying on the UI guard.
   sales: {
@@ -168,10 +177,17 @@ export const httpApi: ApiClient = {
 
     getCard: (id: string) => http.get<DealCard>(endpoints.sales.cardById(id)),
 
+    createCard: (payload: DealCardCreate) => http.post<DealCard>(endpoints.sales.cards, payload),
+
     updateCard: (id: string, patch: DealCardPatch) =>
       http.patch<DealCard>(endpoints.sales.cardById(id), patch),
 
     moveCard: (id: string, toColumnId: DealStage, order?: number) =>
       http.post<DealCard>(endpoints.sales.moveCard(id), { toColumnId, order }),
+
+    deleteCard: (id: string) => http.delete<void>(endpoints.sales.cardById(id)),
   },
 };
+
+function normalizeUser(user: User): User { return { ...user, role: normalizeUserRole(user.role) }; }
+function normalizeSession(session: AuthSession): AuthSession { return { ...session, user: normalizeUser(session.user) }; }

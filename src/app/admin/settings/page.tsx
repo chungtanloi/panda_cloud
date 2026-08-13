@@ -1,0 +1,1 @@
+import { SimpleView } from "@/components/workspace/DashboardView"; export default function Page() { return <SimpleView eyebrow="Admin / Configuration" title="System Settings" description="Secrets and API keys are never rendered directly in the client." sections={["General", "Authentication", "Notifications", "API", "Integrations", "System", "Audit"]} />; }

@@ -6,10 +6,13 @@ import type {
   ChoosePathRequest,
   DashboardSummary,
   DealCard,
+  DealCardCreate,
   DealCardPatch,
   DealColumn,
   DealStage,
   GpuModel,
+  ResourceTable,
+  WorkspaceResourceKind,
   BookingDraft,
   BookingRequestResult,
   BookingQuote,
@@ -119,20 +122,35 @@ export interface LeadService {
 }
 
 /**
+ * Workspace list screens.
+ *
+ * Access is decided by the backend from the caller's role: a `sales` token
+ * asking for `users` must get `403`, not an empty table. The frontend's route
+ * guards hide the navigation; they are not the control.
+ */
+export interface WorkspaceService {
+  getResource(kind: WorkspaceResourceKind): Promise<ResourceTable>;
+}
+
+/**
  * Sales pipeline. **Staff only** — every method requires an authenticated user
  * whose role is `sales` or `admin`.
  *
- * There is deliberately no `create`: deal cards are created by the backend
- * alongside the submission that produced them, never by a client.
+ * Customer submissions create cards transactionally on the backend. Manual
+ * creation exists only for outbound/offline CRM leads.
  */
 export interface SalesService {
   listColumns(): Promise<DealColumn[]>;
   listCards(): Promise<DealCard[]>;
   /** Heavier record for the detail panel — full answers, notes, history. */
   getCard(id: string): Promise<DealCard>;
+  /** Manual CRM entry; automatic form-driven creation remains the primary path. */
+  createCard(payload: DealCardCreate): Promise<DealCard>;
   updateCard(id: string, patch: DealCardPatch): Promise<DealCard>;
   /** Separate from update so the backend can reorder siblings atomically. */
   moveCard(id: string, toColumnId: DealStage, order?: number): Promise<DealCard>;
+  /** Manager/Admin only. Backend must preserve an audit event. */
+  deleteCard(id: string): Promise<void>;
 }
 
 /** The complete surface exposed by `services/api.ts`. */
@@ -145,4 +163,5 @@ export interface ApiClient {
   dashboard: DashboardService;
   leads: LeadService;
   sales: SalesService;
+  workspace: WorkspaceService;
 }

@@ -28,6 +28,16 @@ export const apiConfig = {
   baseUrl: normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL),
   timeoutMs: readInt(process.env.NEXT_PUBLIC_API_TIMEOUT, 15_000),
   mockLatencyMs: readInt(process.env.NEXT_PUBLIC_MOCK_LATENCY, 450),
+
+  /**
+   * Contract release this build is written against — workflow § 9.
+   *
+   * The frontend pins one release and consumes its artifacts; it never tracks
+   * `main`. Surfacing the version at runtime means an integration defect ticket
+   * can state the contract version alongside the correlation id, which § 18
+   * requires.
+   */
+  contractVersion: process.env.NEXT_PUBLIC_CONTRACT_VERSION ?? "unpinned",
 } as const;
 
 /**
@@ -35,10 +45,31 @@ export const apiConfig = {
  * rather than emitting requests to a relative path nobody expects.
  */
 export function assertApiConfig(): void {
-  if (apiConfig.adapter === "http" && !apiConfig.baseUrl) {
+  if (apiConfig.adapter !== "http") return;
+
+  if (!apiConfig.baseUrl) {
     throw new Error(
       "[config] NEXT_PUBLIC_API_ADAPTER=http but NEXT_PUBLIC_API_BASE_URL is empty. " +
         "Set it in .env.local (see .env.example).",
+    );
+  }
+
+  // § 1.1: the gateway is the only public boundary and it is versioned.
+  // A base URL without it usually means someone pointed at a Convex
+  // deployment or an unversioned host by mistake.
+  if (!apiConfig.baseUrl.endsWith("/api/v1")) {
+    throw new Error(
+      `[config] NEXT_PUBLIC_API_BASE_URL must end with "/api/v1" — got "${apiConfig.baseUrl}". ` +
+        "The frontend talks only to the versioned Vercel HTTP Gateway, never to Convex directly.",
+    );
+  }
+
+  if (apiConfig.contractVersion === "unpinned") {
+    // Warn rather than throw: it must not block local work, but shipping
+    // against an unpinned contract is exactly the drift the workflow prevents.
+    console.warn(
+      "[config] NEXT_PUBLIC_CONTRACT_VERSION is unset. The frontend should pin one " +
+        "contract release (e.g. contract-v1.2.0) rather than tracking main.",
     );
   }
 }

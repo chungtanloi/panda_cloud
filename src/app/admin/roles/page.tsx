@@ -1,0 +1,1 @@
+import { SimpleView } from "@/components/workspace/DashboardView"; export default function Page() { return <SimpleView eyebrow="Admin / Access" title="Roles" description="Four MVP roles, with a model ready for future specialist roles." sections={["USER", "SALES", "MANAGER", "ADMIN"]} />; }

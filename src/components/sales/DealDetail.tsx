@@ -20,11 +20,15 @@ export function DealDetail({
   close,
   onSaved,
   canEdit,
+  canDelete,
+  onDeleted,
 }: {
   card: DealCard;
   close: () => void;
   onSaved: (updated: DealCard) => void;
   canEdit: boolean;
+  canDelete: boolean;
+  onDeleted: () => void;
 }) {
   const source = card.source as DealSource;
   const submissionRoute = card.submissionId ? SOURCE_ROUTES[source]?.(card.submissionId) : null;
@@ -36,6 +40,8 @@ export function DealDetail({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const dirty =
     probability !== (card.probability ?? 0) ||
@@ -58,6 +64,12 @@ export function DealDetail({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function remove() {
+    setDeleting(true); setError(null);
+    try { await api.sales.deleteCard(card.id); close(); onDeleted(); }
+    catch (cause) { setError(normalizeError(cause).message); setDeleting(false); }
   }
 
   return (
@@ -201,6 +213,7 @@ export function DealDetail({
             {saving ? "Saving…" : saved && !dirty ? "Saved" : "Save changes"}
           </button>
         ) : null}
+        {canDelete ? (!confirmDelete ? <button type="button" onClick={() => setConfirmDelete(true)} className="rounded-full border border-red-400/40 px-[24px] py-[11px] font-sans text-[12px] font-bold uppercase text-red-300 hover:bg-red-400/10">Delete card</button> : <div className="rounded-2xl border border-red-400/30 bg-red-400/10 p-4"><p className="text-xs leading-5 text-red-200">Delete this card permanently? The backend should retain an audit event.</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => setConfirmDelete(false)} className="rounded-full border border-line px-4 py-2 text-xs text-ink-dim">Cancel</button><button type="button" disabled={deleting} onClick={() => void remove()} className="rounded-full bg-red-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{deleting ? "Deleting…" : "Confirm delete"}</button></div></div>) : null}
       </section>
     </div>
   );

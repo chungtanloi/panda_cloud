@@ -1,0 +1,1 @@
+import { SimpleView } from "@/components/workspace/DashboardView"; export default function Page() { return <SimpleView eyebrow="Manager / Analytics" title="Reports" description="Portfolio reporting without client-side business calculations." sections={["Revenue Trend", "Lead Funnel", "GPU Demand", "Regional Demand", "Project Status"]} />; }

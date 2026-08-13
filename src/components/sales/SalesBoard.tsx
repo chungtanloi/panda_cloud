@@ -11,11 +11,13 @@ import "@kanban/library/styles.css";
 import { useMemo, useState } from "react";
 import { SALES_BOARD, SOURCE_LABELS, type DealSource } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
+import { canManageSalesBoard, isStaff } from "@/models/auth";
 import type { DealCard } from "@/models/sales";
 import { cn } from "@/lib/cn";
 import { createSalesAdapter } from "./salesAdapter";
 import { DealCardView } from "./DealCardView";
 import { DealDetail } from "./DealDetail";
+import { ManualDealModal } from "./ManualDealModal";
 
 /**
  * The sales pipeline board.
@@ -32,11 +34,16 @@ import { DealDetail } from "./DealDetail";
 export function SalesBoard() {
   const { user } = useAuth();
   const [sourceFilter, setSourceFilter] = useState<DealSource | "all">("all");
+  const [showCreate, setShowCreate] = useState(false);
+  const [boardVersion, setBoardVersion] = useState(0);
 
   // Recreating the adapter would refetch the whole board on every render.
-  const adapter = useMemo(() => createSalesAdapter(), []);
+  const adapter = useMemo(() => createSalesAdapter(), [boardVersion]);
 
-  const isAdmin = user?.role === "admin";
+  // sales_manager gets the same board power as admin here — see the doc
+  // comment on canManageSalesBoard for why this is a separate check from
+  // "is admin".
+  const canManageBoard = canManageSalesBoard(user);
 
   const config = useMemo(
     () => ({
@@ -50,6 +57,8 @@ export function SalesBoard() {
           card={card}
           close={close}
           canEdit={Boolean(user)}
+          canDelete={canManageBoard}
+          onDeleted={() => setBoardVersion((version) => version + 1)}
           onSaved={() => {
             // The library refetches on close; nothing to do here beyond
             // letting the panel keep its own saved state.
@@ -60,19 +69,16 @@ export function SalesBoard() {
       /** Any signed-in staff member may work a deal. */
       canEditCard: () => Boolean(user),
       canMoveCard: () => Boolean(user),
-      /**
-       * Nobody may create a card by hand: cards come from real customer
-       * submissions, and a manual one would have no submission behind it.
-       */
-      canCreateCard: () => false,
-      /** Only admins, and even then the backend should prefer "Lost". */
-      canDeleteCard: () => isAdmin,
+      /** Staff may add outbound/offline leads; customer forms still create cards automatically. */
+      canCreateCard: () => isStaff(user),
+      /** Sales managers and admins only, and even then the backend should prefer "Lost". */
+      canDeleteCard: () => canManageBoard,
     }),
-    [adapter, user, isAdmin],
+    [adapter, user, canManageBoard],
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-[20px]">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-[20px] overflow-hidden">
       <header className="flex flex-wrap items-end justify-between gap-[16px]">
         <div>
           <h1 className="font-sans text-[28px] font-bold leading-[36px] tracking-[-0.7px] text-white">
@@ -85,7 +91,8 @@ export function SalesBoard() {
 
         {/* Source filter. Client-side: the board holds every card already, so
             a round trip per filter change would be wasted. */}
-        <div className="flex flex-wrap gap-[8px]">
+        <div className="flex flex-wrap items-center justify-end gap-[8px]">
+          <button type="button" onClick={() => setShowCreate(true)} className="rounded-full bg-accent px-4 py-2 font-sans text-[12px] font-bold uppercase tracking-wider text-accent-fg">+ Add card</button>
           <FilterChip
             active={sourceFilter === "all"}
             onClick={() => setSourceFilter("all")}
@@ -104,15 +111,16 @@ export function SalesBoard() {
 
       <div
         className={cn(
-          "kanban-scope flex-1 rounded-card border border-line-hair bg-card p-[16px]",
+          "kanban-scope min-h-0 min-w-0 flex-1 overflow-hidden rounded-[28px] border border-line-hair bg-card p-[16px]",
           // Hides cards whose source is filtered out without unmounting them,
           // so drag state and scroll position survive a filter change.
           sourceFilter !== "all" && `filter-${sourceFilter}`,
         )}
         data-source-filter={sourceFilter}
       >
-        <Kanban {...config} />
+        <Kanban key={boardVersion} {...config} className="min-h-0 min-w-0" />
       </div>
+      <ManualDealModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={() => setBoardVersion((version) => version + 1)} />
     </div>
   );
 }

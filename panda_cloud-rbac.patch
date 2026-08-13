@@ -1,0 +1,147 @@
+diff --git a/src/app/(auth)/login/page.tsx b/src/app/(auth)/login/page.tsx
+index 7d66165..0efbdc7 100644
+--- a/src/app/(auth)/login/page.tsx
++++ b/src/app/(auth)/login/page.tsx
+@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/Field";
+ import { useAuth } from "@/controllers/AuthContext";
+ import { useForm } from "@/controllers/useForm";
+ import { email as emailRule, minLength } from "@/lib/validation";
+-import type { LoginRequest } from "@/models/auth";
++import { isStaff, type LoginRequest } from "@/models/auth";
+ import { normalizeError } from "@/services/api";
+ 
+ /**
+@@ -65,8 +65,12 @@ function LoginView() {
+     try {
+       const user = await login(form.values);
+       // A returnTo takes precedence — the user was interrupted mid-task.
+-      // Otherwise, users who have not picked a track go to "Choose Your Path".
+-      router.push(returnTo ?? (user.path ? "/dashboard" : "/choose-path"));
++      // Staff have no `path` (it's a customer-only concept) and no reason to
++      // see "Choose Your Path" — send them straight to the board they work.
++      // Customers who haven't picked a track yet still land on choose-path.
++      router.push(
++        returnTo ?? (isStaff(user) ? "/dashboard/sales" : user.path ? "/dashboard" : "/choose-path"),
++      );
+     } catch (cause) {
+       const error = normalizeError(cause);
+       form.applyServerError(error);
+diff --git a/src/components/sales/SalesBoard.tsx b/src/components/sales/SalesBoard.tsx
+index 5a2dd37..8db75c4 100644
+--- a/src/components/sales/SalesBoard.tsx
++++ b/src/components/sales/SalesBoard.tsx
+@@ -11,6 +11,7 @@ import "@kanban/library/styles.css";
+ import { useMemo, useState } from "react";
+ import { SALES_BOARD, SOURCE_LABELS, type DealSource } from "@/config/sales";
+ import { useAuth } from "@/controllers/AuthContext";
++import { canManageSalesBoard } from "@/models/auth";
+ import type { DealCard } from "@/models/sales";
+ import { cn } from "@/lib/cn";
+ import { createSalesAdapter } from "./salesAdapter";
+@@ -36,7 +37,10 @@ export function SalesBoard() {
+   // Recreating the adapter would refetch the whole board on every render.
+   const adapter = useMemo(() => createSalesAdapter(), []);
+ 
+-  const isAdmin = user?.role === "admin";
++  // sales_manager gets the same board power as admin here — see the doc
++  // comment on canManageSalesBoard for why this is a separate check from
++  // "is admin".
++  const canManageBoard = canManageSalesBoard(user);
+ 
+   const config = useMemo(
+     () => ({
+@@ -65,10 +69,10 @@ export function SalesBoard() {
+        * submissions, and a manual one would have no submission behind it.
+        */
+       canCreateCard: () => false,
+-      /** Only admins, and even then the backend should prefer "Lost". */
+-      canDeleteCard: () => isAdmin,
++      /** Sales managers and admins only, and even then the backend should prefer "Lost". */
++      canDeleteCard: () => canManageBoard,
+     }),
+-    [adapter, user, isAdmin],
++    [adapter, user, canManageBoard],
+   );
+ 
+   return (
+diff --git a/src/models/auth.ts b/src/models/auth.ts
+index 866db9d..4cb0abb 100644
+--- a/src/models/auth.ts
++++ b/src/models/auth.ts
+@@ -17,8 +17,15 @@ export type UserPath =
+  *
+  * `customer` is the default and must remain so: an account with no explicit
+  * role must never be treated as staff.
++ *
++ * `sales_manager` sits between `sales` and `admin`: full management power on
++ * the sales board (same as `admin` there — see `canManageSalesBoard`), but no
++ * access to admin surfaces outside the board (see `isAdmin`). Added
++ * alongside the sales/admin/customer roles rather than folded into `admin`,
++ * because a future admin-only page (billing, user management, ...) must not
++ * open to a sales manager just because they can delete a deal card.
+  */
+-export type UserRole = "customer" | "sales" | "admin";
++export type UserRole = "customer" | "sales" | "sales_manager" | "admin";
+ 
+ export interface User {
+   id: string;
+@@ -34,7 +41,26 @@ export interface User {
+ 
+ /** True when the account may open internal tooling such as the sales board. */
+ export function isStaff(user: User | null): boolean {
+-  return user?.role === "sales" || user?.role === "admin";
++  return user?.role === "sales" || user?.role === "sales_manager" || user?.role === "admin";
++}
++
++/**
++ * True for accounts with full management power on the sales board — delete a
++ * card, and anything else scoped to `canDeleteCard`/like checks in
++ * `SalesBoard.tsx`. `sales_manager` and `admin` both qualify; plain `sales`
++ * does not.
++ *
++ * Deliberately separate from `isAdmin`: this gates board actions, not
++ * app-wide admin surfaces. A page that is genuinely admin-only (not just
++ * "board owner") should check `isAdmin`, not this.
++ */
++export function canManageSalesBoard(user: User | null): boolean {
++  return user?.role === "sales_manager" || user?.role === "admin";
++}
++
++/** True only for the `admin` role — gates admin-only surfaces outside the sales board (user management, billing, etc.), which `sales_manager` must not reach. */
++export function isAdmin(user: User | null): boolean {
++  return user?.role === "admin";
+ }
+ 
+ export interface AuthTokens {
+diff --git a/src/services/mock/index.ts b/src/services/mock/index.ts
+index c90dfef..fa61088 100644
+--- a/src/services/mock/index.ts
++++ b/src/services/mock/index.ts
+@@ -77,12 +77,23 @@ function reference(prefix: string): string {
+ let salesCards: DealCard[] = [...mockDealCards];
+ 
+ /**
+- * Mock role assignment so both sides of the staff guard are testable without a
+- * backend: anyone signing in with a @cloudpanda.example address gets the sales
+- * role, everyone else is a customer.
++ * Mock role assignment so all four roles are testable without a backend.
++ * Only @cloudpanda.example addresses are ever staff; the local part decides
++ * which staff role, so QA can hit every permission tier by choosing an
++ * email prefix:
++ *
++ *   admin@cloudpanda.example          -> admin
++ *   manager@cloudpanda.example        -> sales_manager (prefix "manager")
++ *   anyone-else@cloudpanda.example    -> sales
++ *   anything@any-other-domain         -> customer
+  */
+ function mockRoleFor(email: string): UserRole {
+-  return email.toLowerCase().endsWith("@cloudpanda.example") ? "sales" : "customer";
++  const lower = email.toLowerCase();
++  if (!lower.endsWith("@cloudpanda.example")) return "customer";
++  const localPart = lower.split("@")[0] ?? "";
++  if (localPart === "admin") return "admin";
++  if (localPart.includes("manager")) return "sales_manager";
++  return "sales";
+ }
+ 
+ function session(email: string, fullName: string): AuthSession {

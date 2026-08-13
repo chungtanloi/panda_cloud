@@ -8,7 +8,7 @@ import type { RequestKind } from "@/models/dashboard";
  * about — badge labels and colours per source — live here.
  */
 
-export type DealSource = RequestKind | "lead_form";
+export type DealSource = RequestKind | "lead_form" | "manual";
 
 export const SOURCE_LABELS: Record<DealSource, string> = {
   assessment: "Land",
@@ -16,6 +16,7 @@ export const SOURCE_LABELS: Record<DealSource, string> = {
   investment: "Token",
   hyperscale: "Hyperscale",
   lead_form: "Enquiry",
+  manual: "Manual",
 };
 
 /**
@@ -29,6 +30,7 @@ export const SOURCE_STYLES: Record<DealSource, string> = {
   investment: "border-violet-400/30 bg-violet-400/10 text-violet-300",
   hyperscale: "border-amber-400/30 bg-amber-400/10 text-amber-300",
   lead_form: "border-line-soft bg-white/5 text-ink-dim",
+  manual: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200",
 };
 
 /** Where "Open submission" links to, per source. */
@@ -38,6 +40,7 @@ export const SOURCE_ROUTES: Record<DealSource, ((id: string) => string) | null> 
   investment: (id) => `/investment/confirmation?id=${encodeURIComponent(id)}`,
   hyperscale: null,
   lead_form: null,
+  manual: null,
 };
 
 export const SALES_BOARD = {

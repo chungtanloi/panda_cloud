@@ -1,10 +1,31 @@
-# Cloud Panda — API Contract
+# Cloud Panda — API requirements input
 
-Contract between the **frontend** (this repo) and the **backend** (separate team).
+> ## ⚠ THIS IS NOT THE CONTRACT
+>
+> As of workflow v1.0 (2026-08-12), the **single source of truth** for the HTTP
+> interface is the OpenAPI 3.1 source in
+> `PandaCloudBackend/api-contracts/`. This repository must not maintain a second
+> contract — see § 1.2 and § 2 of the collaboration workflow.
+>
+> **What this document is now:** structured requirements input for drafting
+> those OpenAPI operations. Every endpoint below was designed from the Figma
+> screens and is already consumed by working UI, so it describes real needs — but
+> it is a **proposal awaiting FE/BE owner review**, not an agreement.
+>
+> **What to do with it:** use it to draft `api-contracts/paths/*`. Once an
+> operation exists in the OpenAPI source and a contract release is tagged, delete
+> the corresponding section here. When the file is empty, delete the file.
+>
+> **Tracked as CR-006** in [`CONTRACT_CONFORMANCE.md`](./CONTRACT_CONFORMANCE.md),
+> which also lists where the shapes below already conflict with the workflow
+> conventions — notably the error envelope, money representation and file upload
+> flow. Do not transcribe those parts into OpenAPI unchanged.
 
-The frontend is written against this document. Implement these endpoints and the
-UI connects with no code changes — only `NEXT_PUBLIC_API_BASE_URL` and
-`NEXT_PUBLIC_API_ADAPTER=http` in `.env.local`.
+---
+
+Written before the workflow existed, as the interface between the **frontend**
+(this repo) and the **backend** (separate team). The frontend currently runs
+against these shapes via its mock adapter.
 
 - **Base URL:** value of `NEXT_PUBLIC_API_BASE_URL`, e.g. `https://api.cloudpanda.example/v1`
 - **Content type:** `application/json; charset=utf-8` (except file upload)
@@ -540,9 +561,67 @@ Errors: `422` field validation · `429` rate limited.
 
 ---
 
-## 9. Sales pipeline — _staff only_
+## 9. Workspace list screens
 
-Backs the internal Kanban board at `/dashboard/sales`.
+Eleven list screens across the four workspaces share one endpoint. The response
+carries **its own column definitions** as well as the rows, so a column can be
+added, renamed or reordered without a frontend deploy.
+
+### `GET /workspace/resources/{kind}`
+
+`kind` ∈ `projects` · `clusters` · `transactions` · `leads` · `quotes` ·
+`tasks` · `customers` · `team` · `approvals` · `users` · `audit`
+
+`200 OK`:
+```json
+{
+  "data": {
+    "kind": "leads",
+    "columns": [
+      { "key": "name", "label": "Name", "type": "link", "href": "/sales/leads/{id}" },
+      { "key": "company", "label": "Company" },
+      { "key": "status", "label": "Status", "type": "status" },
+      { "key": "budget", "label": "Budget" }
+    ],
+    "rows": [
+      {
+        "id": "LD-182",
+        "name": "Minh Tran",
+        "company": "Northstar AI",
+        "status": "Qualified",
+        "budget": "$480K"
+      }
+    ],
+    "total": 128
+  }
+}
+```
+
+| Field | Notes |
+|---|---|
+| `columns[].key` | Must match a key present on every row. |
+| `columns[].type` | `text` (default) · `status` · `link` · `number`. `status` renders a coloured badge; anything unrecognised falls back to text. |
+| `columns[].href` | Only for `type: "link"`. A path template; `{id}` is replaced with the row's `id`. |
+| `rows[].id` | Required. Used as the table key and for link substitution. |
+| `rows[]` other keys | Strings or numbers. Format currency, dates and percentages **server-side** — the UI renders them verbatim. |
+| `total` | Optional; send when the result is paginated. |
+
+**Authorisation is yours.** A `SALES` token requesting `users` must receive
+`403`, not an empty table. The frontend hides navigation per role, which stops
+accidents, not attackers.
+
+**Errors:** `403` wrong role · `404` unknown `kind`.
+
+> Each resource may later graduate to its own typed endpoint once its screen
+> has a real design and real interactions. This shape is for list-and-read; it
+> is not a place to add editing.
+
+---
+
+## 10. Sales pipeline — _staff only_
+
+Backs the internal Kanban board at `/sales/pipeline` and the Manager view at
+`/manager/pipeline`.
 
 > ⚠ **Every endpoint in this section must reject non-staff tokens with `403`.**
 > The frontend hides the UI from customers, but that is a convenience, not a
@@ -554,19 +633,18 @@ Backs the internal Kanban board at `/dashboard/sales`.
 `User` gained an optional `role` (§ 2):
 
 ```json
-{ "id": "usr_01H8XQ", "email": "…", "fullName": "…", "role": "sales" }
+{ "id": "usr_01H8XQ", "email": "…", "fullName": "…", "role": "SALES" }
 ```
 
-`role` ∈ `customer` | `sales` | `admin`. **Omit it, or send `customer`, for
-customer accounts** — the frontend treats a missing role as `customer`, never
-as staff.
+`role` ∈ `USER` | `SALES` | `MANAGER` | `ADMIN`. **Omit it, or send `USER`, for
+customer accounts** — the frontend treats a missing or unknown role as `USER`,
+never as staff. During migration the frontend normalizes the legacy lowercase
+values, but new backend responses must use these uppercase values.
 
 `path` (the product track) and `role` are independent: a sales rep has a role
 and no path.
 
-### 9.2 Cards are created by you, not by the client
-
-There is **no create endpoint**, deliberately.
+### 9.2 Automatic and manual card creation
 
 When a customer completes a flow, create the deal card **in the same
 transaction** that stores the submission:
@@ -582,6 +660,27 @@ transaction** that stores the submission:
 Two separate writes would let the submission succeed while the card fails,
 leaving a real customer that no one in sales can see. New cards start in the
 `lead` column.
+
+Sales and Manager users may also create outbound/offline leads manually with
+`POST /sales/cards`. This does not replace automatic creation and must never be
+used by the frontend after a customer form submission.
+
+```json
+{
+  "title": "Acme AI — outbound GPU opportunity",
+  "columnId": "lead",
+  "source": "manual",
+  "companyName": "Acme AI",
+  "contactName": "Alex Morgan",
+  "email": "alex@acme.example",
+  "phone": "+1 555-0199",
+  "dealValueUsd": 250000,
+  "notes": "Introduced at industry event."
+}
+```
+
+The backend generates `id`, `reference`, `order`, `createdAt` and `updatedAt`.
+Reject `USER` with `403`.
 
 ### 9.3 `GET /sales/columns`
 
@@ -636,7 +735,7 @@ full submission answers belong in § 9.5.
 |---|---|
 | `columnId` | The stage. Named this way because the board library requires the key. |
 | `order` | Position within the column. Sent by the client on move; you own the reconciliation. |
-| `source` | `assessment` · `booking` · `investment` · `hyperscale` · `lead_form`. Drives the badge and the filter. |
+| `source` | `assessment` · `booking` · `investment` · `hyperscale` · `lead_form` · `manual`. Drives the badge and the filter. |
 | `reference` | The same human-readable reference the customer sees. |
 | `dealValueUsd` | Raw USD. Omit when the flow produced no figure — do **not** send `0`, which displays as a real zero-value deal. |
 | `probability` | 0–100. Owned by sales, not by the wizard. Omit until set. |
@@ -674,15 +773,16 @@ the updated card.
 Errors: `409` when the destination column is at its `cardLimit` — the board
 surfaces this as a rejected drop and reverts the card.
 
-### 9.8 Deletion
+### 9.8 `DELETE /sales/cards/{id}`
 
-Not implemented, and it should stay that way. A deal that came from a real
-submission belongs in `lost`, not erased — deleting it destroys the audit trail
-linking a customer's request to its outcome.
+Manager/Admin only. Reject Sales and User with `403`. Delete the CRM pipeline
+card, but never delete the underlying customer submission. The backend must
+write an immutable audit event containing actor, card id, reference, source and
+result before returning `204 No Content`.
 
 ---
 
-## 10. Notes for the backend team
+## 11. Notes for the backend team
 
 1. **CORS** — allow the frontend origin with `Authorization` on the allowed-headers
    list, and permit `GET, POST, PUT, PATCH, DELETE, OPTIONS`.

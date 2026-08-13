@@ -1,0 +1,1 @@
+import { SimpleView } from "@/components/workspace/DashboardView"; export default function Page() { return <SimpleView eyebrow="Sales / Analytics" title="Reports" description="Personal and team pipeline reporting supplied by the reporting API." sections={["Conversion", "Activity", "Forecast"]} />; }

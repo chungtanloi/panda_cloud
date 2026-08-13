@@ -7,3 +7,5 @@ export * from "./hyperscale";
 export * from "./dashboard";
 export * from "./lead";
 export * from "./sales";
+export * from "./workspace";
+export * from "./platform";

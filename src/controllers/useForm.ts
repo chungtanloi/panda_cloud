@@ -51,14 +51,29 @@ export function useForm<T extends object>(initial: T, rules: Rules<T> = {}) {
     return isEmpty(found);
   }, [rules, values]);
 
-  /** Merge a 422 response's `details` map onto the form. */
-  const applyServerError = useCallback((error: NormalizedError) => {
-    if (!error.fieldErrors) return;
-    const mapped: FieldErrors<T> = {};
-    for (const [field, messages] of Object.entries(error.fieldErrors)) {
-      if (messages.length > 0) mapped[field as keyof T] = messages[0];
+  /**
+   * Bind a validation error's `details[]` onto the form.
+   *
+   * Entries carrying a `field` land on that input; entries without one are
+   * cross-field rules and are returned to the caller so it can show them above
+   * the form. Returns true when at least one message was placed, so the caller
+   * knows whether it still needs a generic banner.
+   */
+  const applyServerError = useCallback((error: NormalizedError): boolean => {
+    let placed = false;
+
+    if (error.fieldErrors) {
+      const mapped: FieldErrors<T> = {};
+      for (const [field, messages] of Object.entries(error.fieldErrors)) {
+        if (messages.length > 0) {
+          mapped[field as keyof T] = messages[0];
+          placed = true;
+        }
+      }
+      setErrors((prev) => ({ ...prev, ...mapped }));
     }
-    setErrors((prev) => ({ ...prev, ...mapped }));
+
+    return placed;
   }, []);
 
   const reset = useCallback(() => {

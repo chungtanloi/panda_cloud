@@ -10,6 +10,7 @@ import { useAuth } from "@/controllers/AuthContext";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, minLength } from "@/lib/validation";
 import type { LoginRequest } from "@/models/auth";
+import { homeForUser } from "@/config/access";
 import { normalizeError } from "@/services/api";
 
 /**
@@ -65,8 +66,12 @@ function LoginView() {
     try {
       const user = await login(form.values);
       // A returnTo takes precedence — the user was interrupted mid-task.
-      // Otherwise, users who have not picked a track go to "Choose Your Path".
-      router.push(returnTo ?? (user.path ? "/dashboard" : "/choose-path"));
+      // Staff have no `path` (it's a customer-only concept) and no reason to
+      // see "Choose Your Path" — send them straight to the board they work.
+      // Customers who haven't picked a track yet still land on choose-path.
+      router.push(
+        returnTo ?? (user.role && user.role !== "USER" ? homeForUser(user) : user.path ? "/dashboard" : "/choose-path"),
+      );
     } catch (cause) {
       const error = normalizeError(cause);
       form.applyServerError(error);

@@ -47,7 +47,7 @@ export interface DealCard {
   updatedAt: IsoDateTime;
 
   /** Which flow produced this deal — drives the badge and the filter. */
-  source: RequestKind | "lead_form";
+  source: RequestKind | "lead_form" | "manual";
   /** Human-readable reference shown to the customer, e.g. "CP-GPU-1190". */
   reference: string;
 
@@ -75,6 +75,20 @@ export interface DealCard {
   submissionId?: string;
   /** Key figures lifted from the submission, pre-formatted for display. */
   highlights?: DealHighlight[];
+}
+
+/** Manual CRM entry. Automatic cards continue to be created transactionally from customer forms. */
+export interface DealCardCreate {
+  title: string;
+  columnId: DealStage;
+  source: "manual";
+  companyName?: string;
+  contactName: string;
+  email: string;
+  phone?: string;
+  dealValueUsd?: number;
+  ownerId?: string;
+  notes?: string;
 }
 
 export interface DealHighlight {

@@ -8,6 +8,7 @@ import type {
   BuildingClassification,
   ChoosePathRequest,
   DealCard,
+  DealCardCreate,
   DealCardPatch,
   DealStage,
   EnergyMix,
@@ -29,12 +30,14 @@ import type {
   SubstationDistance,
   UserRole,
   WorkloadType,
+  WorkspaceResourceKind,
 } from "@/models";
 import type { ApiClient } from "../contracts";
 import { apiConfig } from "../config";
 import { ApiError } from "../http";
 import { computeQuote } from "@/lib/booking/quote";
 import { mockDealCards, mockDealColumns } from "./salesFixtures";
+import { mockWorkspaceTables } from "./workspaceFixtures";
 import {
   analyzeStage,
   buildSchedule,
@@ -75,19 +78,32 @@ function reference(prefix: string): string {
  * and a fresh array each time would undo the user's last action.
  */
 let salesCards: DealCard[] = [...mockDealCards];
+let currentMockUser = mockUser;
 
 /**
- * Mock role assignment so both sides of the staff guard are testable without a
- * backend: anyone signing in with a @cloudpanda.example address gets the sales
- * role, everyone else is a customer.
+ * Mock role assignment so all four roles are testable without a backend.
+ * Only @cloudpanda.example addresses are ever staff; the local part decides
+ * which staff role, so QA can hit every permission tier by choosing an
+ * email prefix:
+ *
+ *   admin@cloudpanda.example          -> admin
+ *   manager@cloudpanda.example        -> MANAGER (prefix "manager")
+ *   anyone-else@cloudpanda.example    -> sales
+ *   anything@any-other-domain         -> customer
  */
 function mockRoleFor(email: string): UserRole {
-  return email.toLowerCase().endsWith("@cloudpanda.example") ? "sales" : "customer";
+  const lower = email.toLowerCase();
+  if (!lower.endsWith("@cloudpanda.example")) return "USER";
+  const localPart = lower.split("@")[0] ?? "";
+  if (localPart === "admin") return "ADMIN";
+  if (localPart.includes("manager")) return "MANAGER";
+  return "SALES";
 }
 
 function session(email: string, fullName: string): AuthSession {
+  currentMockUser = { ...mockUser, email, fullName, role: mockRoleFor(email) };
   return {
-    user: { ...mockUser, email, fullName, role: mockRoleFor(email) },
+    user: currentMockUser,
     tokens: {
       accessToken: `mock.access.${Date.now()}`,
       refreshToken: `mock.refresh.${Date.now()}`,
@@ -290,7 +306,7 @@ export const mockApi: ApiClient = {
       if (!payload.email.includes("@")) {
         return Promise.reject(
           new ApiError({
-            code: "VALIDATION_FAILED",
+            code: "VALIDATION_ERROR",
             message: "Please check the highlighted fields.",
             status: 422,
             fieldErrors: { email: ["Enter a valid email address."] },
@@ -301,7 +317,7 @@ export const mockApi: ApiClient = {
       if (payload.password.length < 8) {
         return Promise.reject(
           new ApiError({
-            code: "UNAUTHORIZED",
+            code: "UNAUTHENTICATED",
             message: "Incorrect email or password.",
             status: 401,
           }),
@@ -320,9 +336,12 @@ export const mockApi: ApiClient = {
         tokenType: "Bearer" as const,
       }),
 
-    me: () => delay(mockUser),
+    me: () => delay(currentMockUser),
 
-    choosePath: (payload: ChoosePathRequest) => delay({ ...mockUser, path: payload.path }),
+    choosePath: (payload: ChoosePathRequest) => {
+      currentMockUser = { ...currentMockUser, path: payload.path };
+      return delay(currentMockUser);
+    },
 
     logout: () => delay(undefined),
   },
@@ -429,6 +448,10 @@ export const mockApi: ApiClient = {
     getReceipt: (ref: string) => delay({ ...mockReceipt, reference: ref }),
   },
 
+  workspace: {
+    getResource: (kind: WorkspaceResourceKind) => delay(mockWorkspaceTables[kind]),
+  },
+
   sales: {
     listColumns: () => delay(mockDealColumns),
 
@@ -442,6 +465,21 @@ export const mockApi: ApiClient = {
         );
       }
       return delay(card);
+    },
+
+    createCard: (payload: DealCardCreate) => {
+      if (currentMockUser.role === "USER") return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Staff access required.", status: 403 }));
+      const now = new Date().toISOString();
+      const created: DealCard = {
+        ...payload,
+        id: reference("deal").toLowerCase(),
+        reference: reference("CP-MAN"),
+        order: salesCards.filter((card) => card.columnId === payload.columnId).length,
+        createdAt: now,
+        updatedAt: now,
+      };
+      salesCards = [...salesCards, created];
+      return delay(created);
     },
 
     updateCard: (id: string, patch: DealCardPatch) => {
@@ -477,6 +515,14 @@ export const mockApi: ApiClient = {
       };
       salesCards = salesCards.map((deal) => (deal.id === id ? updated : deal));
       return delay(updated);
+    },
+
+    deleteCard: (id: string) => {
+      if (currentMockUser.role !== "MANAGER" && currentMockUser.role !== "ADMIN") return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Manager access required.", status: 403 }));
+      const exists = salesCards.some((card) => card.id === id);
+      if (!exists) return Promise.reject(new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }));
+      salesCards = salesCards.filter((card) => card.id !== id);
+      return delay(undefined);
     },
   },
 

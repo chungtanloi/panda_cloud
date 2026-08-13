@@ -1,51 +1,125 @@
 /**
  * Cross-cutting types shared by every feature.
  *
- * These describe the *envelope* the backend is expected to use. If the backend
- * team chooses a different envelope, the only file that needs to change is
- * `src/services/http.ts` — never a component or controller.
+ * These mirror the PandaCloud HTTP conventions
+ * (docs/collaboration/frontend-backend-collaboration-workflow.md § 7).
+ *
+ * ⚠ The OpenAPI 3.1 source in `PandaCloudBackend/api-contracts/` is the single
+ * source of truth for the wire format. Everything here is a **consumer-side
+ * mirror** of a pinned contract release, and must be regenerated — not
+ * hand-edited — once the Orval client ships. If a shape here disagrees with the
+ * contract, the contract wins and this file is the bug.
+ *
+ * See docs/CONTRACT_CONFORMANCE.md for the open Change Requests.
  */
 
-/** Standard success envelope returned by every endpoint. */
+/* ------------------------------- Envelopes ------------------------------ */
+
+/**
+ * Success envelope.
+ *
+ * ⚠ OPEN QUESTION (CR-001): the workflow document specifies the error body but
+ * never states whether success payloads are wrapped in `data`. `services/http.ts`
+ * therefore accepts both a wrapped and a bare payload. Remove the tolerance once
+ * the contract settles it — silently accepting two shapes hides drift.
+ */
 export interface ApiResponse<T> {
   data: T;
   meta?: ResponseMeta;
 }
 
 export interface ResponseMeta {
-  requestId?: string;
+  correlationId?: string;
   timestamp?: string;
 }
 
-/** Standard error body. See docs/API_CONTRACT.md § Error format. */
+/**
+ * Standard error body — workflow § 7.2.
+ *
+ * Flat, not nested: `errorCode`, `message` and `correlationId` are required on
+ * every error response.
+ */
 export interface ApiErrorBody {
-  error: {
-    code: ApiErrorCode;
-    message: string;
-    /** Field-level messages for 422 validation failures. */
-    details?: Record<string, string[]>;
-  };
+  errorCode: string;
+  message: string;
+  correlationId: string;
+  details?: ApiErrorDetail[];
 }
 
+export interface ApiErrorDetail {
+  /** Absent for errors that are not tied to one input field. */
+  field?: string;
+  reason: string;
+}
+
+/**
+ * Error codes the frontend branches on.
+ *
+ * `UPPER_SNAKE_CASE` per § 7. The backend may send codes not listed here — the
+ * type stays open with `(string & {})` so an unknown code is still carried
+ * through to the user rather than being swallowed by an exhaustive check.
+ */
 export type ApiErrorCode =
-  | "BAD_REQUEST"
-  | "UNAUTHORIZED"
+  | "VALIDATION_ERROR"
+  | "UNAUTHENTICATED"
   | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
-  | "VALIDATION_FAILED"
+  | "PAYLOAD_TOO_LARGE"
   | "RATE_LIMITED"
-  | "INTERNAL"
-  | "NETWORK"
-  | "TIMEOUT";
+  | "INTERNAL_ERROR"
+  | "SERVICE_UNAVAILABLE"
+  // Client-side only: no response was received, so the gateway never assigned
+  // a code. Never sent by the backend.
+  | "NETWORK_ERROR"
+  | "TIMEOUT"
+  | (string & {});
 
-/** Cursor/offset pagination envelope. */
+/** What controllers and views actually receive. Never a raw throw. */
+export interface NormalizedError {
+  code: ApiErrorCode;
+  message: string;
+  status?: number;
+  /**
+   * Echoed from the response. Quote this in bug reports — workflow § 18
+   * requires it on every integration defect ticket.
+   */
+  correlationId?: string;
+  /** Field-level messages, keyed by field, for form binding. */
+  fieldErrors?: Record<string, string[]>;
+  /** Details that carry no `field`, e.g. cross-field rule failures. */
+  formErrors?: string[];
+}
+
+/* ------------------------------ Pagination ------------------------------ */
+
+/**
+ * Cursor pagination — the default for deals, histories, activities,
+ * assessments and audit records (§ 7.3).
+ */
+export interface CursorPage<T> {
+  items: T[];
+  /** Pass back as `cursor` to fetch the next page. Absent on the last page. */
+  nextCursor?: string;
+  /** Present only when a requirement justified the count's cost. */
+  totalItems?: number;
+}
+
+export interface CursorQuery {
+  cursor?: string;
+  limit?: number;
+}
+
+/**
+ * Page pagination. Per § 7.3 this is allowed **only** where a requirement needs
+ * a total count and that cost has been accepted — prefer `CursorPage`.
+ */
 export interface Paginated<T> {
   items: T[];
   page: number;
   pageSize: number;
-  total: number;
-  hasNext: boolean;
+  totalItems: number;
+  totalPages: number;
 }
 
 export interface PageQuery {
@@ -53,21 +127,44 @@ export interface PageQuery {
   pageSize?: number;
 }
 
-/** Discriminated result used by controllers so views never see raw throws. */
+/* --------------------------------- Money -------------------------------- */
+
+/**
+ * Money — workflow § 7 requires a minor-unit integer plus an ISO 4217 code.
+ *
+ * A float in major units cannot represent every cent exactly and loses the
+ * currency entirely, which is why the convention exists.
+ *
+ * ⚠ CR-002: the existing models still carry `*Usd: number` fields in major
+ * units. Migrating them changes the wire shape, so it needs FE/BE owner
+ * approval before the contract is frozen. See docs/CONTRACT_CONFORMANCE.md.
+ */
+export interface Money {
+  /** Integer in the currency's minor unit — cents for USD. */
+  amountMinor: number;
+  /** ISO 4217, e.g. "USD". */
+  currency: string;
+}
+
+/** Formats `Money` for display. Never used to do arithmetic. */
+export function formatMoney(money: Money, locale = "en-US"): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: money.currency,
+    maximumFractionDigits: 0,
+  }).format(money.amountMinor / 100);
+}
+
+/* --------------------------------- Misc --------------------------------- */
+
+/** Discriminated result used by controllers so views never see a raw throw. */
 export type AsyncState<T> =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "success"; data: T }
   | { status: "error"; error: NormalizedError };
 
-export interface NormalizedError {
-  code: ApiErrorCode;
-  message: string;
-  status?: number;
-  fieldErrors?: Record<string, string[]>;
-}
-
-/** ISO-8601 timestamp, e.g. "2026-08-12T09:30:00Z". */
+/** ISO-8601 UTC timestamp, e.g. "2026-08-12T09:30:00Z". */
 export type IsoDateTime = string;
 
 /** ISO-8601 date, e.g. "2026-08-12". */

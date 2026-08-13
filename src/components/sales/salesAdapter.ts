@@ -30,12 +30,13 @@ export function createSalesAdapter(): DataAdapter<DealCard> {
     // shipping notes and full answers with the list.
     fetchCardDetail: (id) => api.sales.getCard(id),
 
+    createCard: (data) => api.sales.createCard(data as Parameters<typeof api.sales.createCard>[0]),
+
     updateCard: (id, data) => api.sales.updateCard(id, data as DealCardPatch),
 
     moveCard: (cardId, newColumnId, newOrder) =>
       api.sales.moveCard(cardId, newColumnId as DealStage, newOrder),
 
-    // No deleteCard: a deal that came from a real customer submission should be
-    // marked Lost, not erased. Removing the record would lose the audit trail.
+    deleteCard: (id) => api.sales.deleteCard(id),
   };
 }
