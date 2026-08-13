@@ -4,7 +4,7 @@
 
 Treat this directory as the working repository root:
 
-`D:\HelloCha\Projects\CoreyProjectWebsite\panda_cloud`
+`D:\Project\panda_cloud`
 
 Run repository-scoped commands from this directory unless a task explicitly
 requires the sibling backend repository.
