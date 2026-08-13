@@ -45,6 +45,15 @@ export const apiConfig = {
  * rather than emitting requests to a relative path nobody expects.
  */
 export function assertApiConfig(): void {
+  if (apiConfig.contractVersion === "unpinned") {
+    // Warn rather than throw: local UI work can continue, but integration and
+    // release builds must pin an immutable contract artifact.
+    console.warn(
+      "[config] NEXT_PUBLIC_CONTRACT_VERSION is unset. The frontend should pin one " +
+        "contract release (e.g. contract-v1.2.0) rather than tracking main.",
+    );
+  }
+
   if (apiConfig.adapter !== "http") return;
 
   if (!apiConfig.baseUrl) {
@@ -64,12 +73,4 @@ export function assertApiConfig(): void {
     );
   }
 
-  if (apiConfig.contractVersion === "unpinned") {
-    // Warn rather than throw: it must not block local work, but shipping
-    // against an unpinned contract is exactly the drift the workflow prevents.
-    console.warn(
-      "[config] NEXT_PUBLIC_CONTRACT_VERSION is unset. The frontend should pin one " +
-        "contract release (e.g. contract-v1.2.0) rather than tracking main.",
-    );
-  }
 }

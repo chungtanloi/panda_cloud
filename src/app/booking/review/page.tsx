@@ -258,6 +258,8 @@ export default function ReviewPage() {
               <AssetPlaceholder
                 node="dev.png panel"
                 label="Data hall visual"
+                src="/assets/visuals/liquid-cooled-data-hall.png"
+                alt="Deployment-ready liquid-cooled AI data hall"
                 className="aspect-[16/10] w-full rounded-panel"
               />
             </div>

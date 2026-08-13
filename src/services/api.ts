@@ -1,5 +1,5 @@
 import type { ApiClient } from "./contracts";
-import { apiConfig } from "./config";
+import { apiConfig, assertApiConfig } from "./config";
 import { httpApi } from "./http-impl";
 import { mockApi } from "./mock";
 
@@ -20,6 +20,8 @@ import { mockApi } from "./mock";
  *   2. No API URL is written outside `services/endpoints.ts`.
  *   3. Anything added to `ApiClient` must be implemented by BOTH adapters.
  */
+assertApiConfig();
+
 export const api: ApiClient = apiConfig.adapter === "http" ? httpApi : mockApi;
 
 export { apiConfig } from "./config";

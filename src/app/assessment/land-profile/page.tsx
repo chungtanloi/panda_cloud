@@ -123,6 +123,8 @@ export default function LandProfilePage() {
                 <AssetPlaceholder
                   node="2:1325 map"
                   label="Terrain map"
+                  src="/assets/visuals/energy-land-campus.png"
+                  alt="Aerial view of industrial land, renewable energy and grid infrastructure"
                   className="aspect-[16/7] w-full"
                 />
                 <span className="absolute bottom-[10px] left-[12px] font-mono text-[10px] uppercase tracking-[1.2px] text-accent">

@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { AssetPlaceholder } from "@/components/marketing/AssetPlaceholder";
-import { LoanCalculator } from "@/components/marketing/LoanCalculator";
 import { ViewportSection } from "@/components/marketing/ViewportSection";
 import { ContactForm } from "@/components/marketing/sections/ContactForm";
 import { CtaBand } from "@/components/marketing/sections/CtaBand";
 import { FaqAccordion } from "@/components/marketing/sections/FaqAccordion";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
-import { SpotlightCard } from "@/components/motion/SpotlightCard";
-import { FINANCING_FAQ, FINANCING_HERO, FINANCING_PRODUCTS } from "@/config/financing";
+import { EmptyState } from "@/components/ui/states";
+import { FINANCING_FAQ, FINANCING_HERO } from "@/config/financing";
 
 /**
  * Financing — Figma node 2:532, transcribed from an exported screenshot
@@ -56,52 +55,21 @@ export default function FinancingPage() {
             <AssetPlaceholder
               node="2:532 preview"
               label="Financing products preview"
+              src="/assets/visuals/gpu-cluster-closeup.png"
+              alt="Premium GPU compute hardware available for infrastructure financing"
               className="max-h-[calc(100svh-420px)] min-h-[220px] w-full rounded-card opacity-70"
             />
           </div>
         </Reveal>
       </ViewportSection>
 
-      {/* Four product cards */}
+      {/* Financing products and rates must come from the backend contract. */}
       <ViewportSection>
-        <section className="grid grid-cols-1 items-start gap-[24px] sm:grid-cols-2 lg:grid-cols-4">
-          {FINANCING_PRODUCTS.map((product, index) => (
-            <Reveal key={product.id} delay={index * 70}>
-              <SpotlightCard
-                tilt
-                className="card-highlight flex h-full flex-col gap-[16px] rounded-card border border-line-hair bg-card p-[25px]"
-              >
-                <span
-                  aria-hidden
-                  className="relative grid size-[44px] place-items-center rounded-field border border-accent/30 bg-accent-soft"
-                >
-                  <span className="size-[14px] rounded-[3px] border-2 border-accent" />
-                </span>
-
-                <h2 className="relative font-sans text-[20px] font-medium leading-[28px] text-white">
-                  {product.title}
-                </h2>
-
-                <p className="relative font-sans text-[14px] leading-[22px] text-ink-dim">
-                  {product.description}
-                </p>
-
-                <Link
-                  href={product.href}
-                  className="relative mt-auto flex items-center justify-between gap-[12px] border-t border-line-soft pt-[16px] font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-ink-dim transition-colors hover:text-accent"
-                >
-                  {product.term}
-                  <ArrowRight />
-                </Link>
-              </SpotlightCard>
-            </Reveal>
-          ))}
-        </section>
-      </ViewportSection>
-
-      {/* Loan calculator */}
-      <ViewportSection>
-        <LoanCalculator />
+        <EmptyState
+          title="Financing catalog is being connected"
+          message="Products, rates, limits and calculator terms will appear only after the backend publishes the approved financing catalog operation."
+          action={<Link href="#enquiry" className="text-accent hover:underline">Contact financing</Link>}
+        />
       </ViewportSection>
 
       {/* --- Additions, consistent with the other marketing pages. --- */}
@@ -127,19 +95,5 @@ export default function FinancingPage() {
         />
       </ViewportSection>
     </div>
-  );
-}
-
-function ArrowRight() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden className="shrink-0">
-      <path
-        d="M2.5 6h7m0 0L6.75 3.25M9.5 6 6.75 8.75"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

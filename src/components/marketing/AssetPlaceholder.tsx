@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
 /**
@@ -14,12 +15,41 @@ export function AssetPlaceholder({
   node,
   label,
   className,
+  src,
+  alt,
+  priority = false,
 }: {
   /** Figma node id, e.g. "1:70". */
   node: string;
   label: string;
   className?: string;
+  /** Project asset used when the original Figma export is unavailable. */
+  src?: string;
+  alt?: string;
+  priority?: boolean;
 }) {
+  if (src) {
+    return (
+      <div
+        data-visual-for={`figma-node-${node}`}
+        className={cn("relative overflow-hidden bg-card", className)}
+      >
+        <Image
+          src={src}
+          alt={alt ?? label}
+          fill
+          priority={priority}
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          className="object-cover transition-transform duration-700 hover:scale-[1.025]"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-base/55 via-transparent to-accent/[0.04]"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       role="img"

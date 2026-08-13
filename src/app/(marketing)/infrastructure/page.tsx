@@ -6,8 +6,13 @@ import { CtaBand } from "@/components/marketing/sections/CtaBand";
 import { FaqAccordion } from "@/components/marketing/sections/FaqAccordion";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
-import { INFRA_FAQ, INFRA_HERO, INVENTORY, INVENTORY_ITEMS } from "@/config/infrastructure";
+import { EmptyState } from "@/components/ui/states";
+import { INFRA_FAQ, INFRA_HERO, INVENTORY, type InventoryItem } from "@/config/infrastructure";
 import { cn } from "@/lib/cn";
+
+// No approved public inventory operation exists in the pinned contract yet.
+// Fail closed instead of presenting design samples as live database records.
+const inventoryItems: InventoryItem[] = [];
 
 /**
  * Infrastructure — Figma node 2:701, transcribed from an exported screenshot
@@ -65,6 +70,9 @@ export default function InfrastructurePage() {
             <AssetPlaceholder
               node="2:701 preview"
               label="Inventory preview panel"
+              src="/assets/visuals/infrastructure-inventory.png"
+              alt="Organized enterprise data center equipment inventory in a staging facility"
+              priority
               className="aspect-[16/10] max-h-[46svh] w-full rounded-card opacity-80"
             />
           </Reveal>
@@ -103,6 +111,13 @@ export default function InfrastructurePage() {
             </div>
           </Reveal>
 
+          <EmptyState
+            title="Infrastructure inventory is being connected"
+            message="Components, specifications, availability and lead times will appear after the backend publishes the approved inventory operation."
+            action={<Link href="#enquiry" className="text-accent hover:underline">Request a quote</Link>}
+          />
+
+          {inventoryItems.length > 0 ? (
           <Reveal delay={80} className="overflow-x-auto">
             <table className="w-full min-w-[860px] overflow-hidden rounded-card border border-line-hair bg-card">
               <thead>
@@ -128,13 +143,13 @@ export default function InfrastructurePage() {
               </thead>
 
               <tbody>
-                {INVENTORY_ITEMS.map((item, index) => (
+                {inventoryItems.map((item, index) => (
                   <tr
                     key={item.id}
                     data-circuit-attract
                     className={cn(
                       "transition-colors hover:bg-white/[0.02]",
-                      index < INVENTORY_ITEMS.length - 1 && "border-b border-line-soft",
+                      index < inventoryItems.length - 1 && "border-b border-line-soft",
                     )}
                   >
                     <th scope="row" className="px-[24px] py-[20px] text-left">
@@ -204,6 +219,7 @@ export default function InfrastructurePage() {
               </tbody>
             </table>
           </Reveal>
+          ) : null}
         </section>
       </ViewportSection>
 

@@ -64,19 +64,22 @@ src/
 
 ## Connecting the real backend
 
-The backend team implements [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). Then:
+The backend team publishes a frozen OpenAPI 3.1 release from
+`PandaCloudBackend/api-contracts/`. The frontend pins that release. Then:
 
 ```dotenv
 NEXT_PUBLIC_API_ADAPTER=http
 NEXT_PUBLIC_API_BASE_URL=https://api.cloudpanda.example/v1
+NEXT_PUBLIC_CONTRACT_VERSION=contract-v1.0.0
 ```
 
 That is the entire migration. No UI or business-logic file changes, because
 nothing outside `services/` knows which adapter is active.
 
-If the backend's response shape differs from the contract, adapt it in
-`services/http-impl/` — that is the designated translation layer. Do not reshape
-data inside components.
+[`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) is requirements input only, not a
+second contract. If the gateway differs from the pinned release, report an
+integration defect with environment, contract version and correlation id; do
+not silently reshape the mismatch inside components.
 
 ## Design tokens
 

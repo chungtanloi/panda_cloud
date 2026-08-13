@@ -152,9 +152,13 @@ async function refreshAccessToken(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
+        const correlationId = newCorrelationId();
         const response = await fetch(buildUrl("/auth/refresh"), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            [CORRELATION_HEADER]: correlationId,
+          },
           body: JSON.stringify({ refreshToken: current.refreshToken }),
         });
         if (!response.ok) {

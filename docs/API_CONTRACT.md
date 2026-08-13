@@ -30,8 +30,10 @@ against these shapes via its mock adapter.
 - **Base URL:** value of `NEXT_PUBLIC_API_BASE_URL`, e.g. `https://api.cloudpanda.example/v1`
 - **Content type:** `application/json; charset=utf-8` (except file upload)
 - **Auth:** `Authorization: Bearer <accessToken>` on every endpoint not marked _public_
-- **Source of truth for paths:** `src/services/endpoints.ts`
-- **Source of truth for types:** `src/models/*.ts`
+- **Current implementation paths:** `src/services/endpoints.ts` (transitional,
+  not authoritative)
+- **Current consumer-side type mirrors:** `src/models/*.ts` (transitional; the
+  pinned OpenAPI release wins on every disagreement)
 
 ---
 

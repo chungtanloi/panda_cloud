@@ -1,15 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback } from "react";
 import { AssetPlaceholder } from "@/components/marketing/AssetPlaceholder";
 import { ViewportSection } from "@/components/marketing/ViewportSection";
 import { ContactForm } from "@/components/marketing/sections/ContactForm";
 import { FaqAccordion } from "@/components/marketing/sections/FaqAccordion";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
-import { CountUp } from "@/components/motion/CountUp";
 import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
-import { BUY_CTA, BUY_HERO, COMPARISON, HARDWARE_OFFERS } from "@/config/buyGpu";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
+import { BUY_CTA, BUY_HERO, COMPARISON } from "@/config/buyGpu";
 import { BUY_FAQ } from "@/config/marketingSections";
+import { useAsync } from "@/controllers/useAsync";
 import { cn } from "@/lib/cn";
+import type { GpuModel } from "@/models/booking";
+import type { AsyncState } from "@/models/common";
+import { api } from "@/services/api";
 
 /**
  * Buy GPU — Figma node 2:219.
@@ -22,6 +29,9 @@ import { cn } from "@/lib/cn";
  * Server Component — all content is static.
  */
 export default function BuyGpuPage() {
+  const loadModels = useCallback(() => api.booking.listGpuModels(), []);
+  const { state, run } = useAsync(loadModels, { immediate: [] });
+
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col px-[24px] lg:px-[64px]">
       <ViewportSection>
@@ -29,7 +39,7 @@ export default function BuyGpuPage() {
       </ViewportSection>
 
       <ViewportSection>
-        <HardwareSection />
+        <HardwareSection state={state} onRetry={() => void run()} />
       </ViewportSection>
 
       <ViewportSection>
@@ -101,6 +111,9 @@ function HeroSection() {
           <AssetPlaceholder
             node="2:231"
             label="Server racks in a data center"
+            src="/assets/visuals/gpu-cluster-closeup.png"
+            alt="Dense rack-mounted liquid-cooled GPU cluster"
+            priority
             className="aspect-[1022/725] max-h-[calc(100svh-360px)] w-full rounded-card opacity-80"
           />
           <div
@@ -119,11 +132,21 @@ function HeroSection() {
 
 /* ---------------------------- Hardware (2:233) ---------------------------- */
 
-function HardwareSection() {
+function HardwareSection({ state, onRetry }: { state: AsyncState<GpuModel[]>; onRetry: () => void }) {
+  if (state.status === "loading" || state.status === "idle") {
+    return <LoadingState label="Loading purchasable GPU models" />;
+  }
+  if (state.status === "error") {
+    return <ErrorState error={state.error} onRetry={onRetry} />;
+  }
+  if (state.data.length === 0) {
+    return <EmptyState title="No GPU models currently published" message="Purchase options will appear when inventory is available." />;
+  }
+
   return (
     <section className="grid grid-cols-1 items-start gap-grid lg:grid-cols-3">
-      {HARDWARE_OFFERS.map((offer, index) => (
-        <Reveal key={offer.id} delay={index * 80}>
+      {state.data.map((model, index) => (
+        <Reveal key={model.id} delay={index * 80}>
         <SpotlightCard
           tilt
           className="relative flex h-full flex-col gap-[24px] overflow-hidden rounded-card border border-line-soft bg-panel p-[33px] backdrop-blur-card"
@@ -134,38 +157,35 @@ function HardwareSection() {
             className="pointer-events-none absolute -right-[64px] -top-[64px] size-[128px] rounded-full bg-accent/5 blur-[32px]"
           />
 
-          {offer.popular ? (
+          {model.stock === "limited" ? (
             <span className="absolute right-[16px] top-[16px] rounded-[2px] border border-accent-line bg-accent-soft px-[9px] py-[5px] font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-accent">
-              POPULAR
+              LIMITED
             </span>
           ) : null}
 
           <p className="relative pt-[16px] font-sans text-[16px] leading-[24px] text-ink">
-            {offer.title}
+            {model.name} {model.memory}
           </p>
 
           <p className="relative font-sans text-[16px] leading-[24px] text-ink-dim">
-            {offer.description}
+            {model.architecture} architecture · {model.specs.formFactor} · {model.specs.interconnect}
           </p>
 
           <div className="relative mt-auto flex flex-col gap-[16px] border-t border-line-faint pt-[33px]">
             <p className="font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-ink-dim">
-              {offer.priceLabel}
+              PURCHASE PRICING
             </p>
             <p className="font-sans text-[16px] leading-[24px] text-accent [text-shadow:0px_0px_10px_rgba(0,242,255,0.3)]">
-              <CountUp value={offer.priceValue} />
-              {offer.priceSuffix ? (
-                <span className="text-ink-dim"> {offer.priceSuffix}</span>
-              ) : null}
+              Request quote
             </p>
           </div>
 
           <div className="relative pt-[24px]">
             <Link
-              href={offer.ctaHref}
+              href={`/booking?gpuModelId=${encodeURIComponent(model.id)}&intent=purchase`}
               className="flex w-full items-center justify-center gap-[8px] rounded-panel border border-accent/30 py-[13px] font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-accent transition-colors hover:border-accent"
             >
-              {offer.ctaLabel}
+              Configure Node
               <ArrowRight />
             </Link>
           </div>

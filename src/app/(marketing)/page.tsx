@@ -169,7 +169,10 @@ function HeroSection() {
               two-column hero still fits one screen on a 1080p laptop. */}
           <AssetPlaceholder
             node="1:70"
-            label="Hero globe visual"
+            label="AI infrastructure campus"
+            src="/assets/visuals/energy-land-campus.png"
+            alt="Aerial view of an AI data center campus connected to renewable power and grid infrastructure"
+            priority
             className="h-[552px] max-h-[min(552px,52svh)] w-full max-w-[600px] rounded-panel shadow-[0px_0px_40px_0px_rgba(0,242,255,0.3)]"
           />
 
@@ -201,6 +204,8 @@ function AboutSection() {
           <AssetPlaceholder
             node="1:74"
             label="Data center visual"
+            src="/assets/visuals/liquid-cooled-data-hall.png"
+            alt="Liquid-cooled server racks inside a modern AI data center"
             className="aspect-[4/3] max-h-[52svh] w-full rounded-card"
           />
         </Reveal>
@@ -279,6 +284,8 @@ function EcosystemSection() {
                     <AssetPlaceholder
                       node="1:152"
                       label="Financing orb"
+                      src="/assets/visuals/gpu-cluster-closeup.png"
+                      alt="Close-up of liquid-cooled GPU accelerator hardware"
                       className="size-[128px] rounded-full shadow-[0px_0px_20px_0px_rgba(0,242,255,0.3)]"
                     />
                   }

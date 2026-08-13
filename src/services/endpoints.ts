@@ -2,7 +2,8 @@
  * Every backend path in one place. Paths are relative to
  * NEXT_PUBLIC_API_BASE_URL — no absolute URLs anywhere in the codebase.
  *
- * Keep this file in lockstep with docs/API_CONTRACT.md.
+ * Transitional handwritten map. The pinned backend OpenAPI release is the
+ * authority; replace this with generated operations under CR-007.
  */
 export const endpoints = {
   auth: {

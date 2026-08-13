@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback } from "react";
 import { AssetPlaceholder } from "@/components/marketing/AssetPlaceholder";
 import { GpuOfferCard } from "@/components/marketing/GpuOfferCard";
-import { TimeframeTabs } from "@/components/marketing/TimeframeTabs";
 import { ViewportSection } from "@/components/marketing/ViewportSection";
 import { CtaBand } from "@/components/marketing/sections/CtaBand";
 import { FaqAccordion } from "@/components/marketing/sections/FaqAccordion";
@@ -12,15 +11,18 @@ import { HowItWorks } from "@/components/marketing/sections/HowItWorks";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { AIScan } from "@/components/effects/AIScan";
 import { InfraHud } from "@/components/effects/InfraHud";
 import {
   GPU_HERO,
-  GPU_OFFERS,
   PLATFORM_ADVANTAGES,
-  type Timeframe,
+  type GpuOffer,
 } from "@/config/gpuRenting";
 import { GPU_FAQ, GPU_STEPS } from "@/config/marketingSections";
+import { useAsync } from "@/controllers/useAsync";
+import type { GpuModel } from "@/models/booking";
+import { api } from "@/services/api";
 
 /**
  * GPU Renting — Figma node 2:5.
@@ -34,7 +36,8 @@ import { GPU_FAQ, GPU_STEPS } from "@/config/marketingSections";
  * static content from config/gpuRenting.ts.
  */
 export default function GpuRentingPage() {
-  const [timeframe, setTimeframe] = useState<Timeframe>("Hourly");
+  const loadModels = useCallback(() => api.booking.listGpuModels(), []);
+  const { state, run } = useAsync(loadModels, { immediate: [] });
 
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col px-[24px] lg:px-[64px]">
@@ -101,6 +104,9 @@ export default function GpuRentingPage() {
         <AssetPlaceholder
           node="2:27"
           label="Cluster showcase"
+          src="/assets/visuals/liquid-cooled-data-hall.png"
+          alt="Symmetrical aisle of liquid-cooled AI compute racks"
+          priority
           className="aspect-[1134/890] max-h-[calc(100svh-220px)] w-full rounded-[24px] opacity-90"
         />
         <div
@@ -138,11 +144,20 @@ export default function GpuRentingPage() {
             </p>
           </div>
 
-          <TimeframeTabs value={timeframe} onChange={setTimeframe} />
+          <span className="rounded-full border border-accent/30 bg-accent-soft px-4 py-2 font-sans text-[11px] font-bold uppercase tracking-[1.2px] text-accent">
+            Live hourly pricing
+          </span>
         </div>
 
+        {state.status === "loading" || state.status === "idle" ? (
+          <LoadingState label="Loading live GPU catalog" />
+        ) : state.status === "error" ? (
+          <ErrorState error={state.error} onRetry={() => void run()} />
+        ) : state.data.length === 0 ? (
+          <EmptyState title="No GPU inventory available" message="Live catalog data will appear here when capacity is published." />
+        ) : (
         <div className="grid grid-cols-1 items-start gap-[16px] lg:grid-cols-3">
-          {GPU_OFFERS.map((offer, index) => (
+          {state.data.map(toOffer).map((offer, index) => (
             <Reveal key={offer.id} delay={index * 80}>
               <SpotlightCard tilt className="rounded-panel">
                 <GpuOfferCard offer={offer} />
@@ -150,6 +165,7 @@ export default function GpuRentingPage() {
             </Reveal>
           ))}
         </div>
+        )}
       </section>
       </ViewportSection>
 
@@ -199,6 +215,28 @@ export default function GpuRentingPage() {
       </ViewportSection>
     </div>
   );
+}
+
+function toOffer(model: GpuModel): GpuOffer {
+  const available = model.stock !== "pre_order";
+  return {
+    id: model.id,
+    model: model.name,
+    variant: model.memory,
+    tag: `${model.architecture} Architecture${model.stock === "pre_order" ? " · Pre-order" : model.stock === "limited" ? " · Limited" : ""}`,
+    tagAccent: model.stock !== "in_stock",
+    specs: [
+      { label: "FP64 Tensor", value: `${model.specs.fp64TensorTflops.toLocaleString()} TFLOPS` },
+      { label: "Memory Bandwidth", value: `${model.specs.memoryBandwidthTbs} TB/s`, highlight: model.stock === "limited" },
+      { label: "Interconnect", value: model.specs.interconnect },
+    ],
+    price: model.hourlyRateUsd === null ? null : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(model.hourlyRateUsd),
+    priceSuffix: model.hourlyRateUsd === null ? "Sales" : "/hr",
+    ctaLabel: available ? "Deploy" : "Inquire",
+    ctaHref: available ? `/booking?gpuModelId=${encodeURIComponent(model.id)}` : "/hyperscale",
+    featured: model.stock === "limited",
+    iconNode: "dynamic-catalog",
+  };
 }
 
 /* Plain geometric glyphs — not brand marks. */
