@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-lib
+dist-ssr
+*.local
+.env
+.env.local
+.env.*.local
+.DS_Store
+coverage
+package-lock.json
+.vercel

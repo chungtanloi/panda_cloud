@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Theme tokens consumed by tailwind.config.js (kanban.bg/surface/border/accent).
+ * Override these in a consuming app to reskin the board without touching
+ * component code. Values are "R G B" so Tailwind's <alpha-value> works.
+ */
+:root {
+  --kanban-bg: 243 244 246; /* gray-100 */
+  --kanban-surface: 255 255 255; /* white */
+  --kanban-border: 229 231 235; /* gray-200 */
+  --kanban-accent: 59 130 246; /* blue-500 */
+}
+
+.dark {
+  --kanban-bg: 17 24 39; /* gray-900 */
+  --kanban-surface: 31 41 55; /* gray-800 */
+  --kanban-border: 55 65 81; /* gray-700 */
+  --kanban-accent: 96 165 250; /* blue-400 */
+}
