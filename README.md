@@ -8,6 +8,9 @@ Runs standalone against a mock adapter, so no backend is required to develop.
 ## Getting started
 
 ```bash
+cd kaban_cloud
+npm run build:lib
+cd ..
 npm install
 cp .env.example .env.local
 npm run dev
