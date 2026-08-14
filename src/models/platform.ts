@@ -1,5 +1,5 @@
 import type { IsoDateTime } from "./common";
-import type { UserRole } from "./auth";
+import type { MembershipRole } from "./auth";
 
 export type ProjectStatus = "Draft" | "Pending" | "Review" | "Approved" | "Provisioning" | "Active" | "Completed" | "Cancelled";
 export interface Project { id: string; name: string; type: string; region: string; status: ProjectStatus; createdAt: IsoDateTime; progress: number; }
@@ -14,4 +14,4 @@ export interface Quote { id: string; customer: string; type: string; amountUsd: 
 export interface Task { id: string; title: string; lead: string; owner: string; dueDate: string; priority: string; status: "Today" | "Upcoming" | "Overdue" | "Completed"; }
 export interface Activity { id: string; title: string; detail?: string; actor: string; createdAt: IsoDateTime; }
 export interface Notification { id: string; title: string; read: boolean; createdAt: IsoDateTime; }
-export interface AuditLog { id: string; timestamp: IsoDateTime; user: string; role: UserRole; action: string; resource: string; resourceId: string; metadata?: string; result: "SUCCESS" | "FAILURE"; }
+export interface AuditLog { id: string; timestamp: IsoDateTime; user: string; role: MembershipRole; action: string; resource: string; resourceId: string; metadata?: string; result: "SUCCESS" | "FAILURE"; }

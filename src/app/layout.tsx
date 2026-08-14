@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
-import { AuthProvider } from "@/controllers/AuthContext";
+import { AppAuthProvider } from "@/components/auth/AppAuthProvider";
 import { CircuitBackground } from "@/components/effects/CircuitBackground";
 import { CursorGlow } from "@/components/effects/CursorGlow";
 import "./globals.css";
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CircuitBackground />
         <CursorGlow />
         <div className="relative z-10">
-          <AuthProvider>{children}</AuthProvider>
+          <AppAuthProvider>{children}</AppAuthProvider>
         </div>
       </body>
     </html>

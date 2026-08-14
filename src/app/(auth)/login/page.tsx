@@ -3,40 +3,47 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useState } from "react";
+import { useSignIn } from "@clerk/nextjs";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { useAuth } from "@/controllers/AuthContext";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, minLength } from "@/lib/validation";
-import type { LoginRequest } from "@/models/auth";
-import { homeForUser } from "@/config/access";
-import { normalizeError } from "@/services/api";
+import { homeForProfile } from "@/config/access";
+import { clerkEnabled } from "@/services/config";
+import { AuthCard, ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
 /**
- * Figma node 2:930 — "Log In | Cloud Panda".
- *   card    — 448px wide, rgba(30,32,36,.9), 1px rgba(58,73,75,.3),
- *             radius 32, padding 41, gap 32, backdrop-blur 12px,
- *             shadow 0 25px 50px -12px rgba(0,0,0,.25)
- *   heading — 24px semibold sans #e2e2e8 over 16px #b9cacb
- *   button  — full-width pill, #00f2ff on #002022
+ * Figma node 2:930 — "Log In | Cloud Panda". The card, type scale and button
+ * are unchanged; only the submit handler moved to Clerk.
  *
- * This View holds no business logic: authentication lives in AuthContext,
- * field rules in lib/validation, and all I/O behind services/api.
+ * PHASE_1_FRONTEND_AUTH_HANDOFF: "The existing PandaCloud visual design can
+ * remain. Clerk custom-flow hooks/APIs can drive the current forms, so adopting
+ * Clerk does not require switching to prebuilt Clerk UI components."
+ *
+ * PandaCloud issues no token here. Clerk creates the session; the PandaCloud
+ * profile and authorization arrive afterwards from GET /api/v1/auth/me.
  */
 export default function LoginPage() {
   // useSearchParams requires a Suspense boundary under the App Router.
   return (
     <Suspense>
-      <LoginView />
+      {clerkEnabled ? <LoginView /> : <ClerkNotConfigured action="Sign in" />}
     </Suspense>
   );
+}
+
+interface LoginFields {
+  email: string;
+  password: string;
 }
 
 function LoginView() {
   const router = useRouter();
   const params = useSearchParams();
-  const { login } = useAuth();
+  const { isLoaded, signIn, setActive } = useSignIn();
+  const { reload } = useAuth();
 
   /**
    * Where to go after signing in. Only same-origin relative paths are
@@ -49,7 +56,7 @@ function LoginView() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const form = useForm<LoginRequest>(
+  const form = useForm<LoginFields>(
     { email: "", password: "" },
     {
       email: emailRule(),
@@ -61,21 +68,33 @@ function LoginView() {
     event.preventDefault();
     setFormError(null);
     if (!form.validateAll()) return;
+    if (!isLoaded || !signIn || !setActive) return;
 
     setSubmitting(true);
     try {
-      const user = await login(form.values);
-      // A returnTo takes precedence — the user was interrupted mid-task.
-      // Staff have no `path` (it's a customer-only concept) and no reason to
-      // see "Choose Your Path" — send them straight to the board they work.
-      // Customers who haven't picked a track yet still land on choose-path.
-      router.push(
-        returnTo ?? (user.role && user.role !== "USER" ? homeForUser(user) : user.path ? "/dashboard" : "/choose-path"),
-      );
+      const attempt = await signIn.create({
+        identifier: form.values.email,
+        password: form.values.password,
+      });
+
+      if (attempt.status !== "complete") {
+        // MFA, a password reset, or another factor is outstanding. Clerk owns
+        // those flows and no screen for them is designed yet.
+        // ⚠ NEEDS CLARIFICATION — no second-factor screen exists in the Figma set.
+        setFormError(
+          "Additional verification is required to finish signing in. Please complete it in your Clerk account, or contact support.",
+        );
+        return;
+      }
+
+      await setActive({ session: attempt.createdSessionId });
+
+      // Load the PandaCloud profile before routing: the landing workspace is
+      // decided by active memberships, which only /auth/me knows.
+      const profile = await reload();
+      router.push(returnTo ?? homeForProfile(profile));
     } catch (cause) {
-      const error = normalizeError(cause);
-      form.applyServerError(error);
-      if (!error.fieldErrors) setFormError(error.message);
+      setFormError(clerkErrorMessage(cause, "Incorrect email or password."));
     } finally {
       setSubmitting(false);
     }
@@ -85,9 +104,7 @@ function LoginView() {
     <main className="relative flex min-h-screen items-center justify-center bg-base px-[24px] py-[64px]">
       <AmbientBackground />
 
-      <div
-        className="relative flex w-full max-w-auth flex-col gap-[32px] rounded-panel border border-line bg-surface-alt p-card shadow-auth backdrop-blur-auth"
-      >
+      <AuthCard>
         <header className="flex flex-col gap-[8px]">
           <h1 className="font-sans text-[24px] font-semibold leading-[31.2px] text-ink">
             Welcome back
@@ -126,6 +143,9 @@ function LoginView() {
             </p>
           ) : null}
 
+          {/* Clerk bot protection mounts here when the instance enables it. */}
+          <div id="clerk-captcha" />
+
           <div className="pt-[8px]">
             <Button type="submit" variant="pill" loading={submitting} iconRight={<ArrowUpRight />}>
               Log In
@@ -142,7 +162,7 @@ function LoginView() {
             Get started
           </Link>
         </p>
-      </div>
+      </AuthCard>
     </main>
   );
 }

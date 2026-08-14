@@ -1,6 +1,6 @@
 import type { ApiErrorBody, ApiResponse, NormalizedError } from "@/models/common";
 import { apiConfig } from "./config";
-import { tokenStore } from "./tokenStore";
+import { sessionBridge } from "./session";
 
 /**
  * The single HTTP client. Nothing else in the app calls `fetch` directly.
@@ -13,10 +13,12 @@ import { tokenStore } from "./tokenStore";
  *  - sends `X-Correlation-Id` and echoes back whatever the gateway returns
  *  - normalises the standard error body into `NormalizedError`
  *
- * ⚠ CR-003: § 7.1 states Clerk owns session refresh and that PandaCloud does
- * not add a custom refresh-token API without an approved requirement. The
- * refresh-and-replay below predates that rule and must be removed once Clerk is
- * wired in. It is quarantined in one function so the swap is contained.
+ * CR-003 (done, 2026-08-14): § 7.1 states Clerk owns session refresh and that
+ * PandaCloud does not add a custom refresh-token API without an approved
+ * requirement. The bespoke `POST /auth/refresh` retry and the localStorage
+ * token store are gone. The bearer is the current Clerk session token, minted
+ * on demand through `services/session.ts`; Clerk refreshes it transparently, so
+ * a 401 here is a real authentication failure and is surfaced as one.
  */
 
 export class ApiError extends Error implements NormalizedError {
@@ -138,53 +140,7 @@ async function toNormalizedError(
   };
 }
 
-/** Guards against several concurrent 401s each firing their own refresh. */
-let refreshInFlight: Promise<boolean> | null = null;
-
-/**
- * ⚠ CR-003 — to be deleted when Clerk lands. Clerk's SDK refreshes the session
- * itself; a bespoke refresh endpoint is explicitly out of scope per § 7.1.
- */
-async function refreshAccessToken(): Promise<boolean> {
-  const current = tokenStore.get();
-  if (!current) return false;
-
-  if (!refreshInFlight) {
-    refreshInFlight = (async () => {
-      try {
-        const correlationId = newCorrelationId();
-        const response = await fetch(buildUrl("/auth/refresh"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            [CORRELATION_HEADER]: correlationId,
-          },
-          body: JSON.stringify({ refreshToken: current.refreshToken }),
-        });
-        if (!response.ok) {
-          tokenStore.clear();
-          return false;
-        }
-        const payload = (await response.json()) as ApiResponse<{
-          accessToken: string;
-          refreshToken: string;
-          expiresIn: number;
-        }>;
-        tokenStore.set({ ...payload.data, tokenType: "Bearer" });
-        return true;
-      } catch {
-        tokenStore.clear();
-        return false;
-      } finally {
-        refreshInFlight = null;
-      }
-    })();
-  }
-
-  return refreshInFlight;
-}
-
-async function execute<T>(path: string, options: RequestOptions, isRetry: boolean): Promise<T> {
+async function execute<T>(path: string, options: RequestOptions): Promise<T> {
   const { method = "GET", body, query, anonymous, signal } = options;
   const correlationId = options.correlationId ?? newCorrelationId();
 
@@ -201,8 +157,10 @@ async function execute<T>(path: string, options: RequestOptions, isRetry: boolea
   if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
 
   if (!anonymous) {
-    const tokens = tokenStore.get();
-    if (tokens) headers.Authorization = `${tokens.tokenType} ${tokens.accessToken}`;
+    // Clerk session JWT, minted through the normal `getToken()` path with no
+    // custom template. Absent when signed out — the gateway then answers 401.
+    const token = await sessionBridge.getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
 
   let response: Response;
@@ -228,12 +186,6 @@ async function execute<T>(path: string, options: RequestOptions, isRetry: boolea
     clearTimeout(timeout);
   }
 
-  // One transparent refresh-and-replay on an expired token. See CR-003.
-  if (response.status === 401 && !anonymous && !isRetry) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) return execute<T>(path, options, true);
-  }
-
   if (!response.ok) throw new ApiError(await toNormalizedError(response, correlationId));
 
   if (response.status === 204) return undefined as T;
@@ -247,19 +199,19 @@ async function execute<T>(path: string, options: RequestOptions, isRetry: boolea
 
 export const http = {
   get: <T>(path: string, options: Omit<RequestOptions, "method" | "body"> = {}) =>
-    execute<T>(path, { ...options, method: "GET" }, false),
+    execute<T>(path, { ...options, method: "GET" }),
 
   post: <T>(path: string, body?: unknown, options: Omit<RequestOptions, "method"> = {}) =>
-    execute<T>(path, { ...options, method: "POST", body }, false),
+    execute<T>(path, { ...options, method: "POST", body }),
 
   put: <T>(path: string, body?: unknown, options: Omit<RequestOptions, "method"> = {}) =>
-    execute<T>(path, { ...options, method: "PUT", body }, false),
+    execute<T>(path, { ...options, method: "PUT", body }),
 
   patch: <T>(path: string, body?: unknown, options: Omit<RequestOptions, "method"> = {}) =>
-    execute<T>(path, { ...options, method: "PATCH", body }, false),
+    execute<T>(path, { ...options, method: "PATCH", body }),
 
   delete: <T>(path: string, options: Omit<RequestOptions, "method" | "body"> = {}) =>
-    execute<T>(path, { ...options, method: "DELETE" }, false),
+    execute<T>(path, { ...options, method: "DELETE" }),
 };
 
 /** Convert any thrown value into the shape views render. */

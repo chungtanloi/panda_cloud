@@ -27,7 +27,7 @@ const SalesBoard = dynamic(
 );
 
 export default function SalesPage() {
-  const { user, initializing } = useAuth();
+  const { profile, initializing } = useAuth();
   const [search, setSearch] = useState("");
 
   if (initializing) {
@@ -38,7 +38,7 @@ export default function SalesPage() {
     );
   }
 
-  if (!isStaff(user)) {
+  if (!isStaff(profile)) {
     return (
       <>
         <DashboardHeader search={search} onSearchChange={setSearch} />

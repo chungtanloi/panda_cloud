@@ -1,12 +1,11 @@
 import type {
   AssessmentDraft,
   AssessmentSubmission,
-  AuthSession,
+  AuthProfile,
   BookingDraft,
   BookingRequestResult,
   BookingSubmission,
   BuildingClassification,
-  ChoosePathRequest,
   DealCard,
   DealCardCreate,
   DealCardPatch,
@@ -23,18 +22,17 @@ import type {
   LineVoltage,
   LivePreview,
   LivePreviewRequest,
-  LoginRequest,
+  MembershipRole,
   ProjectStage,
-  SignUpRequest,
   SlaTier,
   SubstationDistance,
-  UserRole,
   WorkloadType,
   WorkspaceResourceKind,
 } from "@/models";
 import type { ApiClient } from "../contracts";
 import { apiConfig } from "../config";
 import { ApiError } from "../http";
+import { sessionBridge } from "../session";
 import { computeQuote } from "@/lib/booking/quote";
 import { mockDealCards, mockDealColumns } from "./salesFixtures";
 import { mockWorkspaceTables } from "./workspaceFixtures";
@@ -78,37 +76,51 @@ function reference(prefix: string): string {
  * and a fresh array each time would undo the user's last action.
  */
 let salesCards: DealCard[] = [...mockDealCards];
-let currentMockUser = mockUser;
 
 /**
- * Mock role assignment so all four roles are testable without a backend.
- * Only @cloudpanda.example addresses are ever staff; the local part decides
- * which staff role, so QA can hit every permission tier by choosing an
- * email prefix:
+ * Mock authorization so every role is reachable without a backend.
  *
- *   admin@cloudpanda.example          -> admin
- *   manager@cloudpanda.example        -> MANAGER (prefix "manager")
- *   anyone-else@cloudpanda.example    -> sales
- *   anything@any-other-domain         -> customer
+ * The email comes from the signed-in Clerk identity via `sessionBridge`; when
+ * Clerk is not configured this falls back to the fixture email. Behaviour is
+ * carried over verbatim from `docs/KANBAN_INTEGRATION.md`
+ * § "Testing without a backend":
+ *
+ *   admin@cloudpanda.example       -> admin
+ *   *manager*@cloudpanda.example   -> manager
+ *   anything-else@cloudpanda.example -> sales
+ *   any other domain               -> customer (no membership)
+ *
+ * ⚠ This is a **development fixture**, not authorization. The HTTP adapter
+ * never runs this code, and `assertApiConfig()` refuses to start the HTTP
+ * adapter without Clerk.
  */
-function mockRoleFor(email: string): UserRole {
+function mockRoleFor(email: string): MembershipRole {
   const lower = email.toLowerCase();
-  if (!lower.endsWith("@cloudpanda.example")) return "USER";
+  if (!lower.endsWith("@cloudpanda.example")) return "customer";
   const localPart = lower.split("@")[0] ?? "";
-  if (localPart === "admin") return "ADMIN";
-  if (localPart.includes("manager")) return "MANAGER";
-  return "SALES";
+  if (localPart === "admin") return "admin";
+  if (localPart.includes("manager")) return "manager";
+  return "sales";
 }
 
-function session(email: string, fullName: string): AuthSession {
-  currentMockUser = { ...mockUser, email, fullName, role: mockRoleFor(email) };
+const MOCK_ORGANIZATION_ID = "org_mock_cloud_panda";
+
+function mockProfile(): AuthProfile {
+  const email = sessionBridge.getIdentityHint() ?? mockUser.email;
+  const role = mockRoleFor(email);
+  const staff = role !== "customer";
   return {
-    user: currentMockUser,
-    tokens: {
-      accessToken: `mock.access.${Date.now()}`,
-      refreshToken: `mock.refresh.${Date.now()}`,
-      expiresIn: 3600,
-      tokenType: "Bearer",
+    user: {
+      ...mockUser,
+      email,
+      userType: staff ? "staff" : "customer",
+      lastLoginAt: new Date().toISOString(),
+    },
+    authorization: {
+      isStaff: staff,
+      // A customer identity has no membership row — this mirrors the backend
+      // default described in PHASE_1_FRONTEND_AUTH_HANDOFF.
+      memberships: staff ? [{ organizationId: MOCK_ORGANIZATION_ID, role }] : [],
     },
   };
 }
@@ -300,50 +312,7 @@ function buildBookingResult(id: string, payload: BookingSubmission): BookingRequ
 
 export const mockApi: ApiClient = {
   auth: {
-    login: (payload: LoginRequest) => {
-      // Always reject rather than throw synchronously, so the mock behaves
-      // exactly like the HTTP adapter from the caller's point of view.
-      if (!payload.email.includes("@")) {
-        return Promise.reject(
-          new ApiError({
-            code: "VALIDATION_ERROR",
-            message: "Please check the highlighted fields.",
-            status: 422,
-            fieldErrors: { email: ["Enter a valid email address."] },
-          }),
-        );
-      }
-      // Any password of 8+ chars succeeds; shorter ones exercise the 401 path.
-      if (payload.password.length < 8) {
-        return Promise.reject(
-          new ApiError({
-            code: "UNAUTHENTICATED",
-            message: "Incorrect email or password.",
-            status: 401,
-          }),
-        );
-      }
-      return delay(session(payload.email, mockUser.fullName));
-    },
-
-    signUp: (payload: SignUpRequest) => delay(session(payload.email, payload.fullName)),
-
-    refresh: () =>
-      delay({
-        accessToken: `mock.access.${Date.now()}`,
-        refreshToken: `mock.refresh.${Date.now()}`,
-        expiresIn: 3600,
-        tokenType: "Bearer" as const,
-      }),
-
-    me: () => delay(currentMockUser),
-
-    choosePath: (payload: ChoosePathRequest) => {
-      currentMockUser = { ...currentMockUser, path: payload.path };
-      return delay(currentMockUser);
-    },
-
-    logout: () => delay(undefined),
+    me: () => delay(mockProfile()),
   },
 
   assessment: {
@@ -468,7 +437,7 @@ export const mockApi: ApiClient = {
     },
 
     createCard: (payload: DealCardCreate) => {
-      if (currentMockUser.role === "USER") return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Staff access required.", status: 403 }));
+      if (!mockProfile().authorization.isStaff) return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Staff access required.", status: 403 }));
       const now = new Date().toISOString();
       const created: DealCard = {
         ...payload,
@@ -518,7 +487,8 @@ export const mockApi: ApiClient = {
     },
 
     deleteCard: (id: string) => {
-      if (currentMockUser.role !== "MANAGER" && currentMockUser.role !== "ADMIN") return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Manager access required.", status: 403 }));
+      const managerRoles = mockProfile().authorization.memberships.map((membership) => membership.role);
+      if (!managerRoles.includes("manager") && !managerRoles.includes("admin")) return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Manager access required.", status: 403 }));
       const exists = salesCards.some((card) => card.id === id);
       if (!exists) return Promise.reject(new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }));
       salesCards = salesCards.filter((card) => card.id !== id);

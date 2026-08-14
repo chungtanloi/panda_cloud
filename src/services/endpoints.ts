@@ -6,13 +6,17 @@
  * authority; replace this with generated operations under CR-007.
  */
 export const endpoints = {
+  /**
+   * Identity. The ONLY authenticated operation the backend contract defines
+   * (api-contracts/paths/auth-me.yaml, operationId getAuthenticatedIdentity).
+   *
+   * Clerk owns sign-in, sign-up, refresh and sign-out. PandaCloud has no
+   * password login, no token issuance and no refresh endpoint
+   * (PHASE_1_FRONTEND_AUTH_HANDOFF; collaboration workflow § 7.1).
+   * `PUT /auth/path` was removed: no approved field or endpoint exists for it.
+   */
   auth: {
-    login: "/auth/login",
-    signUp: "/auth/signup",
-    refresh: "/auth/refresh",
-    logout: "/auth/logout",
     me: "/auth/me",
-    choosePath: "/auth/path",
   },
 
   assessment: {

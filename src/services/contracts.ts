@@ -1,9 +1,7 @@
 import type {
   AssessmentResult,
   AssessmentSubmission,
-  AuthSession,
-  AuthTokens,
-  ChoosePathRequest,
+  AuthProfile,
   DashboardSummary,
   DealCard,
   DealCardCreate,
@@ -36,12 +34,9 @@ import type {
   LeadResponse,
   LivePreview,
   LivePreviewRequest,
-  LoginRequest,
   RequestReceipt,
-  SignUpRequest,
   TokenRate,
   UploadedDocument,
-  User,
 } from "@/models";
 
 /**
@@ -55,13 +50,16 @@ import type {
  * Every method rejects with an `ApiError` (see services/http.ts) on failure.
  */
 
+/**
+ * Identity.
+ *
+ * One operation, because the contract defines one. Sign-in, sign-up, session
+ * refresh and sign-out are Clerk SDK calls in the view layer, not API calls —
+ * they never reach this port.
+ */
 export interface AuthService {
-  login(payload: LoginRequest): Promise<AuthSession>;
-  signUp(payload: SignUpRequest): Promise<AuthSession>;
-  refresh(refreshToken: string): Promise<AuthTokens>;
-  me(): Promise<User>;
-  choosePath(payload: ChoosePathRequest): Promise<User>;
-  logout(): Promise<void>;
+  /** `GET /api/v1/auth/me` — resolves the profile and authorization context. */
+  me(): Promise<AuthProfile>;
 }
 
 export interface AssessmentService {

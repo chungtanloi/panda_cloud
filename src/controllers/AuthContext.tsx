@@ -1,115 +1,126 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { LoginRequest, SignUpRequest, User, UserPath } from "@/models/auth";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { AuthenticatedUser, AuthProfile } from "@/models/auth";
 import type { NormalizedError } from "@/models/common";
-import { api, normalizeError, tokenStore } from "@/services/api";
+import { api, normalizeError } from "@/services/api";
 
 /**
- * Session state for the whole app. Holds the authenticated user and exposes
- * the auth operations; token persistence itself lives in `services/tokenStore`.
+ * Business identity for the whole app.
+ *
+ * Division of responsibility (ADR-001, PHASE_1_FRONTEND_AUTH_HANDOFF):
+ *
+ *   Clerk        -> credentials, session, refresh, MFA, sign-out
+ *   this context -> PandaCloud profile + authorization, from GET /api/v1/auth/me
+ *
+ * Authentication is not authorization. `isAuthenticated` only means Clerk has a
+ * session; what the identity may *do* comes from `profile.authorization`, which
+ * the gateway derives from the verified JWT subject and the active Convex
+ * organization memberships. The frontend never sends or chooses a role.
+ *
+ * The Clerk session itself is injected as `session` rather than read here, so
+ * this controller has no direct dependency on the Clerk SDK and the mock-only
+ * standalone mode needs no conditional hooks.
  */
 
+/** Minimal session shape this controller needs from the identity provider. */
+export interface SessionState {
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  /** Opaque provider subject. Used only to re-fetch when the identity changes. */
+  userId: string | null;
+  signOut: () => Promise<void>;
+}
+
 interface AuthContextValue {
-  user: User | null;
-  /** True until the initial session restore finishes. */
+  /** Full `/auth/me` payload, or null when signed out / unavailable. */
+  profile: AuthProfile | null;
+  /** Convenience accessor for display code. Authorization lives on `profile`. */
+  user: AuthenticatedUser | null;
+  /** True until the session and the first `/auth/me` have both settled. */
   initializing: boolean;
+  /** The provider reports an active session. Says nothing about permissions. */
   isAuthenticated: boolean;
-  login: (payload: LoginRequest) => Promise<User>;
-  signUp: (payload: SignUpRequest) => Promise<User>;
-  choosePath: (path: UserPath) => Promise<User>;
-  logout: () => Promise<void>;
+  /** Re-fetches `/auth/me` and returns the fresh profile. */
+  reload: () => Promise<AuthProfile | null>;
+  /** Provider sign-out. PandaCloud holds no session state of its own to clear. */
+  signOut: () => Promise<void>;
   error: NormalizedError | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [initializing, setInitializing] = useState(true);
+export function AuthProvider({
+  session,
+  children,
+}: {
+  session: SessionState;
+  children: React.ReactNode;
+}) {
+  const [profile, setProfile] = useState<AuthProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const [error, setError] = useState<NormalizedError | null>(null);
+  const mounted = useRef(true);
 
-  // Restore the session on first mount when a non-expired token exists.
   useEffect(() => {
-    let cancelled = false;
-
-    async function restore() {
-      if (!tokenStore.isValid()) {
-        setInitializing(false);
-        return;
-      }
-      try {
-        const me = await api.auth.me();
-        if (!cancelled) setUser(me);
-      } catch {
-        tokenStore.clear();
-      } finally {
-        if (!cancelled) setInitializing(false);
-      }
-    }
-
-    void restore();
+    mounted.current = true;
     return () => {
-      cancelled = true;
+      mounted.current = false;
     };
   }, []);
 
-  const login = useCallback(async (payload: LoginRequest) => {
+  const load = useCallback(async (): Promise<AuthProfile | null> => {
+    setLoadingProfile(true);
     setError(null);
     try {
-      const session = await api.auth.login(payload);
-      tokenStore.set(session.tokens);
-      setUser(session.user);
-      return session.user;
+      const next = await api.auth.me();
+      if (mounted.current) setProfile(next);
+      return next;
     } catch (cause) {
-      const normalized = normalizeError(cause);
-      setError(normalized);
-      throw cause;
-    }
-  }, []);
-
-  const signUp = useCallback(async (payload: SignUpRequest) => {
-    setError(null);
-    try {
-      const session = await api.auth.signUp(payload);
-      tokenStore.set(session.tokens);
-      setUser(session.user);
-      return session.user;
-    } catch (cause) {
-      const normalized = normalizeError(cause);
-      setError(normalized);
-      throw cause;
-    }
-  }, []);
-
-  const choosePath = useCallback(async (path: UserPath) => {
-    const updated = await api.auth.choosePath({ path });
-    setUser(updated);
-    return updated;
-  }, []);
-
-  const logout = useCallback(async () => {
-    try {
-      await api.auth.logout();
+      // 401 -> no valid session; 403 -> suspended/disabled; 409 -> the identity
+      // cannot be mapped. All three mean "no usable profile", and every guard
+      // fails closed. The normalized error carries the correlation id required
+      // on an integration defect ticket (collaboration workflow § 18).
+      if (mounted.current) {
+        setProfile(null);
+        setError(normalizeError(cause));
+      }
+      return null;
     } finally {
-      // Clear locally even if the server call fails — the user asked to leave.
-      tokenStore.clear();
-      setUser(null);
+      if (mounted.current) setLoadingProfile(false);
     }
   }, []);
+
+  const { isLoaded, isSignedIn, userId } = session;
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setProfile(null);
+      setError(null);
+      return;
+    }
+    void load();
+  }, [isLoaded, isSignedIn, userId, load]);
+
+  const signOutFn = session.signOut;
+  const signOut = useCallback(async () => {
+    setProfile(null);
+    setError(null);
+    await signOutFn();
+  }, [signOutFn]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      user,
-      initializing,
-      isAuthenticated: user !== null,
-      login,
-      signUp,
-      choosePath,
-      logout,
+      profile,
+      user: profile?.user ?? null,
+      initializing: !isLoaded || (isSignedIn && profile === null && loadingProfile),
+      isAuthenticated: isSignedIn,
+      reload: load,
+      signOut,
       error,
     }),
-    [user, initializing, login, signUp, choosePath, logout, error],
+    [profile, isLoaded, isSignedIn, loadingProfile, load, signOut, error],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

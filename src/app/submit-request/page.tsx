@@ -1,3 +1,17 @@
+"use client";
+
+// ⚠ PRE-EXISTING DEFECT, fixed 2026-08-14 only to unblock `npm run build`.
+// This page passed `redirectTo={(reference) => ...}` — a function — from a
+// Server Component to the `ContactForm` Client Component, which React refuses
+// to serialise ("Functions cannot be passed directly to Client Components").
+// The build had never been executed successfully in this repository
+// (HANDOFF section 13; docs/VERIFICATION.md section 5 warns that `tsc` cannot
+// see RSC boundary violations), so it had gone unnoticed.
+//
+// Marking the page as a Client Component is the smallest correct fix and
+// changes no API and no behaviour. The alternative — turning `redirectTo` into
+// a serialisable value — changes ContactForm's public props and is an FE-owner
+// decision, not part of the Clerk task.
 import Link from "next/link";
 import { BrandMark } from "@/components/layout/BrandMark";
 import { Footer } from "@/components/layout/Footer";

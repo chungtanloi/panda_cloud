@@ -5,15 +5,22 @@
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
 - `branch_at_refresh`: `main`
-- `head_at_refresh`: `006d1774dffa4e1c7d1ad396cba2fa753a350719`
-- `source_file_count`: `9`
-- `source_fingerprint`: `6dfa6d0975ff8388eff598a1cbba040d96bcf739f6fdfa520ee4a2657e3fa258`
-- `last_full_read_at_utc`: `2026-08-13T07:41:32Z`
-- `last_context_refresh_at_utc`: `2026-08-13T07:41:32Z`
+- `head_at_refresh`: `3c127eb239f33f09d3d48bb5bd68c159166a8c44` (diagnostic only; the
+  working tree carries uncommitted Clerk-migration changes)
+- `source_file_count`: `11`
+- `source_fingerprint`: `41ba8d73cd21f9fcee3228c814c5fe623ce5977f65221ab7b1e0cbb073ef681f`
+- `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
+- `last_context_refresh_at_utc`: `2026-08-14T02:35:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
 authority.
+
+> The previous summary recorded fingerprint
+> `f2c95e01141e6e6b9130671ca5d04defe0da63431de560684c3e61492c8916b5` over 9
+> files. That fingerprint was stale: `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md`
+> was absent from the manifest and `README.md` had changed. The complete corpus
+> was therefore re-read on 2026-08-14 before any implementation work.
 
 ## Product purpose
 
@@ -38,7 +45,8 @@ formulas or the frontend's transitional requirements document.
   `ApiClient`; components do not call `fetch` and do not read environment
   variables.
 - The real adapter uses `NEXT_PUBLIC_API_BASE_URL`, which must end in `/api/v1`,
-  and a pinned `NEXT_PUBLIC_CONTRACT_VERSION`.
+  a pinned `NEXT_PUBLIC_CONTRACT_VERSION`, and — since the Clerk migration —
+  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`.
 - The public integration boundary is the backend's versioned Vercel HTTP
   gateway. The frontend must not import Convex schemas/functions or connect to
   the database directly.
@@ -46,18 +54,45 @@ formulas or the frontend's transitional requirements document.
   availability belong to backend-owned data sources. Static frontend config may
   contain approved presentation copy and layout metadata only.
 
+## Authentication and authorization
+
+Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
+
+- Clerk owns credentials, session, refresh, MFA and sign-out. PandaCloud issues,
+  stores and refreshes no token; `services/tokenStore.ts` and the
+  `POST /auth/refresh` retry are deleted (CR-003 closed).
+- The bearer is the Clerk session token from `getToken()` with no custom JWT
+  template, minted through `services/session.ts` and attached by
+  `services/http.ts`.
+- `GET /api/v1/auth/me` is the only authenticated operation the backend contract
+  defines. It returns the profile plus `authorization.isStaff` and the active
+  `memberships[]`.
+- Roles are canonical `lower_snake_case` membership roles: `sales`,
+  `compliance`, `legal`, `technical`, `manager`, `admin`, `customer`. Unknown
+  values fail closed. The frontend never sends or chooses a role.
+- `src/middleware.ts` gates workspace routes on an authenticated session only;
+  authorization stays in `RoleGuard` after `/auth/me` resolves, and the backend
+  remains the only real control.
+- `technical`, `legal` and `compliance` are recognised but have no workspace,
+  no navigation and no permissions — their route trees are proposed, not built.
+
 ## Current documented status
 
 - Marketing pages, authentication, Choose Your Path, the five-step Land Owner
   Assessment, and Dashboard Overview are documented as built. Some marketing
   imagery remains placeholder content.
+- The Clerk migration typechecks and builds clean in an isolated sandbox, with
+  two caveats recorded in `HANDOFF.md` section 13: `@kanban/library` was
+  substituted with a type stub, and no runtime behaviour was exercised against a
+  live Clerk instance or gateway.
+- A pre-existing RSC boundary defect in `src/app/submit-request/page.tsx` was
+  fixed because it aborted `next build` before any page was emitted. It was
+  unrelated to Clerk; the build had never previously been executed.
+- `next` was bumped 14.2.5 -> 14.2.35 because `@clerk/nextjs@6` peer-requires
+  `next ^14.2.25`. This needs owner review.
 - GPU Cluster Booking, AI Token Investment, and Hyperscale flows are mapped in
   Figma but are marked not started in the screen map. The financing and
   infrastructure pages require text verification from their design sources.
-- The static verification audit found architectural rules satisfied and fixed
-  two broken primary CTA destinations. It did not run `typecheck`, `lint`, or
-  `build`; those commands remain required before treating the application as
-  build-verified.
 - Known cleanup includes an obsolete wizard controller/shell and several unused
   types. Do not remove them without a task that includes implementation and
   verification.
@@ -72,7 +107,8 @@ formulas or the frontend's transitional requirements document.
 ### Public and customer journeys
 
 - Visitors discover services and choose Land Owner, GPU Cluster, AI Token, or
-  Hyperscale paths.
+  Hyperscale paths. The choice is navigation only — `PUT /auth/path` has no
+  approved backend field or endpoint and was removed.
 - The Land Owner flow collects land profile, power, energy source, facilities,
   and fiber data, then produces viability/report output. It is anonymous until
   PDF download requests sign-up.
@@ -93,7 +129,7 @@ formulas or the frontend's transitional requirements document.
   expose delete/create behavior for that path. Lost deals preserve audit
   history.
 - UI role guards are convenience only. The backend must reject every staff
-  operation for a non-staff token. Missing roles default to customer.
+  operation for a non-staff token. A missing membership means customer.
 - The Kanban package may ship a conflicting Tailwind preflight reset; if styles
   drift on the sales page, disable preflight in the library and rebuild it.
 
@@ -101,16 +137,19 @@ formulas or the frontend's transitional requirements document.
 
 - `docs/API_CONTRACT.md` is structured requirements input consumed by the
   existing UI. It is explicitly not the contract and must shrink as operations
-  enter the backend-owned OpenAPI source.
+  enter the backend-owned OpenAPI source. Its § 2 (Auth) is now superseded by
+  the OpenAPI draft and should be deleted once the owners confirm.
 - The backend repository owns the OpenAPI 3.1 source and tagged contract
   releases. The frontend pins and verifies a generated client artifact rather
   than following backend `main` or keeping a copied YAML contract.
-- The repository is documented as not yet contract-conformant. Open decisions
-  include success-envelope policy, minor-unit money migration, Clerk replacing
-  custom refresh tokens, signed direct-to-storage uploads, lower-snake-case role
-  enums, removal of the second contract, generated-client adoption, and
-  replacing the full mock implementation with contract-derived Prism/MSW
-  behavior.
+- The backend draft is `0.1.0-draft` and defines exactly one operation,
+  `GET /api/v1/auth/me`. It is not frozen, tagged or released, so nothing can be
+  pinned yet.
+- Open decisions remaining: success-envelope policy (CR-001), minor-unit money
+  migration (CR-002), signed direct-to-storage uploads (CR-004), removal of the
+  second contract (CR-006), generated-client adoption (CR-007), and replacing
+  the full mock implementation with contract-derived Prism/MSW behavior
+  (CR-008). CR-003 is closed; CR-005 no longer affects this repository.
 - File uploads currently proposed as multipart conflict with the canonical
   signed upload-session, direct private-storage PUT, checksum/finalize, and
   malware-gate workflow. Do not preserve multipart as the production design.
@@ -129,44 +168,53 @@ formulas or the frontend's transitional requirements document.
 - Financial data must eventually use the backend's approved money convention;
   existing major-unit floats are transitional and conflict with the canonical
   contract workflow.
-- Long-lived refresh tokens in local storage and frontend-managed refresh are
-  transitional; the approved target uses Clerk session management.
+- Do not reintroduce a PandaCloud token, refresh endpoint or localStorage
+  session, and do not compute `isStaff` on the client.
 
 ## Gaps and open questions
 
-- The backend OpenAPI source, tagged release, generated client, and contract
-  gates described by the collaboration workflow are not yet present for the
-  frontend to consume.
+- Fourteen `NEEDS CLARIFICATION` items for identity and access are enumerated in
+  `docs/CLERK_AUTH_DESIGN.md` section H. The most consequential is U-04: nothing
+  in the backend currently creates organizations or memberships, so no identity
+  can become staff.
+- The backend OpenAPI release, generated client, and contract gates described by
+  the collaboration workflow are not yet present for the frontend to consume.
 - Production operations remain required for GPU purchase inventory, broader
   infrastructure inventory, financing products, and backend-owned financing
   calculations.
 - Many Figma assets are unexported, Assessment Step 4 lacks a source design, and
   the Request Received and Hyperscale landing experiences need source/fidelity
   confirmation.
-- Canonical auth timing, CTA destinations, transaction/provider states,
-  formulas, pricing sources, and customer-dashboard entities must be confirmed
-  rather than inferred from mock screens.
-- Contract Change Requests CR-001 through CR-008 require FE and BE owner review.
+- Canonical CTA destinations, transaction/provider states, formulas, pricing
+  sources, and customer-dashboard entities must be confirmed rather than
+  inferred from mock screens.
+- Contract Change Requests CR-001, CR-002, CR-004, CR-006, CR-007 and CR-008
+  require FE and BE owner review.
 
 ## Cross-repository dependency
 
 The sibling `../PandaCloudBackend` repository owns business/domain persistence,
-the future Vercel gateway, OpenAPI source and contract releases. Validate that
-repository's `docs/AGENT_CONTEXT_SUMMARY.md` independently before cross-repo
-work. A valid frontend fingerprint does not imply a valid backend fingerprint.
+the Vercel gateway, OpenAPI source and contract releases. Its Phase 1 identity
+slice is implemented: a Next.js gateway, Clerk verification, an HMAC-signed
+Convex transport, five Convex collections, and Clerk webhook handling. Validate
+that repository's `docs/AGENT_CONTEXT_SUMMARY.md` independently before cross-repo
+work — as of 2026-08-14 it was stale and overstated the implementation. A valid
+frontend fingerprint does not imply a valid backend fingerprint.
 
 ## Source manifest
 
 `incorporated_at_utc` is the time each source was read into this summary.
 
-| Path | SHA-256 | Bytes | Modified UTC | Incorporated UTC |
-|---|---|---:|---|---|
-| `README.md` | `0fb7faa7e9127c6862fbb821a83904a0c4bb9547a6ba01cf8b87d9b0489397ff` | 4757 | `2026-08-13T06:32:01.674Z` | `2026-08-13T07:41:32Z` |
-| `docs/API_CONTRACT.md` | `b583e15c5c14e15d4316ed459bab052fa542169fb5bcb4f3a10a53b253447bdc` | 27648 | `2026-08-13T06:32:01.675Z` | `2026-08-13T07:41:32Z` |
-| `docs/CONTRACT_CONFORMANCE.md` | `31d985af65e924484b1cdded5288f3e54007df7d5f261cc3da9e35d1f5c59144` | 9247 | `2026-08-13T06:32:01.676Z` | `2026-08-13T07:41:32Z` |
-| `docs/FIGMA_ASSETS.md` | `5130a3fd9db00d07610a1cf0567cabede1d97da5e4a0b3c49c8be2784d9b9857` | 5582 | `2026-08-13T06:32:01.677Z` | `2026-08-13T07:41:32Z` |
-| `docs/FIGMA_SCREEN_MAP.md` | `6114b2ab2b4f0c01a3f6d0c933380ed7e4b71b7db3674513c44fbc79a4ba5a4e` | 5664 | `2026-08-13T06:32:01.677Z` | `2026-08-13T07:41:32Z` |
-| `docs/KANBAN_INTEGRATION.md` | `bb9616032bb68609c96185c50fd14127c4d50759a2a91b7a7753b40af5905515` | 5175 | `2026-08-13T06:32:01.678Z` | `2026-08-13T07:41:32Z` |
-| `docs/MOTION.md` | `9eb1b8f6b1f9fea64af705092362c1f7759767c9ff3df3388b5f29e7178127e7` | 3229 | `2026-08-13T06:32:01.678Z` | `2026-08-13T07:41:32Z` |
-| `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `a72fa7d714d9a4ac75c6e3734bedd492151d8f8d96a80b4d6ca97c3f66ebf9ce` | 2188 | `2026-08-13T06:32:01.679Z` | `2026-08-13T07:41:32Z` |
-| `docs/VERIFICATION.md` | `ded70d6a41ee66bf68f7690b9791654c8e158322a324a68ccc5f092266a3b21b` | 5704 | `2026-08-13T06:32:01.679Z` | `2026-08-13T07:41:32Z` |
+| Path | SHA-256 | Bytes | Incorporated UTC |
+|---|---|---:|---|
+| `README.md` | `15b1bef0151fb25b9bbf7c065ff15dfc63e0c6f0a700f5c367263295f2c49dd3` | 4683 | `2026-08-14T01:20:00Z` |
+| `docs/API_CONTRACT.md` | `7c26ff7652057ac77bc601c9e7b6222b05093328fca6136274130ed455ee0220` | 26848 | `2026-08-14T01:20:00Z` |
+| `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-14T02:35:00Z` |
+| `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-14T01:20:00Z` |
+| `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-14T01:20:00Z` |
+| `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-14T01:20:00Z` |
+| `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-14T01:20:00Z` |
+| `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-14T01:20:00Z` |
+| `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-14T01:20:00Z` |
+| `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-14T01:20:00Z` |
+| `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-14T01:20:00Z` |

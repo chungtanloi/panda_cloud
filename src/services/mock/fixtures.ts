@@ -11,13 +11,19 @@ import type {
 
 /** Deterministic sample data so the UI renders identically on every reload. */
 
+/**
+ * Fixture shaped exactly like `AuthMeResponse.user`
+ * (api-contracts/components.yaml). `company` and `path` are gone: the accepted
+ * identity schema has neither (PHASE_1_FRONTEND_AUTH_HANDOFF).
+ */
 export const mockUser: User = {
   id: "usr_01H8XQ",
   email: "jane@company.com",
   fullName: "Jane Cooper",
-  company: "Northwind Energy",
-  path: "land_owner",
+  userType: "customer",
+  status: "active",
   createdAt: "2026-07-01T08:12:00Z",
+  updatedAt: "2026-07-01T08:12:00Z",
 };
 
 /**

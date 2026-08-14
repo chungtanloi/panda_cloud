@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { isStaff, type User } from "@/models/auth";
+import { isStaff, type AuthProfile, type User } from "@/models/auth";
 
 /**
  * Figma node 2:1435 — "Aside - Sidebar Navigation".
@@ -37,7 +37,8 @@ const NAV_ITEMS: readonly NavItem[] = [
   { label: "Sales Pipeline", href: "/dashboard/sales", staffOnly: true },
 ];
 
-export function Sidebar({ user }: { user: User | null }) {
+export function Sidebar({ profile }: { profile: AuthProfile | null }) {
+  const user: User | null = profile?.user ?? null;
   const pathname = usePathname();
 
   return (
@@ -59,7 +60,7 @@ export function Sidebar({ user }: { user: User | null }) {
       </div>
 
       <nav className="relative flex flex-1 flex-col gap-[8px] p-[16px]">
-        {NAV_ITEMS.filter((item) => !item.staffOnly || isStaff(user)).map((item) => {
+        {NAV_ITEMS.filter((item) => !item.staffOnly || isStaff(profile)).map((item) => {
           const isActive = pathname === item.href;
 
           return (

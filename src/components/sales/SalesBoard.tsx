@@ -11,7 +11,7 @@ import "@kanban/library/styles.css";
 import { useMemo, useState } from "react";
 import { SALES_BOARD, SOURCE_LABELS, type DealSource } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
-import { canManageSalesBoard, isStaff } from "@/models/auth";
+import { canManageSalesBoard, isStaff, primaryRole } from "@/models/auth";
 import type { DealCard } from "@/models/sales";
 import { cn } from "@/lib/cn";
 import { createSalesAdapter } from "./salesAdapter";
@@ -32,7 +32,7 @@ import { ManualDealModal } from "./ManualDealModal";
  * access control.
  */
 export function SalesBoard() {
-  const { user } = useAuth();
+  const { profile, user } = useAuth();
   const [sourceFilter, setSourceFilter] = useState<DealSource | "all">("all");
   const [showCreate, setShowCreate] = useState(false);
   const [boardVersion, setBoardVersion] = useState(0);
@@ -43,12 +43,15 @@ export function SalesBoard() {
   // sales_manager gets the same board power as admin here — see the doc
   // comment on canManageSalesBoard for why this is a separate check from
   // "is admin".
-  const canManageBoard = canManageSalesBoard(user);
+  const canManageBoard = canManageSalesBoard(profile);
 
   const config = useMemo(
     () => ({
       adapter,
-      user: user ? { id: user.id, role: user.role } : undefined,
+      // The library only needs a label; authorization is the backend's.
+      // See WORKSPACE_ROLE_PRECEDENCE (U-03) for how one role is chosen when an
+      // identity holds several active memberships.
+      user: user ? { id: user.id, role: primaryRole(profile) ?? undefined } : undefined,
 
       cardRender: (card: DealCard) => <DealCardView card={card} />,
 
@@ -70,11 +73,11 @@ export function SalesBoard() {
       canEditCard: () => Boolean(user),
       canMoveCard: () => Boolean(user),
       /** Staff may add outbound/offline leads; customer forms still create cards automatically. */
-      canCreateCard: () => isStaff(user),
+      canCreateCard: () => isStaff(profile),
       /** Sales managers and admins only, and even then the backend should prefer "Lost". */
       canDeleteCard: () => canManageBoard,
     }),
-    [adapter, user, canManageBoard],
+    [adapter, profile, user, canManageBoard],
   );
 
   return (

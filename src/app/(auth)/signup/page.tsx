@@ -3,41 +3,46 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { useSignUp } from "@clerk/nextjs";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { DecorativeCorners } from "@/components/layout/DecorativeCorners";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Field";
-import { useAuth } from "@/controllers/AuthContext";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, minLength, required } from "@/lib/validation";
-import type { SignUpRequest } from "@/models/auth";
-import { normalizeError } from "@/services/api";
+import { clerkEnabled } from "@/services/config";
+import { ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
 /**
- * Figma node 2:887 — "Sign Up | Cloud Panda".
- *   card    — 480px, rgba(51,53,57,.6), 1px rgba(58,73,75,.3), radius 16,
- *             padding 41, backdrop-blur 12, shadow 0 25px 50px -12px
- *   badge   — "ASSET OWNERS" accent pill (node 2:896)
- *   heading — 24px semibold, tracking -0.6px
- *   fields  — pill variant (radius 9999, 11px labels)
- *   submit  — 54.5px tall, full-width pill, 15px bold
+ * Figma node 2:887 — "Sign Up | Cloud Panda". Card, badge, field variants and
+ * submit button are unchanged; the handler is a Clerk custom flow.
  *
- * Per the design's own copy, a successful sign-up drops the user straight into
- * the Land Owner Assessment flow rather than the dashboard.
+ * The email verification step is **required, not cosmetic**: the gateway
+ * refuses to create a PandaCloud profile without a verified primary email and
+ * answers `409 IDENTITY_EMAIL_REQUIRED`
+ * (`PandaCloudBackend/src/integrations/clerk.ts` → `getTrustedProfile`).
+ *
+ * Per the design's own copy, a completed sign-up drops the user straight into
+ * the Land Owner Assessment flow.
  */
 export default function SignUpPage() {
-  // useSearchParams requires a Suspense boundary under the App Router.
   return (
     <Suspense>
-      <SignUpView />
+      {clerkEnabled ? <SignUpView /> : <ClerkNotConfigured action="Sign up" />}
     </Suspense>
   );
+}
+
+interface SignUpFields {
+  fullName: string;
+  email: string;
+  password: string;
 }
 
 function SignUpView() {
   const router = useRouter();
   const params = useSearchParams();
-  const { signUp } = useAuth();
+  const { isLoaded, signUp, setActive } = useSignUp();
 
   /** Same-origin relative paths only — guards against open redirects. */
   const rawReturnTo = params.get("returnTo");
@@ -46,8 +51,10 @@ function SignUpView() {
     : null;
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [code, setCode] = useState("");
 
-  const form = useForm<SignUpRequest>(
+  const form = useForm<SignUpFields>(
     { fullName: "", email: "", password: "" },
     {
       fullName: required("Full name"),
@@ -56,22 +63,48 @@ function SignUpView() {
     },
   );
 
+  const destination = returnTo ?? "/assessment";
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError(null);
     if (!form.validateAll()) return;
+    if (!isLoaded || !signUp) return;
 
     setSubmitting(true);
     try {
-      await signUp(form.values);
-      // The design routes new sign-ups straight into the Land Owner
-      // Assessment; a returnTo overrides that when the user was interrupted
-      // mid-flow (e.g. downloading their report).
-      router.push(returnTo ?? "/assessment");
+      const [firstName, ...rest] = form.values.fullName.trim().split(/\s+/);
+      await signUp.create({
+        emailAddress: form.values.email,
+        password: form.values.password,
+        firstName: firstName || undefined,
+        lastName: rest.length ? rest.join(" ") : undefined,
+      });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setAwaitingCode(true);
     } catch (cause) {
-      const error = normalizeError(cause);
-      form.applyServerError(error);
-      if (!error.fieldErrors) setFormError(error.message);
+      setFormError(clerkErrorMessage(cause, "We could not create your account. Please try again."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerify(event: React.FormEvent) {
+    event.preventDefault();
+    setFormError(null);
+    if (!isLoaded || !signUp || !setActive) return;
+
+    setSubmitting(true);
+    try {
+      const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
+      if (attempt.status !== "complete") {
+        setFormError("That code did not complete the sign-up. Check the code and try again.");
+        return;
+      }
+      await setActive({ session: attempt.createdSessionId });
+      router.push(destination);
+    } catch (cause) {
+      setFormError(clerkErrorMessage(cause, "That verification code is not valid."));
     } finally {
       setSubmitting(false);
     }
@@ -87,76 +120,103 @@ function SignUpView() {
           <Badge className="self-start">Asset Owners</Badge>
 
           <h1 className="pt-[17px] font-sans text-[24px] font-semibold leading-[31.2px] tracking-[-0.6px] text-ink">
-            Create your account
+            {awaitingCode ? "Verify your email" : "Create your account"}
           </h1>
 
           <p className="font-sans text-[16px] leading-[25.6px] text-ink-dim">
-            We&apos;ll create your account and drop you straight into the Land Owner Assessment
-            flow.
+            {awaitingCode
+              ? `We sent a six-digit code to ${form.values.email}. Cloud Panda needs a verified email before it can create your profile.`
+              : "We'll create your account and drop you straight into the Land Owner Assessment flow."}
           </p>
         </header>
 
-        <form className="flex flex-col gap-[16px]" onSubmit={handleSubmit} noValidate>
-          <Input
-            variant="pill"
-            label="Full name"
-            autoComplete="name"
-            placeholder="Jane Doe"
-            value={form.values.fullName}
-            onChange={(e) => form.setField("fullName", e.target.value)}
-            onBlur={() => form.blurField("fullName")}
-            error={form.touched.fullName ? form.errors.fullName : undefined}
-          />
+        {awaitingCode ? (
+          <form className="flex flex-col gap-[16px]" onSubmit={handleVerify} noValidate>
+            <Input
+              variant="pill"
+              label="Verification code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              hint="Check your inbox, including spam."
+            />
 
-          <Input
-            variant="pill"
-            label="Email"
-            type="email"
-            autoComplete="email"
-            placeholder="jane@company.com"
-            value={form.values.email}
-            onChange={(e) => form.setField("email", e.target.value)}
-            onBlur={() => form.blurField("email")}
-            error={form.touched.email ? form.errors.email : undefined}
-          />
+            {formError ? (
+              <p role="alert" className="font-sans text-[12px] text-red-400">
+                {formError}
+              </p>
+            ) : null}
 
-          <Input
-            variant="pill"
-            label="Password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="••••••••"
-            value={form.values.password}
-            onChange={(e) => form.setField("password", e.target.value)}
-            onBlur={() => form.blurField("password")}
-            error={form.touched.password ? form.errors.password : undefined}
-            hint="At least 8 characters."
-          />
+            <div className="pt-[16px]">
+              <SubmitButton submitting={submitting} label="Verify &amp; Continue" />
+            </div>
 
-          {formError ? (
-            <p role="alert" className="font-sans text-[12px] text-red-400">
-              {formError}
-            </p>
-          ) : null}
-
-          <div className="pt-[16px]">
             <button
-              type="submit"
-              disabled={submitting}
-              aria-busy={submitting || undefined}
-              className="relative flex h-[54.5px] w-full items-center justify-center gap-[8px] rounded-full bg-accent font-sans text-[15px] font-bold leading-[22.5px] text-accent-fg transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+              type="button"
+              onClick={() => {
+                setAwaitingCode(false);
+                setFormError(null);
+                setCode("");
+              }}
+              className="pt-[8px] text-center font-sans text-[13px] text-ink-dim hover:text-accent"
             >
-              {submitting ? (
-                <span
-                  aria-hidden
-                  className="size-[16px] animate-spin rounded-full border-2 border-current border-t-transparent"
-                />
-              ) : null}
-              Create Account &amp; Continue
-              {!submitting ? <ArrowRight /> : null}
+              Use a different email
             </button>
-          </div>
-        </form>
+          </form>
+        ) : (
+          <form className="flex flex-col gap-[16px]" onSubmit={handleSubmit} noValidate>
+            <Input
+              variant="pill"
+              label="Full name"
+              autoComplete="name"
+              placeholder="Jane Doe"
+              value={form.values.fullName}
+              onChange={(e) => form.setField("fullName", e.target.value)}
+              onBlur={() => form.blurField("fullName")}
+              error={form.touched.fullName ? form.errors.fullName : undefined}
+            />
+
+            <Input
+              variant="pill"
+              label="Email"
+              type="email"
+              autoComplete="email"
+              placeholder="jane@company.com"
+              value={form.values.email}
+              onChange={(e) => form.setField("email", e.target.value)}
+              onBlur={() => form.blurField("email")}
+              error={form.touched.email ? form.errors.email : undefined}
+            />
+
+            <Input
+              variant="pill"
+              label="Password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="••••••••"
+              value={form.values.password}
+              onChange={(e) => form.setField("password", e.target.value)}
+              onBlur={() => form.blurField("password")}
+              error={form.touched.password ? form.errors.password : undefined}
+              hint="At least 8 characters."
+            />
+
+            {formError ? (
+              <p role="alert" className="font-sans text-[12px] text-red-400">
+                {formError}
+              </p>
+            ) : null}
+
+            {/* Clerk bot protection mounts here when the instance enables it. */}
+            <div id="clerk-captcha" />
+
+            <div className="pt-[16px]">
+              <SubmitButton submitting={submitting} label="Create Account &amp; Continue" />
+            </div>
+          </form>
+        )}
 
         <p className="pt-[32px] text-center font-sans text-[14px] leading-[21px] text-ink-dim">
           Already have an account?{" "}
@@ -169,6 +229,27 @@ function SignUpView() {
         </p>
       </div>
     </main>
+  );
+}
+
+/** Figma node 2:922 — 54.5px full-width pill. */
+function SubmitButton({ submitting, label }: { submitting: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={submitting}
+      aria-busy={submitting || undefined}
+      className="relative flex h-[54.5px] w-full items-center justify-center gap-[8px] rounded-full bg-accent font-sans text-[15px] font-bold leading-[22.5px] text-accent-fg transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+    >
+      {submitting ? (
+        <span
+          aria-hidden
+          className="size-[16px] animate-spin rounded-full border-2 border-current border-t-transparent"
+        />
+      ) : null}
+      {label.replace("&amp;", "&")}
+      {!submitting ? <ArrowRight /> : null}
+    </button>
   );
 }
 

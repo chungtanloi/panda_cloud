@@ -1,15 +1,13 @@
 import type {
   AssessmentResult,
   AssessmentSubmission,
-  AuthSession,
-  AuthTokens,
+  AuthProfile,
   BookingDraft,
   BookingQuote,
   BookingRequestResult,
   BookingSubmission,
   WorkloadRecommendation,
   WorkloadType,
-  ChoosePathRequest,
   DashboardSummary,
   DealCard,
   DealCardCreate,
@@ -36,14 +34,11 @@ import type {
   LeadResponse,
   LivePreview,
   LivePreviewRequest,
-  LoginRequest,
   RequestReceipt,
-  SignUpRequest,
   TokenRate,
   UploadedDocument,
-  User,
 } from "@/models";
-import { normalizeUserRole } from "@/models";
+import { normalizeMembershipRole } from "@/models";
 import type { ApiClient } from "../contracts";
 import { endpoints } from "../endpoints";
 import { http } from "../http";
@@ -55,20 +50,7 @@ import { http } from "../http";
  */
 export const httpApi: ApiClient = {
   auth: {
-    login: (payload: LoginRequest) =>
-      http.post<AuthSession>(endpoints.auth.login, payload, { anonymous: true }).then(normalizeSession),
-
-    signUp: (payload: SignUpRequest) =>
-      http.post<AuthSession>(endpoints.auth.signUp, payload, { anonymous: true }).then(normalizeSession),
-
-    refresh: (refreshToken: string) =>
-      http.post<AuthTokens>(endpoints.auth.refresh, { refreshToken }, { anonymous: true }),
-
-    me: () => http.get<User>(endpoints.auth.me).then(normalizeUser),
-
-    choosePath: (payload: ChoosePathRequest) => http.put<User>(endpoints.auth.choosePath, payload).then(normalizeUser),
-
-    logout: () => http.post<void>(endpoints.auth.logout),
+    me: () => http.get<AuthProfile>(endpoints.auth.me).then(normalizeAuthProfile),
   },
 
   assessment: {
@@ -189,5 +171,27 @@ export const httpApi: ApiClient = {
   },
 };
 
-function normalizeUser(user: User): User { return { ...user, role: normalizeUserRole(user.role) }; }
-function normalizeSession(session: AuthSession): AuthSession { return { ...session, user: normalizeUser(session.user) }; }
+/**
+ * Fail-closed membership normalisation.
+ *
+ * PHASE_1_FRONTEND_AUTH_HANDOFF requires the frontend to handle every backend
+ * role value with an unknown-value fallback. A membership whose role this build
+ * does not recognise is dropped: it grants nothing, rather than being coerced
+ * into a role that happens to look similar. Dropping is visible in development
+ * so a contract change is noticed instead of silently under-authorising.
+ */
+function normalizeAuthProfile(profile: AuthProfile): AuthProfile {
+  const memberships = [];
+  for (const membership of profile.authorization.memberships ?? []) {
+    const role = normalizeMembershipRole(membership.role);
+    if (role) {
+      memberships.push({ ...membership, role });
+    } else if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        `[api] /auth/me returned an unrecognised membership role; it grants nothing. ` +
+          `Pin a newer contract release or raise a Change Request.`,
+      );
+    }
+  }
+  return { ...profile, authorization: { ...profile.authorization, memberships } };
+}

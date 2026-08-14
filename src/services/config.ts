@@ -38,11 +38,26 @@ export const apiConfig = {
    * requires.
    */
   contractVersion: process.env.NEXT_PUBLIC_CONTRACT_VERSION ?? "unpinned",
+
+  /**
+   * Clerk publishable key.
+   *
+   * Clerk fixes this variable name; it is safe to expose (it is the public
+   * half of the instance credentials). The secret key, the JWT issuer/audience
+   * and the webhook signing secret are **backend-only** and must never appear
+   * with a `NEXT_PUBLIC_` prefix — see `PandaCloudBackend/.env.example` and
+   * DEALFLOW_MVP_DATABASE_DESIGN § 8.3.
+   */
+  clerkPublishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "",
 } as const;
 
+/** True when a Clerk instance is configured for this build. */
+export const clerkEnabled: boolean = apiConfig.clerkPublishableKey.length > 0;
+
 /**
- * Fail loudly at startup when the real adapter is selected without a base URL,
- * rather than emitting requests to a relative path nobody expects.
+ * Fail loudly at startup when the real adapter is selected without a base URL
+ * or without Clerk, rather than emitting unauthenticated requests nobody
+ * expects.
  */
 export function assertApiConfig(): void {
   if (apiConfig.contractVersion === "unpinned") {
@@ -73,4 +88,13 @@ export function assertApiConfig(): void {
     );
   }
 
+  // CR-003: the gateway only accepts a Clerk session JWT. Running the HTTP
+  // adapter without Clerk cannot authenticate anything, so fail at startup
+  // instead of issuing requests that can only ever return 401.
+  if (!clerkEnabled) {
+    throw new Error(
+      "[config] NEXT_PUBLIC_API_ADAPTER=http requires NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY. " +
+        "The gateway authenticates with a Clerk session JWT (GET /api/v1/auth/me).",
+    );
+  }
 }

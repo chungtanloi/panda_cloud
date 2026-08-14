@@ -6,8 +6,6 @@ import { useState } from "react";
 import { Logo } from "@/components/layout/Logo";
 import { Badge } from "@/components/ui/Badge";
 import { PATH_OPTIONS, type PathOption } from "@/config/paths";
-import { useAuth } from "@/controllers/AuthContext";
-import { normalizeError } from "@/services/api";
 import type { UserPath } from "@/models/auth";
 
 /**
@@ -18,25 +16,25 @@ import type { UserPath } from "@/models/auth";
  *   grid    — 4 × 241px cards, gap 20, max-w 1024, h 221.19
  *   card    — rgba(26,26,26,.6), 1px rgba(255,255,255,.1), radius 48, blur 8
  *
- * Each card is a real <button>: choosing a path persists it via the API, then
- * routes into that track's onboarding flow.
+ * Each card is a real <button> that routes into that track's onboarding flow.
+ *
+ * ⚠ NEEDS CLARIFICATION (U-09). The previous `PUT /auth/path` call has been
+ * removed. PHASE_1_FRONTEND_AUTH_HANDOFF: "`choose-path` currently persists
+ * through `PUT /auth/path`, but the accepted backend model has no approved
+ * field or endpoint for it. Continue to treat this as a product/architecture
+ * decision; do not encode it as authorization."
+ *
+ * The selection is therefore navigation only — nothing stores it. A storage
+ * location must be agreed with the product and backend owners before this page
+ * can remember anything.
  */
 export default function ChoosePathPage() {
   const router = useRouter();
-  const { choosePath } = useAuth();
   const [pending, setPending] = useState<UserPath | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleChoose(option: PathOption) {
+  function handleChoose(option: PathOption) {
     setPending(option.id);
-    setError(null);
-    try {
-      await choosePath(option.id);
-      router.push(option.route);
-    } catch (cause) {
-      setError(normalizeError(cause).message);
-      setPending(null);
-    }
+    router.push(option.route);
   }
 
   return (
@@ -100,12 +98,6 @@ export default function ChoosePathPage() {
             );
           })}
         </div>
-
-        {error ? (
-          <p role="alert" className="pt-[24px] font-sans text-[14px] text-red-400">
-            {error}
-          </p>
-        ) : null}
 
         <p className="pt-[64px] text-center font-sans text-[16px] leading-[25.6px] text-ink-dim">
           Already have an account?{" "}

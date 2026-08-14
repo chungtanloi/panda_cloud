@@ -11,7 +11,8 @@ import { mockApi } from "./mock";
  * is exactly the point: when the backend team is ready, set
  *
  *     NEXT_PUBLIC_API_ADAPTER=http
- *     NEXT_PUBLIC_API_BASE_URL=https://api.cloudpanda.example/v1
+ *     NEXT_PUBLIC_API_BASE_URL=https://api.cloudpanda.example/api/v1
+ *     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
  *
  * and no UI or business-logic file changes.
  *
@@ -26,5 +27,5 @@ export const api: ApiClient = apiConfig.adapter === "http" ? httpApi : mockApi;
 
 export { apiConfig } from "./config";
 export { ApiError, normalizeError } from "./http";
-export { tokenStore } from "./tokenStore";
+export { sessionBridge } from "./session";
 export type { ApiClient } from "./contracts";
