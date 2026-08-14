@@ -27,6 +27,8 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: string;
   hint?: string;
   variant?: FieldVariant;
+  /** Optional adornment (e.g. a show/hide password toggle) inside the field, right-aligned. */
+  trailing?: React.ReactNode;
 }
 
 const labelStyles: Record<FieldVariant, string> = {
@@ -47,7 +49,7 @@ const borderStyles: Record<FieldVariant, string> = {
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, error, hint, variant = "boxed", className, id, ...rest },
+  { label, error, hint, variant = "boxed", trailing, className, id, ...rest },
   ref,
 ) {
   const generatedId = useId();
@@ -63,20 +65,26 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         {label}
       </label>
 
-      <input
-        ref={ref}
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        className={cn(
-          "w-full border bg-deep font-sans leading-normal text-ink",
-          "transition-colors focus:border-accent focus:outline-none",
-          inputStyles[variant],
-          error ? "border-red-400/70" : borderStyles[variant],
-          className,
-        )}
-        {...rest}
-      />
+      <div className="relative flex items-center">
+        <input
+          ref={ref}
+          id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          className={cn(
+            "w-full border bg-deep font-sans leading-normal text-ink",
+            "transition-colors focus:border-accent focus:outline-none",
+            inputStyles[variant],
+            trailing ? "pr-[44px]" : undefined,
+            error ? "border-red-400/70" : borderStyles[variant],
+            className,
+          )}
+          {...rest}
+        />
+        {trailing ? (
+          <span className="absolute right-[14px] flex items-center">{trailing}</span>
+        ) : null}
+      </div>
 
       {error ? (
         <p id={`${inputId}-error`} role="alert" className="font-sans text-[12px] text-red-400">
