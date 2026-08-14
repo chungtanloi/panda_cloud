@@ -57,7 +57,7 @@ export function TopNavBar() {
             Flagged in docs/FIGMA_SCREEN_MAP.md as an accessibility question
             for the designer rather than silently "corrected" here. */}
         <Link
-          href="/signup"
+          href="/choose-path"
           className="shrink-0 rounded-full px-[24px] py-[10px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-deep transition-colors hover:text-accent"
         >
           Get Started

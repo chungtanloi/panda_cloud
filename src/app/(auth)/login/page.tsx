@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSignIn } from "@clerk/nextjs";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { Button } from "@/components/ui/Button";
@@ -43,7 +43,7 @@ function LoginView() {
   const router = useRouter();
   const params = useSearchParams();
   const { isLoaded, signIn, setActive } = useSignIn();
-  const { reload } = useAuth();
+  const { isAuthenticated, reload } = useAuth();
 
   /**
    * Where to go after signing in. Only same-origin relative paths are
@@ -55,6 +55,19 @@ function LoginView() {
     : null;
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isLoaded || !isAuthenticated) return;
+    let active = true;
+    void reload().then((profile) => {
+      if (!active) return;
+      // Clerk already has a session; do not create a second sign-in attempt.
+      router.replace(returnTo ?? homeForProfile(profile));
+    });
+    return () => {
+      active = false;
+    };
+  }, [isLoaded, isAuthenticated, reload, router, returnTo]);
+
 
   const form = useForm<LoginFields>(
     { email: "", password: "" },
