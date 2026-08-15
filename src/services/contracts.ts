@@ -3,11 +3,6 @@ import type {
   AssessmentSubmission,
   AuthProfile,
   DashboardSummary,
-  DealCard,
-  DealCardCreate,
-  DealCardPatch,
-  DealColumn,
-  DealStage,
   GpuModel,
   ResourceTable,
   WorkspaceResourceKind,
@@ -37,6 +32,14 @@ import type {
   RequestReceipt,
   TokenRate,
   UploadedDocument,
+  SalesCardDetailDto,
+  SalesCardListQuery,
+  SalesCardMoveRequest,
+  SalesCardMoveResponse,
+  SalesCardPage,
+  SalesCardUpdateRequest,
+  SalesCardUpdateResponse,
+  SalesColumnListResponse,
 } from "@/models";
 
 /**
@@ -134,21 +137,20 @@ export interface WorkspaceService {
  * Sales pipeline. **Staff only** — every method requires an authenticated user
  * whose role is `sales` or `admin`.
  *
- * Customer submissions create cards transactionally on the backend. Manual
- * creation exists only for outbound/offline CRM leads.
+ * Card creation is not exposed here: the backend creates a card
+ * transactionally with the submission that produced it. There is no create or
+ * delete operation in the contract (`api-contracts/paths/sales-*.yaml`).
  */
 export interface SalesService {
-  listColumns(): Promise<DealColumn[]>;
-  listCards(): Promise<DealCard[]>;
-  /** Heavier record for the detail panel — full answers, notes, history. */
-  getCard(id: string): Promise<DealCard>;
-  /** Manual CRM entry; automatic form-driven creation remains the primary path. */
-  createCard(payload: DealCardCreate): Promise<DealCard>;
-  updateCard(id: string, patch: DealCardPatch): Promise<DealCard>;
-  /** Separate from update so the backend can reorder siblings atomically. */
-  moveCard(id: string, toColumnId: DealStage, order?: number): Promise<DealCard>;
-  /** Manager/Admin only. Backend must preserve an audit event. */
-  deleteCard(id: string): Promise<void>;
+  listColumns(): Promise<SalesColumnListResponse>;
+  /** Cursor-paginated cards for ONE column. `columnId` is required. */
+  listCards(query: SalesCardListQuery): Promise<SalesCardPage>;
+  /** Heavier record for the detail panel — description, createdAt, createdBy, … */
+  getCard(id: string): Promise<SalesCardDetailDto>;
+  /** Optimistic-concurrency partial update. Rejects 409 on a stale revision. */
+  updateCard(id: string, body: SalesCardUpdateRequest): Promise<SalesCardUpdateResponse>;
+  /** Stage transition, guarded by expectedRevision. */
+  moveCard(id: string, body: SalesCardMoveRequest): Promise<SalesCardMoveResponse>;
 }
 
 /** The complete surface exposed by `services/api.ts`. */

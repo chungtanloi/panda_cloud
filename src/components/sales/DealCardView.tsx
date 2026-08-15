@@ -1,6 +1,13 @@
-import { SOURCE_LABELS, SOURCE_STYLES, type DealSource } from "@/config/sales";
-import type { DealCard } from "@/models/sales";
+import { PRIORITY_LABELS, PRIORITY_STYLES, STATUS_LABELS, VERTICAL_LABELS, VERTICAL_STYLES } from "@/config/sales";
+import type { SalesCard } from "@/models/sales";
+import { formatMinorUnitsCompact } from "@/models/common";
 import { cn } from "@/lib/cn";
+
+function shortDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 /**
  * Card renderer passed to the board via `cardRender`.
@@ -9,73 +16,50 @@ import { cn } from "@/lib/cn";
  * button here would either swallow the drag or start one accidentally. Links
  * live in the detail panel instead.
  */
-export function DealCardView({ card }: { card: DealCard }) {
-  const source = card.source as DealSource;
-
+export function DealCardView({ card }: { card: SalesCard }) {
   return (
-    // data-deal-source drives the CSS source filter — see .kanban-scope in
+    // data-deal-vertical drives the CSS vertical filter — see .kanban-scope in
     // globals.css. Filtering this way keeps cards mounted, so drag state and
     // scroll position survive.
-    <article data-deal-source={source} className="flex flex-col gap-[10px]">
+    <article data-deal-vertical={card.vertical} className="flex flex-col gap-[10px]">
       <header className="flex items-start justify-between gap-[8px]">
         <span
           className={cn(
             "rounded-field border px-[7px] py-[3px] font-mono text-[9px] uppercase tracking-[1px]",
-            SOURCE_STYLES[source],
+            VERTICAL_STYLES[card.vertical],
           )}
         >
-          {SOURCE_LABELS[source]}
+          {VERTICAL_LABELS[card.vertical]}
         </span>
 
-        <span className="font-mono text-[9px] tracking-[0.6px] text-ink-faint">
-          {card.reference}
+        <span
+          className={cn(
+            "rounded-field border px-[7px] py-[3px] font-mono text-[9px] uppercase tracking-[1px]",
+            PRIORITY_STYLES[card.priority],
+          )}
+        >
+          {PRIORITY_LABELS[card.priority]}
         </span>
       </header>
 
       <h3 className="font-sans text-[13px] font-medium leading-[19px] text-white">{card.title}</h3>
 
       <p className="font-sans text-[11px] leading-[16px] text-ink-dim">
-        {card.contactName}
-        {card.companyName ? ` · ${card.companyName}` : ""}
+        {formatMinorUnitsCompact(card.estimatedValueMinor, card.currency)}
+        {card.probabilityPercent !== null && card.probabilityPercent !== undefined
+          ? ` · ${card.probabilityPercent}%`
+          : ""}
+        {card.expectedCloseDate ? ` · close ${card.expectedCloseDate}` : ""}
       </p>
 
-      {card.highlights?.length ? (
-        <ul className="flex flex-wrap gap-[5px]">
-          {card.highlights.slice(0, 3).map((highlight) => (
-            <li
-              key={highlight.label}
-              className="rounded-field border border-line-soft bg-white/[0.03] px-[6px] py-[3px] font-mono text-[9px] text-ink-dim"
-            >
-              {highlight.label}: <span className="text-ink">{highlight.value}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {card.dealValueUsd !== undefined || card.probability !== undefined ? (
-        <footer className="flex items-center justify-between gap-[8px] border-t border-line-soft pt-[8px]">
-          {card.dealValueUsd !== undefined ? (
-            <span className="font-sans text-[12px] font-semibold leading-[18px] text-accent">
-              {formatUsd(card.dealValueUsd)}
-            </span>
-          ) : (
-            <span />
-          )}
-
-          {card.probability !== undefined ? (
-            <span className="font-mono text-[9px] uppercase tracking-[1px] text-ink-dim">
-              {card.probability}%
-            </span>
-          ) : null}
-        </footer>
-      ) : null}
+      <footer className="flex items-center justify-between gap-[8px] border-t border-line-soft pt-[8px]">
+        <span className="font-mono text-[9px] uppercase tracking-[1px] text-ink-faint">
+          {STATUS_LABELS[card.status]}
+        </span>
+        <span className="font-mono text-[9px] tracking-[0.6px] text-ink-faint">
+          {shortDate(card.updatedAt)}
+        </span>
+      </footer>
     </article>
   );
-}
-
-/** Compact currency so a $252,500,000 deal does not blow the card width. */
-export function formatUsd(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
-  return `$${value.toLocaleString("en-US")}`;
 }

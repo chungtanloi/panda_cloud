@@ -131,20 +131,16 @@
   }
 
   /**
-   * Source filter on the sales board.
+   * Vertical filter on the sales board.
    *
    * Cards are hidden with CSS rather than unmounted, so scroll position and any
-   * in-flight drag survive a filter change. `data-deal-source` is set by the
+   * in-flight drag survive a filter change. `data-deal-vertical` is set by the
    * card renderer.
    */
-  .kanban-scope[data-source-filter="assessment"] [data-deal-source]:not([data-deal-source="assessment"]),
-  .kanban-scope[data-source-filter="booking"] [data-deal-source]:not([data-deal-source="booking"]),
-  .kanban-scope[data-source-filter="investment"] [data-deal-source]:not([data-deal-source="investment"]),
-  .kanban-scope[data-source-filter="hyperscale"] [data-deal-source]:not([data-deal-source="hyperscale"]),
-  .kanban-scope[data-source-filter="lead_form"] [data-deal-source]:not([data-deal-source="lead_form"]) {
-    display: none;
-  }
-  .kanban-scope[data-source-filter="manual"] [data-deal-source]:not([data-deal-source="manual"]) {
+  .kanban-scope[data-vertical-filter="land"] [data-deal-vertical]:not([data-deal-vertical="land"]),
+  .kanban-scope[data-vertical-filter="gpu"] [data-deal-vertical]:not([data-deal-vertical="gpu"]),
+  .kanban-scope[data-vertical-filter="token"] [data-deal-vertical]:not([data-deal-vertical="token"]),
+  .kanban-scope[data-vertical-filter="hyperscale"] [data-deal-vertical]:not([data-deal-vertical="hyperscale"]) {
     display: none;
   }
 

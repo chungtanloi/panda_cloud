@@ -155,6 +155,64 @@ export function formatMoney(money: Money, locale = "en-US"): string {
   }).format(money.amountMinor / 100);
 }
 
+/** ISO 4217 minor-unit fraction digits. Default is 2; only exceptions are listed. */
+const CURRENCY_FRACTION_DIGITS: Record<string, number> = {
+  BHD: 3, IQD: 3, JOD: 3, KWD: 3, LYD: 3, OMR: 3, TND: 3,
+  CLF: 4,
+  ISK: 0, JPY: 0, KRW: 0, VND: 0,
+};
+
+export function currencyFractionDigits(currency: string): number {
+  return CURRENCY_FRACTION_DIGITS[currency] ?? 2;
+}
+
+/**
+ * Formats a minor-unit amount (transported as a string by the backend to avoid
+ * integer precision loss) for display. Never used to do arithmetic.
+ *
+ * The major-unit number fed to `Intl.NumberFormat` is exact within
+ * `Number.MAX_SAFE_INTEGER`; real deal values stay far below that.
+ */
+export function formatMinorUnits(
+  minorUnits: string | null | undefined,
+  currency: string | null | undefined,
+  locale = "en-US",
+): string {
+  if (minorUnits === null || minorUnits === undefined || minorUnits === "" || !currency) {
+    return "—";
+  }
+  const digits = currencyFractionDigits(currency);
+  const major = Number(minorUnits) / 10 ** digits;
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+  }).format(major);
+}
+
+/**
+ * Compact variant for card footers where a full currency string would blow the
+ * width (e.g. "$252.5M"). Display only — no arithmetic semantics.
+ */
+export function formatMinorUnitsCompact(
+  minorUnits: string | null | undefined,
+  currency: string | null | undefined,
+  locale = "en-US",
+): string {
+  if (minorUnits === null || minorUnits === undefined || minorUnits === "" || !currency) {
+    return "—";
+  }
+  const digits = currencyFractionDigits(currency);
+  const major = Number(minorUnits) / 10 ** digits;
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(major);
+}
+
 /* --------------------------------- Misc --------------------------------- */
 
 /** Discriminated result used by controllers so views never see a raw throw. */
