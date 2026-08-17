@@ -121,6 +121,8 @@ export interface KycCase {
 }
 
 export type KycDocumentRole = "identity_document" | "proof_of_address" | "company_registration" | "beneficial_owner" | "source_of_funds" | "supporting";
+export const KYC_DOCUMENT_ROLES: readonly KycDocumentRole[] = ["identity_document", "proof_of_address", "company_registration", "beneficial_owner", "source_of_funds", "supporting"];
+export const KYC_DOCUMENT_ROLE_LABELS: Record<KycDocumentRole, string> = { identity_document: "Identity document", proof_of_address: "Proof of address", company_registration: "Company registration", beneficial_owner: "Beneficial owner", source_of_funds: "Source of funds", supporting: "Supporting" };
 export interface KycDocument { linkId: string; caseId: string; documentId: string; documentRole: KycDocumentRole; attachedBy: string; }
 export interface KycDocumentAttach { documentId: string; documentRole?: KycDocumentRole; }
 export interface KycDocumentListResponse { caseId: string; documents: readonly KycDocument[]; }

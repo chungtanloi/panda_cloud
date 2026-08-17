@@ -72,7 +72,7 @@ import type {
   SalesCardPage,
   SalesCardUpdateRequest,
   SalesCardUpdateResponse,
-  SalesColumnListResponse,
+  SalesColumnListResponse, SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
 } from "@/models";
 import { normalizeMembershipRole } from "@/models";
 import type { ApiClient } from "../contracts";
@@ -242,6 +242,23 @@ export const httpApi: ApiClient = {
 
     moveCard: (id: string, body: SalesCardMoveRequest) =>
       http.post<SalesCardMoveResponse>(endpoints.sales.moveCard(id), body),
+  },
+
+  salesWorkspace: {
+    overview: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesOverview>(endpoints.salesWorkspace.overview, { query }),
+    conversionReport: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesConversionReport>(endpoints.salesWorkspace.reports.conversion, { query }),
+    activityReport: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesActivityReport>(endpoints.salesWorkspace.reports.activity, { query }),
+    forecastReport: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesForecastReport>(endpoints.salesWorkspace.reports.forecast, { query }),
+    listLeads: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesLeadPage>(endpoints.salesWorkspace.leads, { query }),
+    getLead: (id: string) => http.get<SalesLeadDetail>(endpoints.salesWorkspace.leadById(id)),
+    qualifyLead: (id: string, body: SalesLeadQualifyRequest) => http.post<SalesLeadQualifyResponse>(endpoints.salesWorkspace.qualifyLead(id), body),
+    listTasks: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<TaskPage>(endpoints.salesWorkspace.tasks, { query }),
+    getTask: (id: string) => http.get<ActivitySummary>(endpoints.salesWorkspace.taskById(id)),
+    updateTask: (id: string, body: TaskUpdateRequest) => http.patch<{activityId:string;updatedAt:string}>(endpoints.salesWorkspace.taskById(id), body),
+    listActivities: (dealId: string, query: Record<string,string|number|boolean|undefined> = {}) => http.get<ActivityPage>(endpoints.salesWorkspace.activities(dealId), { query }),
+    createActivity: (body: ActivityCreateRequest) => http.post<{activityId:string;dealRevision:number;updatedAt:string}>(endpoints.salesWorkspace.activities(body.dealId), body),
+    listCustomers: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<CustomerPage>(endpoints.salesWorkspace.customers, { query }),
+    getCustomer: (id: string) => http.get<CustomerDetail>(endpoints.salesWorkspace.customerById(id)),
   },
 
   /** Technical Due Diligence gateway operations. */
@@ -436,3 +453,4 @@ function normalizeAuthProfile(profile: AuthProfile): AuthProfile {
   }
   return { ...profile, authorization: { ...profile.authorization, memberships } };
 }
+

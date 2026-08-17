@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { StatusPill } from "@/components/workspace/StatusPill";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
@@ -31,6 +31,7 @@ import { api, normalizeError } from "@/services/api";
  */
 export function CasesPage() {
   const params = useSearchParams();
+  const router = useRouter();
   const dealId = params.get("dealId")?.trim() ?? "";
   const { profile } = useAuth();
   const canManage = hasPermission(profile, "kyc:manage");
@@ -40,6 +41,7 @@ export function CasesPage() {
   const [error, setError] = useState<NormalizedError | null>(null);
   const [status, setStatus] = useState<KycStatus | "all">("all");
   const [creating, setCreating] = useState(false);
+  const [dealInput, setDealInput] = useState(dealId);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,8 +59,9 @@ export function CasesPage() {
   }, [dealId]);
 
   useEffect(() => {
+    setDealInput(dealId);
     void load();
-  }, [load]);
+  }, [dealId, load]);
 
   const visible = useMemo(() => {
     const rows = (items ?? []).filter((row) => status === "all" || row.status === status);
@@ -78,6 +81,17 @@ export function CasesPage() {
       title="KYC cases"
       description="One subject per case — an organization or a contact, never both. Status and risk are materialized onto the deal so the other workspaces can read them."
     >
+      <form className="mb-6 rounded-[20px] border border-line bg-surface-alt p-4" onSubmit={(event) => {
+        event.preventDefault();
+        const next = dealInput.trim();
+        router.replace(next ? "/compliance/cases?dealId=" + encodeURIComponent(next) : "/compliance/cases");
+      }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[240px] flex-1"><Input label="Deal context *" value={dealInput} onChange={(event) => setDealInput(event.target.value)} placeholder="deal_01" hint="The API lists KYC cases per deal." /></div>
+          <button type="submit" className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent">Open deal</button>
+          {canManage && dealId ? <button type="button" onClick={() => setCreating((open) => !open)} className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg">{creating ? "Cancel" : "New case"}</button> : null}
+        </div>
+      </form>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-[280px] max-w-[320px] flex-1">
           <Select
@@ -90,15 +104,6 @@ export function CasesPage() {
             ]}
           />
         </div>
-        {canManage ? (
-          <button
-            type="button"
-            onClick={() => setCreating((open) => !open)}
-            className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg"
-          >
-            {creating ? "Cancel" : "New case"}
-          </button>
-        ) : null}
       </div>
 
       {!dealId ? <EmptyState title="Deal context required" message="Open this workspace with ?dealId=... to load KYC cases." /> : null}

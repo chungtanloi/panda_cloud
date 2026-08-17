@@ -43,6 +43,7 @@ import type {
   SalesCardUpdateRequest,
 } from "@/models";
 import { kycUpdateProblems } from "@/models";
+import type { SalesLeadQualifyRequest } from "@/models/salesWorkspace";
 import type { ApiClient } from "../contracts";
 import { apiConfig } from "../config";
 import { ApiError } from "../http";
@@ -1133,7 +1134,22 @@ export const mockApi: ApiClient = {
    * `null`-on-zero-denominator rule, which must render as an em dash and never
    * as "0%".
    */
-  dueDiligence: {
+  salesWorkspace: {
+    overview: async () => ({ leadCountsByStatus: {}, pipelineValue: [], pendingFollowUps: [], closingDeals: [], momentum: [], dealSummary: { open: 0, won: 0, lost: 0, total: 0 } }),
+    conversionReport: async () => ({ totalLeads: 0, countsByStatus: {}, timeSeries: {}, _open: { note: "Mock adapter", numerator: 0, denominator: 0 } }),
+    activityReport: async () => ({ totalActivities: 0, countsByType: {}, countsByStatus: {}, followUp: { overdue: 0, dueInRequestedWindow: 0 } }),
+    forecastReport: async () => ({ byCurrency: {}, deals: [], _open: { note: "Mock adapter" } }),
+    listLeads: async () => ({ leads: [], isDone: true }),
+    getLead: async (id: string) => { throw new ApiError({ status: 404, code: "NOT_FOUND", message: `Lead ${id} not found` }); },
+    qualifyLead: async (id: string, body: SalesLeadQualifyRequest) => ({ leadId: id, status: body.status, updatedAt: new Date().toISOString() }),
+    listTasks: async () => ({ tasks: [], isDone: true }),
+    getTask: async (id: string) => { throw new ApiError({ status: 404, code: "NOT_FOUND", message: `Task ${id} not found` }); },
+    updateTask: async (id: string) => ({ activityId: id, updatedAt: new Date().toISOString() }),
+    listActivities: async () => ({ activities: [], isDone: true }),
+    createActivity: async () => ({ activityId: "mock-activity", dealRevision: 1, updatedAt: new Date().toISOString() }),
+    listCustomers: async () => ({ customers: [], isDone: true }),
+    getCustomer: async (id: string) => { throw new ApiError({ status: 404, code: "NOT_FOUND", message: `Customer ${id} not found` }); },
+  },  dueDiligence: {
     listAssessments: (dealId: string) =>
       delay({ items: ddState.summaries.filter((row) => row.dealId === dealId).map(withMetrics) }),
 
@@ -1191,3 +1207,6 @@ export const mockApi: ApiClient = {
       }),
   },
 };
+
+
+

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
-import { GapNotice } from "@/components/workspace/GapNotice";
 import { StatusPill } from "@/components/workspace/StatusPill";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import { Input, Select } from "@/components/ui/Field";
@@ -57,6 +56,10 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
   const [saving, setSaving] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [documentId, setDocumentId] = useState("");
+  const [documentRole, setDocumentRole] = useState<"draft" | "redline" | "signed" | "countersigned">("draft");
+  const [documentSaving, setDocumentSaving] = useState(false);
+  const [documentMessage, setDocumentMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +124,22 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function attachDocument(event: React.FormEvent) {
+    event.preventDefault(); setDocumentMessage(null);
+    if (!documentId.trim()) { setDocumentMessage("Enter a registered document id."); return; }
+    setDocumentSaving(true);
+    try { await api.legal.attachDocument(detail!.agreementId, { documentId: documentId.trim(), documentRole }); setDocumentId(""); setDocumentMessage("Document attached."); await load(); }
+    catch (cause) { const normalized = normalizeError(cause); setDocumentMessage(normalized.correlationId ? normalized.message + " (correlation " + normalized.correlationId + ")" : normalized.message); }
+    finally { setDocumentSaving(false); }
+  }
+
+  async function detachDocument(version: Detail["versions"][number]) {
+    setDocumentMessage(null); setDocumentSaving(true);
+    try { await api.legal.detachDocument(detail!.agreementId, version.documentId); setDocumentMessage("Document detached."); await load(); }
+    catch (cause) { setDocumentMessage(normalizeError(cause).message); }
+    finally { setDocumentSaving(false); }
   }
 
   if (loading) return <LoadingState label="Loading agreement" />;
@@ -253,7 +272,7 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
                         v{version.versionNumber} ·{" "}
                         {NCNDA_DOCUMENT_ROLE_LABELS[version.documentRole]}
                       </span>
-                      {version.isCurrent ? <StatusPill label="Current" tone="good" /> : null}
+                      {version.isCurrent ? <StatusPill label="Current" tone="good" /> : null}{canManage && !version.isCurrent ? <button type="button" disabled={documentSaving} onClick={() => void detachDocument(version)} className="rounded-full border border-red-400/50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}
                     </div>
                     <p className="mt-2 truncate text-xs text-ink">
                       {version.originalFilename ?? version.documentId}
@@ -267,17 +286,18 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
             )}
           </section>
 
-          <GapNotice
-            tone="blocked"
-            title="Replacing the current version is not wired"
-            source="UC-015 step 3 (via UC-012) · collaboration workflow § 7.4"
-          >
-            <p>
-              UC-015 routes document upload through UC-012, whose six-step flow has no
-              operation on any step. Version history is therefore read-only here, and no
-              upload control is shown.
-            </p>
-          </GapNotice>
+          {canManage ? (
+            <form onSubmit={attachDocument} className="rounded-[24px] border border-line bg-surface p-6">
+              <h2 className="text-sm font-semibold text-ink">Attach a document version</h2>
+              <p className="mt-1 text-[11px] leading-4 text-ink-faint">Register the document through the approved document flow first. This form only attaches an existing, malware-clean document id.</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end">
+                <Input label="Document id *" value={documentId} onChange={(event) => setDocumentId(event.target.value)} placeholder="doc_01" />
+                <Select label="Document role" value={documentRole} onChange={(event) => setDocumentRole(event.target.value as typeof documentRole)} options={(["draft", "redline", "signed", "countersigned"] as const).map((value) => ({ value, label: NCNDA_DOCUMENT_ROLE_LABELS[value] }))} />
+                <button type="submit" disabled={documentSaving} className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg disabled:opacity-50">{documentSaving ? "Attaching…" : "Attach"}</button>
+              </div>
+              {documentMessage ? <p role="alert" className="mt-3 text-xs text-ink-dim">{documentMessage}</p> : null}
+            </form>
+          ) : null}
         </div>
       </div>
     </WorkspacePage>

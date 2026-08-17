@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { StatusPill } from "@/components/workspace/StatusPill";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
-import { Select } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
+import { useAuth } from "@/controllers/AuthContext";
+import { hasPermission } from "@/config/access";
+import { CreateAgreementForm } from "./CreateAgreementForm";
 import { NCNDA_STATUS_TONES } from "@/config/lifecycle";
 import {
   NCNDA_STATUSES,
@@ -33,12 +36,17 @@ function shortDate(iso: string | null): string {
  * Legal reviewer opening this page should see their queue, not a changelog.
  */
 export function AgreementsPage() {
+  const { profile } = useAuth();
+  const canManage = hasPermission(profile, "ncnda:manage");
   const [items, setItems] = useState<readonly NcndaAgreement[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<NormalizedError | null>(null);
   const searchParams = useSearchParams();
-  const dealId = searchParams.get("dealId");
+  const router = useRouter();
+  const dealId = searchParams.get("dealId")?.trim() ?? "";
+  const [dealInput, setDealInput] = useState(dealId);
   const [status, setStatus] = useState<NcndaStatus | "all">("all");
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,8 +68,9 @@ export function AgreementsPage() {
   }, [dealId]);
 
   useEffect(() => {
+    setDealInput(dealId);
     void load();
-  }, [load]);
+  }, [dealId, load]);
 
   const visible = useMemo(() => {
     const rows = (items ?? []).filter((row) => status === "all" || row.status === status);
@@ -80,7 +89,15 @@ export function AgreementsPage() {
       title="NCNDA agreements"
       description="One agreement per deal and counterparty. At most one may be active at a time, and each carries a single current document version — every earlier version is immutable."
     >
-      <div className="mb-6 max-w-[280px]">
+      <form className="mb-6 rounded-[20px] border border-line bg-surface-alt p-4" onSubmit={(event) => { event.preventDefault(); const next = dealInput.trim(); router.replace(next ? `/legal/agreements?dealId=${encodeURIComponent(next)}` : "/legal/agreements"); }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[240px] flex-1"><Input label="Deal context *" value={dealInput} onChange={(event) => setDealInput(event.target.value)} placeholder="deal_01" hint="The API lists agreements per deal." /></div>
+          <button type="submit" className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent">Open deal</button>
+          {canManage && dealId ? <button type="button" onClick={() => setCreating((open) => !open)} className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg">{creating ? "Cancel" : "New agreement"}</button> : null}
+        </div>
+      </form>
+
+      <div className="mb-6 max-w-[420px]">
         <Select
           label="Status"
           value={status}
@@ -91,6 +108,8 @@ export function AgreementsPage() {
           ]}
         />
       </div>
+
+      {creating && dealId ? <CreateAgreementForm dealId={dealId} onDone={() => { setCreating(false); void load(); }} /> : null}
 
       {loading ? <LoadingState label="Loading agreements" /> : null}
       {!loading && error ? <ErrorState error={error} onRetry={() => void load()} /> : null}

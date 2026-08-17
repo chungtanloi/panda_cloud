@@ -69,6 +69,7 @@ import type {
   SubmissionConvertRequest,
   SubmissionConvertResponse,
   Submission,
+  SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
 } from "@/models";
 
 /**
@@ -177,6 +178,8 @@ export interface WorkspaceService {
  * transactionally with the submission that produced it. There is no create or
  * delete operation in the contract (`api-contracts/paths/sales-*.yaml`).
  */
+export interface SalesWorkspaceService { overview(query?: {from?:string;to?:string}): Promise<SalesOverview>; conversionReport(query?: {from?:string;to?:string;groupBy?:string}): Promise<SalesConversionReport>; activityReport(query?: {from?:string;to?:string;dealId?:string}): Promise<SalesActivityReport>; forecastReport(query?: {from?:string;to?:string}): Promise<SalesForecastReport>; listLeads(query?: Record<string,string|number|boolean|undefined>): Promise<SalesLeadPage>; getLead(id:string): Promise<SalesLeadDetail>; qualifyLead(id:string, body:SalesLeadQualifyRequest): Promise<SalesLeadQualifyResponse>; listTasks(query?: Record<string,string|number|boolean|undefined>): Promise<TaskPage>; getTask(id:string): Promise<ActivitySummary>; updateTask(id:string, body:TaskUpdateRequest): Promise<{activityId:string;updatedAt:string}>; listActivities(dealId:string, query?:Record<string,unknown>): Promise<ActivityPage>; createActivity(body:ActivityCreateRequest): Promise<{activityId:string;dealRevision:number;updatedAt:string}>; listCustomers(query?:Record<string,unknown>): Promise<CustomerPage>; getCustomer(id:string): Promise<CustomerDetail>; }
+
 export interface SalesService {
   listColumns(): Promise<SalesColumnListResponse>;
   /** Cursor-paginated cards for ONE column. `columnId` is required. */
@@ -299,8 +302,10 @@ export interface ApiClient {
   leads: LeadService;
   submissions: SubmissionService;
   sales: SalesService;
+  salesWorkspace: SalesWorkspaceService;
   dueDiligence: DueDiligenceService;
   legal: LegalService;
   compliance: ComplianceService;
   workspace: WorkspaceService;
 }
+

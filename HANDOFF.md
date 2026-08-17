@@ -1217,3 +1217,44 @@ HANDOFF.md
 ```
 
 No file in `PandaCloudBackend` was modified.
+
+### 2026-08-17 KYC/NCNDA completion pass
+
+Frontend additions:
+
+```text
+src/components/legal/AgreementsPage.tsx       + permission-aware create entry point
+src/components/legal/CreateAgreementForm.tsx  + NCNDA create form using PATCH upsert contract
+
+docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md + backend dependency and open-decision handoff
+```
+
+The NCNDA form is deal-scoped and sends `counterpartyOrganizationId`, `ownerId`, `status`, optional `effectiveDate`, and optional `notes`. Backend ownership remains authoritative for active-agreement uniqueness and revision policy. Organization/contact selectors and document upload are intentionally not fabricated because their lookup and upload-session contracts are not yet approved. KYC remains deal-scoped with manual case creation; automatic creation from submission/deal conversion is still an open product decision.
+
+Known integration gap: backend permissions allow Manager/Admin to mutate KYC and NCNDA, but the frontend currently has role-specific Legal/Compliance workspace guards. Resolve the role/workspace mapping before production rollout.
+### 2026-08-17 NCNDA deal-context UX correction
+
+`/legal/agreements` now renders an explicit Deal context input and Open deal action. This matches the backend contract's deal-scoped `GET/PATCH /api/v1/deals/{dealId}/ncnda` routes. The create action is shown only after a deal id is present, so users no longer see an unexplained empty state with no way to start. Organization lookup remains identifier-based until an approved backend lookup contract exists.
+### 2026-08-17 Legal/compliance frontend completion
+
+Frontend-only additions aligned to the implemented backend gateway:
+
+- src/components/compliance/CasesPage.tsx now accepts a deal context and exposes the create action only when a deal is selected.
+- src/components/compliance/CaseDocuments.tsx and the KYC documents route now list, attach and detach registered document links.
+- src/components/legal/AgreementDetail.tsx now attaches and detaches immutable NCNDA document versions; current versions cannot be detached.
+- src/models/kyc.ts now exports backend-defined document-role labels.
+- src/components/legal/AgreementsPage.tsx keeps a single deal-scoped create entry point.
+
+Backend gaps recorded in docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md: signed upload-session/finalize UX, lookup endpoints, e-signature/provider integration, strict KYC lifecycle policy, single-current-KYC policy, and final role/workspace alignment. These are not implemented in the frontend by guesswork.
+
+Validation:
+
+- npm run lint: PASS (0 warnings/errors after the hook dependency fix).
+- npm run typecheck: existing unrelated src/components/sales/salesAdapter.test.ts optional createCard fixture errors remain; no errors were reported from legal/compliance changes.
+
+- src/components/sales/SubmissionsPage.tsx and SubmissionDetail.tsx now consume the backend submissions list/detail/convert APIs; the existing /sales/leads routes are no longer static placeholders.
+
+### 2026-08-17 Sales Workspace Phase 2 frontend alignment
+
+Replaced Sales placeholder/submission screens with backend-owned CRM screens and adapters. Added src/models/salesWorkspace.ts, SalesWorkspaceService, HTTP/mock implementations, and live-backed Overview, Leads, Lead Detail/Qualification, Tasks, Customers and Reports pages. Endpoint mappings and open backend gaps are recorded in docs/SALES_WORKSPACE_API_CONFORMANCE.md. No backend files were modified. 
+

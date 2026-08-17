@@ -1,1 +1,1 @@
-import { ResourcePage } from "@/components/workspace/ResourcePage"; export default function Page() { return <ResourcePage kind="tasks" />; }
+import { SalesTasksPage } from "@/components/sales/SalesTasksPage"; export default function Page(){return <SalesTasksPage/>}

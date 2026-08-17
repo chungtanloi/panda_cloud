@@ -350,3 +350,8 @@ authorization remains authoritative.
 Validation note: migration code type-checks; the repository-wide check still
 reports pre-existing optional `createCard` fixture errors in
 `src/components/sales/salesAdapter.test.ts`.
+
+> 2026-08-17 frontend legal/compliance refresh: deal context inputs, NCNDA create/update and document attach/detach, and KYC case document list/attach/detach were implemented against the backend gateway. Backend gaps are recorded in docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md; no backend files were changed.
+
+> 2026-08-17 Sales Workspace Phase 2 frontend alignment: Sales overview, CRM leads/qualification, activity-backed tasks, customer read model and conversion/activity/forecast reports now use the implemented /api/v1/sales/* and /api/v1/deals/*/activities gateways. See docs/SALES_WORKSPACE_API_CONFORMANCE.md. Quotes, assignment, notifications, audit query and report formula decisions remain backend gaps.
+

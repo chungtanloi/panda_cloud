@@ -1,2 +1,1 @@
-import { DashboardView } from "@/components/workspace/DashboardView";
-export default function Page() { return <DashboardView role="SALES" />; }
+import { SalesOverviewPage } from "@/components/sales/SalesOverviewPage"; export default function Page(){return <SalesOverviewPage/>}
