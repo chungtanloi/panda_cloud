@@ -114,7 +114,7 @@ export const STEP_VOLUME = {
     breakEvenLabel: "Break Even",
     maxYieldLabel: "Max Yield",
   },
-  footer: "© 2024 Cloud Panda Inc. Secure Transaction Gateway.",
+  footer: "© 2024 Panda Cloud Inc. Secure Transaction Gateway.",
 } as const;
 
 /* -------------------------------- Step 3 -------------------------------- */

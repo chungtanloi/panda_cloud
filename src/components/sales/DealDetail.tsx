@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { PRIORITY_LABELS, STATUS_LABELS, VERTICAL_LABELS, VERTICAL_STYLES } from "@/config/sales";
-import type { SalesCard, SalesCardUpdateRequest } from "@/models/sales";
+import { contactChannels, type SalesCard, type SalesCardUpdateRequest } from "@/models/sales";
 import { formatMinorUnits } from "@/models/common";
+import { useAuth } from "@/controllers/AuthContext";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
 
@@ -37,6 +38,21 @@ export function DealDetail({
   onSaved: () => void;
   canEdit: boolean;
 }) {
+  const { profile } = useAuth();
+
+  /**
+   * "You" when the signed-in identity owns the deal, otherwise the resolved
+   * name, otherwise nothing at all.
+   *
+   * `profile.user.id` and `card.ownerId` are the same value — both are
+   * `String(users._id)` (`convex/identity.ts` serializes the auth/me user id
+   * from the same row `deals.ownerId` points at) — so the comparison is exact,
+   * not a heuristic. A `sales` caller only ever sees deals they own, so in
+   * practice they always get "You".
+   */
+  const ownerLabel =
+    profile && card.ownerId === profile.user.id ? "You" : (card.ownerName ?? "");
+
   const [probability, setProbability] = useState(card.probabilityPercent ?? 0);
   const [expectedCloseDate, setExpectedCloseDate] = useState(card.expectedCloseDate ?? "");
   const [description, setDescription] = useState(card.description ?? "");
@@ -124,11 +140,63 @@ export function DealDetail({
         </p>
       </div>
 
+      {/* Customer — read-only. The panel is not a drag surface, so the links
+          here need none of the gesture handling `DealCardView` does. */}
+      <section className="flex flex-col gap-[8px] rounded-panel border border-line-soft bg-surface p-[14px]">
+        <h3 className="font-mono text-[9px] uppercase tracking-[1.2px] text-ink-mute">Customer</h3>
+        <Row label="Company" value={card.organizationName ?? "—"} />
+        {card.primaryContact ? (
+          <>
+            <Row label="Contact" value={card.primaryContact.fullName} />
+            {card.primaryContact.jobTitle ? (
+              <Row label="Job title" value={card.primaryContact.jobTitle} />
+            ) : null}
+            {contactChannels(card.primaryContact).map((channel) => (
+              <div key={channel.kind} className="flex items-baseline justify-between gap-[12px]">
+                <span className="font-mono text-[9px] uppercase tracking-[1.2px] text-ink-mute">
+                  {channel.kind === "phone" ? "Phone" : "Email"}
+                </span>
+                {channel.href ? (
+                  <a
+                    href={channel.href}
+                    className="text-right font-sans text-[12px] leading-[18px] text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent"
+                  >
+                    {channel.label}
+                  </a>
+                ) : (
+                  <span className="text-right font-sans text-[12px] leading-[18px] text-ink-dim">
+                    {channel.label}
+                  </span>
+                )}
+              </div>
+            ))}
+            {card.primaryContact.status === "do_not_contact" ? (
+              <p className="rounded-field border border-red-400/30 bg-red-400/10 px-[8px] py-[6px] text-[11px] leading-[16px] text-red-300">
+                Marked <strong>do not contact</strong>. Details are shown for identification
+                only — do not call or email this contact.
+              </p>
+            ) : null}
+            {card.primaryContact.status === "inactive" ? (
+              <p className="text-[11px] leading-[16px] text-ink-faint">
+                This contact is marked inactive; the details may be out of date.
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-[11px] leading-[16px] text-ink-faint">
+            No primary contact on this deal yet.
+          </p>
+        )}
+      </section>
+
       {/* Record — read-only */}
       <section className="flex flex-col gap-[8px] rounded-panel border border-line-soft bg-surface p-[14px]">
         <h3 className="font-mono text-[9px] uppercase tracking-[1.2px] text-ink-mute">Record</h3>
         <Row label="Priority" value={PRIORITY_LABELS[card.priority]} />
-        <Row label="Owner" value={card.ownerId} mono />
+        {/* Never `card.ownerId` — an opaque Convex key tells the reader
+            nothing. The backend resolves the name; when it cannot, the row is
+            omitted rather than falling back to the id. */}
+        {ownerLabel ? <Row label="Owner" value={ownerLabel} /> : null}
         <Row label="Last contact" value={lastContactLabel(card)} />
         <Row label="Created" value={formatDateTime(card.createdAt)} />
         <Row label="Updated" value={formatDateTime(card.updatedAt)} />

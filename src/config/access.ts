@@ -20,21 +20,31 @@ export type Permission =
   | "approval:view" | "approval:decide" | "user:manage" | "role:manage"
   | "system:view" | "system:manage" | "audit:view"
   // ROLE_PERMISSION_MATRIX § 10 "Technical DD" — the only dd:* names the
-  // source doc defines. § 5.5: Sales/Legal/Compliance read access on DD
-  // responses is mentioned but not specified as a permission grant, so no
-  // dd:* permission is granted to those roles here (U-07-adjacent gap).
-  | "dd:view" | "dd:respond" | "dd:review" | "dd:evidence:upload";
+  // source docs define. Who holds them is set by DD API.md, see below.
+  | "dd:view" | "dd:respond" | "dd:review" | "dd:evidence:upload"
+  // ROLE_PERMISSION_MATRIX § 10 "NCNDA" and "KYC" — exactly these four names.
+  | "ncnda:view" | "ncnda:manage"
+  | "kyc:view" | "kyc:manage";
 
 /**
  * Workspaces that exist in this repository today.
  *
  * `technical` now has a workspace (ROLE_PERMISSION_MATRIX § 5.2 / § 11).
  *
- * ⚠ `legal` and `compliance` still have **no** workspace. Their route trees
- * are described in ROLE_PERMISSION_MATRIX § 11 as "page design được đề
- * xuất… không phải các page đã implement". They are not invented here.
+ * `legal` and `compliance` now have workspaces too, built to the route tables
+ * in ROLE_PERMISSION_MATRIX §§ 6.2, 7.2 and 11. Those tables were previously
+ * annotated "page design được đề xuất… không phải các page đã implement" —
+ * this repository now implements exactly what they specify, and nothing more.
+ * No route, page or permission outside those tables was invented.
  */
-export type WorkspaceId = "customer" | "sales" | "manager" | "admin" | "technical";
+export type WorkspaceId =
+  | "customer"
+  | "sales"
+  | "manager"
+  | "admin"
+  | "technical"
+  | "legal"
+  | "compliance";
 
 export interface NavigationItem { label: string; href: string; permission?: Permission; externalFlow?: boolean; }
 
@@ -44,6 +54,20 @@ export interface NavigationItem { label: string; href: string; permission?: Perm
  * `customer`, `sales`, `manager` and `admin` are carried over verbatim from the
  * previous `USER`/`SALES`/`MANAGER`/`ADMIN` sets — this migration changes the
  * role *identifiers* to the canonical contract values, not the grants.
+ *
+ * ⚠ DOCUMENTATION DISCREPANCY — dd:* grants, resolved in favour of DD API.md.
+ * ROLE_PERMISSION_MATRIX § 10 lists the four dd:* names but assigns them only
+ * to Technical, and § 5.5 mentions Sales/Legal/Compliance read access without
+ * granting it. `DD API.md` is explicit and newer: "READ: sales/compliance/legal
+ * … technical/manager/admin: yes; customer: no. CREATE: technical/manager/admin
+ * only. UPDATE RESPONSE: technical/manager/admin only." The grants below follow
+ * DD API.md, because the backend enforces that matrix and a UI narrower than
+ * the backend hides work a manager is entitled to do — manager and admin could
+ * previously not even see the Assessments nav item for assessments they are
+ * allowed to create.
+ *
+ * `dd:evidence:upload` stays Technical-only: evidence upload is OUT OF SCOPE in
+ * DD API.md, so the permission currently gates a surface that cannot exist.
  *
  * ⚠ NEEDS CLARIFICATION (U-07, partially resolved for `technical`):
  * ROLE_PERMISSION_MATRIX § 10 defines the four `dd:*` names below and § 5
@@ -66,16 +90,20 @@ export interface NavigationItem { label: string; href: string; permission?: Perm
  */
 export const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
   customer: ["workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view"],
-  sales: ["lead:view", "lead:update", "quote:view", "quote:create", "task:view", "report:view"],
-  manager: ["lead:view", "lead:update", "lead:assign", "quote:view", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide"],
-  admin: ["workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:manage", "role:manage", "system:view", "system:manage", "audit:view"],
+  // DD read is open to every staff role (DD API.md authorization line).
+  sales: ["lead:view", "lead:update", "quote:view", "quote:create", "task:view", "report:view", "dd:view"],
+  manager: ["lead:view", "lead:update", "lead:assign", "quote:view", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "dd:view", "dd:respond", "dd:review", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
+  admin: ["workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:manage", "role:manage", "system:view", "system:manage", "audit:view", "dd:view", "dd:respond", "dd:review", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
   // ROLE_PERMISSION_MATRIX § 10 "Technical DD" — exactly these four names,
   // no more. dd:review is kept separate from dd:respond even though today's
   // UI does not yet distinguish "responder" from "reviewer" identities
   // (§ 5.3 lists both as steps one Technical identity can perform).
   technical: ["dd:view", "dd:respond", "dd:review", "dd:evidence:upload"],
-  legal: [],
-  compliance: [],
+  // ROLE_PERMISSION_MATRIX § 10 gives Legal the two ncnda:* names and
+  // Compliance the two kyc:* names. `dd:view` is the cross-role read from
+  // DD API.md — see the discrepancy note above.
+  legal: ["dd:view", "ncnda:view", "ncnda:manage"],
+  compliance: ["dd:view", "kyc:view", "kyc:manage"],
 };
 
 export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[]> = {
@@ -105,6 +133,16 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
     { label: "Overview", href: "/technical" },
     { label: "Assessments", href: "/technical/assessments", permission: "dd:view" },
   ],
+  // ROLE_PERMISSION_MATRIX § 6.2 route table.
+  legal: [
+    { label: "Overview", href: "/legal" },
+    { label: "Agreements", href: "/legal/agreements", permission: "ncnda:view" },
+  ],
+  // ROLE_PERMISSION_MATRIX § 7.2 route table.
+  compliance: [
+    { label: "Overview", href: "/compliance" },
+    { label: "Cases", href: "/compliance/cases", permission: "kyc:view" },
+  ],
 };
 
 export const defaultRouteByWorkspace: Record<WorkspaceId, string> = {
@@ -113,6 +151,8 @@ export const defaultRouteByWorkspace: Record<WorkspaceId, string> = {
   manager: "/manager",
   admin: "/admin",
   technical: "/technical",
+  legal: "/legal",
+  compliance: "/compliance",
 };
 
 /** Workspace a role can open, or `null` when the role has no workspace yet. */
@@ -123,10 +163,8 @@ export function workspaceForRole(role: MembershipRole): WorkspaceId | null {
     case "manager": return "manager";
     case "admin": return "admin";
     case "technical": return "technical";
-    // U-07 — no route tree exists for these roles.
-    case "legal":
-    case "compliance":
-      return null;
+    case "legal": return "legal";
+    case "compliance": return "compliance";
   }
 }
 

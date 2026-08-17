@@ -1,4 +1,4 @@
-# Cloud Panda — Frontend
+# Panda Cloud — Frontend
 
 Next.js 14 (App Router) + TypeScript + Tailwind CSS, built to the Figma file
 `pCxGT1lfFqO2CiDXEmrTk7`.

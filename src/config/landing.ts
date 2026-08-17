@@ -13,7 +13,7 @@ export const HERO = {
   /** Rendered with the cyan gradient. */
   titleAccent: ["AI & High-", "Performance", "Computing"],
   body:
-    "Cloud Panda provides world-class GPU infrastructure, combining flexible cloud " +
+    "Panda Cloud provides world-class GPU infrastructure, combining flexible cloud " +
     "computing solutions, sustainable energy, and specialized financial services. " +
     "Build your digital future on the most solid foundation.",
   primaryCta: { label: "Explore Services", href: "/gpu-renting" },
@@ -21,11 +21,11 @@ export const HERO = {
 } as const;
 
 export const ABOUT = {
-  eyebrow: "About Cloud Panda",
+  eyebrow: "About Panda Cloud",
   body:
     "We are a global strategic partner in intensive computing infrastructure. From " +
     "providing the latest generation GPUs to designing energy-optimized data centers, " +
-    "Cloud Panda offers comprehensive solutions for AI enterprises, scientific research, " +
+    "Panda Cloud offers comprehensive solutions for AI enterprises, scientific research, " +
     "and software development.",
   bullets: [
     "World-class technical expert team.",

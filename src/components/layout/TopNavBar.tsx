@@ -11,7 +11,7 @@ import { BrandMark } from "./BrandMark";
  *   bar    — rgba(17,19,24,.8), 1px bottom rule rgba(58,73,75,.3),
  *            backdrop-blur 6, sticky over the page
  *   inner  — max 1440px, px 64, py 16
- *   brand  — 25.7×18.7 mark + "Cloud Panda" 24px bold white
+ *   brand  — 25.7×18.7 mark + "Panda Cloud" 24px bold white
  *   links  — gap 24, 16px / 25.6px; active is accent, bold, with a 2px accent
  *            underline (node 1:182); the rest are #b9cacb with 12px side pad
  *   CTA    — "Get Started", 14px bold, tracking .7px, colour #006a71,
@@ -27,7 +27,7 @@ export function TopNavBar() {
         <Link href="/" className="flex shrink-0 items-center gap-[8px]">
           <BrandMark className="h-[18.667px] w-[25.667px]" />
           <span className="font-sans text-[24px] font-bold leading-[31.2px] text-white">
-            Cloud Panda
+            Panda Cloud
           </span>
         </Link>
 

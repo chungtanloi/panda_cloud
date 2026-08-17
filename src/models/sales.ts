@@ -19,9 +19,10 @@ import type { IsoDate, IsoDateTime } from "./common";
  *     translated.
  *
  * The backend owns pipeline structure (10 stage codes, no client-derived
- * stages) and card creation (a card is created transactionally with the
- * submission that produced it; there is no `POST /sales/cards` and no
- * `DELETE /sales/cards/{dealId}` in the contract).
+ * stages). A card produced by a customer flow is created transactionally with
+ * the submission; `POST /sales/cards` exists only for manual outbound/offline
+ * entry by staff. There is still no `DELETE /sales/cards/{dealId}` in the
+ * contract — a lost deal is moved to the `lost` column, never erased.
  */
 
 /* ------------------------------ Wire DTOs ------------------------------- */
@@ -71,6 +72,26 @@ export interface SalesColumnListResponse {
   columns: SalesColumnDto[];
 }
 
+/**
+ * `components.yaml#/components/schemas/SalesCardContact`.
+ *
+ * The deal's primary business contact, denormalized onto the card by the
+ * backend so a salesperson can call or email straight from the board (UC-006).
+ * `contacts` is the source of truth; nothing here is ever written back.
+ *
+ * `status: "do_not_contact"` is a hard instruction from DEALFLOW § 5.1 — render
+ * the details as plain text with **no** `tel:` or `mailto:` affordance. See
+ * `contactChannels()` below, which is the only sanctioned way to build them.
+ */
+export interface SalesContactDto {
+  contactId: string;
+  fullName: string;
+  jobTitle: string | null;
+  email: string | null;
+  phone: string | null;
+  status: "active" | "inactive" | "do_not_contact";
+}
+
 /** `components.yaml#/components/schemas/SalesCard`. */
 export interface SalesCardDto {
   dealId: string;
@@ -89,6 +110,15 @@ export interface SalesCardDto {
   expectedCloseDate: IsoDate | null;
   lastContactAt: IsoDateTime | null;
   lastContactMethod: LastContactMethod | null;
+  /** Company display name. Null when the reference cannot be resolved. */
+  organizationName: string | null;
+  /**
+   * Deal owner's display name. Render this, never `ownerId` — the id is an
+   * opaque Convex key and means nothing to the person reading the panel.
+   */
+  ownerName: string | null;
+  /** Null when the deal has no primary contact, or the contact was archived. */
+  primaryContact: SalesContactDto | null;
   revision: number;
   updatedAt: IsoDateTime;
 }
@@ -137,6 +167,59 @@ export interface SalesCardUpdateRequest {
   currency?: string | null;
   probabilityPercent?: number | null;
   expectedCloseDate?: IsoDate | null;
+}
+
+/**
+ * `components.yaml#/components/schemas/SalesCardCreateRequest`.
+ *
+ * Manual outbound/offline entry only (UC-004). Customer-form submissions create
+ * their card inside the submission transaction and must not use this.
+ *
+ * Organization selection (previously U-?? / NEEDS CLARIFICATION, now decided):
+ * the caller sends **exactly one** of `organizationId` or `organizationName`.
+ * A name is matched case-insensitively against existing organizations and a
+ * `customer`/`prospect` organization is created when nothing matches, which is
+ * what `API_CONTRACT.md` § 9.2 describes while still satisfying UC-004's
+ * requirement that a deal reference a real organization row.
+ *
+ * The UI only ever sends `organizationName`; `organizationId` exists for
+ * machine callers and imports.
+ */
+export interface SalesCardCreateRequest {
+  title: string;
+  /**
+   * Primary contact for the deal. `contactName` plus at least one of
+   * `contactEmail` / `contactPhone` — DEALFLOW § 5.1 requires a contact to be
+   * reachable, and a card nobody can act on is the problem this field exists to
+   * solve. Matched by email inside the company, created when nothing matches.
+   */
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactJobTitle?: string;
+  /** Mutually exclusive with `organizationName`. Not used by the UI. */
+  organizationId?: string;
+  /** Company name. Find-or-create. Mutually exclusive with `organizationId`. */
+  organizationName?: string;
+  /** Defaults to the authenticated caller. The UI never sends this. */
+  ownerId?: string;
+  vertical: DealVertical;
+  priority?: DealPriority;
+  /** Defaults to the seeded `new` column when omitted. */
+  stageId?: string;
+  leadId?: string;
+  primaryContactId?: string;
+  description?: string;
+  estimatedValueMinor?: string;
+  currency?: string;
+  probabilityPercent?: number;
+  expectedCloseDate?: IsoDate;
+}
+
+/** `components.yaml#/components/schemas/SalesCardCreateResponse`. */
+export interface SalesCardCreateResponse {
+  dealId: string;
+  revision: number;
 }
 
 /** `components.yaml#/components/schemas/SalesCardUpdateResponse`. */
@@ -195,6 +278,12 @@ export interface SalesCard {
   expectedCloseDate: IsoDate | null;
   lastContactAt: IsoDateTime | null;
   lastContactMethod: LastContactMethod | null;
+  /** Company display name — what the card shows instead of the opaque id. */
+  organizationName: string | null;
+  /** Owner's display name. The UI must never print `ownerId`. */
+  ownerName: string | null;
+  /** Reachable primary contact, or null. Always build links via `contactChannels`. */
+  primaryContact: SalesContactDto | null;
   revision: number;
 
   /** Detail-only fields. Absent until a detail fetch has populated them. */
@@ -204,4 +293,48 @@ export interface SalesCard {
   projectId?: string | null;
   createdBy?: string;
   archivedAt?: IsoDateTime | null;
+}
+
+/* ----------------------------- Contact helpers ---------------------------- */
+
+/** A ready-to-render contact channel. `href` is null when linking is forbidden. */
+export interface ContactChannel {
+  kind: "phone" | "email";
+  /** What the user reads. */
+  label: string;
+  /** `tel:`/`mailto:` target, or null when the contact must not be contacted. */
+  href: string | null;
+}
+
+/**
+ * Turns a contact into the channels the UI may offer.
+ *
+ * Centralised on purpose: `do_not_contact` must suppress the link everywhere,
+ * and a rule enforced in one helper cannot be forgotten in the third component
+ * that renders a contact. The details still render — a salesperson needs to
+ * recognise the record — but nothing is one click from dialling it.
+ *
+ * `tel:` strips spaces, dots and dashes because dialers reject them; the
+ * visible label keeps whatever formatting the data has.
+ */
+export function contactChannels(contact: SalesContactDto | null): ContactChannel[] {
+  if (!contact) return [];
+  const linkable = contact.status !== "do_not_contact";
+  const channels: ContactChannel[] = [];
+  if (contact.phone) {
+    const dialable = contact.phone.replace(/[\s.()-]/g, "");
+    channels.push({
+      kind: "phone",
+      label: contact.phone,
+      href: linkable && dialable ? `tel:${dialable}` : null,
+    });
+  }
+  if (contact.email) {
+    channels.push({
+      kind: "email",
+      label: contact.email,
+      href: linkable ? `mailto:${contact.email}` : null,
+    });
+  }
+  return channels;
 }

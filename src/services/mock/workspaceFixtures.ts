@@ -58,7 +58,7 @@ export const mockWorkspaceTables: Record<WorkspaceResourceKind, ResourceTable> =
       { key: "date", label: "Date" },
     ],
     rows: [
-      { id: "TX-8A91", type: "GPU Usage", amount: "$12,480", asset: "USD", network: "Cloud Panda", status: "Completed", date: "Aug 12, 2026" },
+      { id: "TX-8A91", type: "GPU Usage", amount: "$12,480", asset: "USD", network: "Panda Cloud", status: "Completed", date: "Aug 12, 2026" },
       { id: "TX-8A72", type: "Token Purchase", amount: "4,200", asset: "CPT", network: "Ethereum", status: "Processing", date: "Aug 10, 2026" },
     ],
   },

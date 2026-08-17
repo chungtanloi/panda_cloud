@@ -19,7 +19,7 @@ import "./globals.css";
  * which is the usual cause of a dev server that appears to hang on first load.
  */
 export const metadata: Metadata = {
-  title: "Cloud Panda",
+  title: "Panda Cloud",
   description: "GPU capacity, energy and land infrastructure for AI workloads.",
 };
 

@@ -1,14 +1,340 @@
-# Cloud Panda Frontend Handoff
+# Panda Cloud Frontend Handoff
 
 | Item | Value |
 |---|---|
-| Date | 2026-08-14 (Clerk migration) · 2026-08-13 (original audit) |
+| Date | 2026-08-17 (Technical/Legal/Compliance workspaces · DD service layer · contact on the card · organization auto-create) · 2026-08-15 (manual card creation) · 2026-08-14 (Clerk migration) · 2026-08-13 (original audit) |
 | Repository audited | `D:\Project\panda_cloud` |
 | Branch | `main` |
 | HEAD at original audit | `3c127eb239f33f09d3d48bb5bd68c159166a8c44` |
 | Remote state at original audit | `HEAD`, `origin/main`, and `origin/HEAD` pointed to the same commit |
 
-## 0. 2026-08-14 — Clerk authentication migration (CR-003)
+## 0. Recent changes — newest first
+
+### 2026-08-17 — Technical, Legal and Compliance workspaces
+
+Frontend only; no backend file changed. Full write-up in
+**`docs/WORKSPACES_DESIGN.md`** — read that before touching any of the three.
+
+Eleven routes, built to the tables in ROLE_PERMISSION_MATRIX §§ 5.2, 6.2, 7.2
+and 11, which previously carried the note that they were proposed page design
+rather than implemented pages. Nothing outside those tables was invented.
+
+**Read this before demoing.** None of the three has a backend. The gateway
+exposes ten paths — identity, webhooks, sales — and nothing else. NCNDA and KYC
+are worse off than DD: `convex/ncnda.ts` and `convex/kyc.ts` contain **only
+mutations and no query at all**, so listing agreements or cases is not a
+missing gateway hop, it is a missing backend function. Everything works on the
+mock adapter and 404s against a real one. Screens that cannot work say so on
+the page (`components/workspace/GapNotice.tsx`) rather than rendering an empty
+table that reads as "no data".
+
+**Business rules encoded** — each mirrored in the mock adapter as well as the
+form, so a payload that passes locally passes for real: NCNDA needs an
+effective date to go active and allows only one active agreement per deal and
+counterparty (409); KYC needs exactly one subject (modelled as a discriminated
+union so the invalid state cannot be constructed), pairs provider with provider
+case id, requires a reason to reject and a date to approve, and its update is a
+**full status write** — a field omitted from the body is cleared, so the form
+sends everything back.
+
+**Three screens are blocked and say so:**
+
+1. `/technical` and `/technical/assessments` — there is no cross-deal
+   assessment list, and a Technical identity cannot enumerate deals
+   (`resolveKanbanScope` fails closed → 403 on the sales board). The list page
+   takes a deal id in a field; the overview stays explanatory instead of
+   charting data it cannot fetch.
+2. `/technical/assessments/[id]/evidence` — upload is out of scope per
+   `DD API.md`.
+3. `/compliance/cases/[id]/documents` — `kycCases` has no document relation and
+   § 7.4 forbids inventing one. There is deliberately no document type in
+   `models/kyc.ts`.
+
+**⚠ The NCNDA and KYC paths are proposed, not agreed.** No contract defines
+them; `services/endpoints.ts` shapes them after the sales operations. Likewise
+the wire shapes in `models/ncnda.ts` / `models/kyc.ts` are a proposal derived
+from Convex row shapes. Both need BE owner review — this is the most likely
+place the pass is wrong.
+
+**⚠ Display names.** Those models declare `counterpartyName`, `ownerName`,
+`assignedToName` and `dealTitle` as fields the backend must resolve, following
+the `SalesCard.organizationName` precedent. Until it does, the UI shows an em
+dash — it never prints an id.
+
+Verified: `tsc --noEmit` clean, `next build` succeeded, 70 routes. No frontend
+test harness exists, so nothing beyond those two checks covers this.
+
+### 2026-08-17 — Due Diligence service layer, aligned to `DD API.md`
+
+Frontend only; no backend file was changed. Full write-up in
+**`docs/DD_API_CONFORMANCE.md`** — read that before touching DD.
+
+**The one thing to know:** the backend has **not** shipped the DD HTTP surface.
+`PandaCloudBackend/convex` has no `ddGateway.ts`, no DD entries in
+`gatewayPaths.ts` and no DD routes in `http.ts` — the three additions
+`DD API.md` itself lists as "expected". `convex/dueDiligence.ts` holds the
+engine but still authorizes through the old `ctx.auth.getUserIdentity()`
+pattern and nothing routes to it. So every DD call through the HTTP adapter
+answers 404 today. Nothing is stubbed to hide that; the mock adapter is fully
+functional and is the way to build DD screens right now.
+
+Wired: exactly the five documented operations over four paths, on both
+adapters, behind `DueDiligenceService`. Update is keyed by **templateItemId**,
+not response id — an unanswered requirement has no response row, so it is an
+upsert and `expectedRevision: 0` means "I believe this is unanswered". No
+complete/cancel method exists; `DD API.md` forbids inventing one.
+
+Quarantined under an explicit "NOT ON THE WIRE" banner in
+`models/dueDiligence.ts`: evidence upload (out of scope in `DD API.md`),
+`DdEligibleDeal` and `DdWorkspaceOverview` (no operation exists). **The last
+one blocks the `/technical` overview page** — there is no aggregate endpoint to
+populate it from, which is why the Technical scaffold is still outstanding
+rather than merely unfinished.
+
+**⚠ Discrepancy resolved, needs a sanity check.** ROLE_PERMISSION_MATRIX § 10
+grants `dd:*` to Technical only; `DD API.md` gives read to every staff role and
+create/update to technical/manager/admin. Followed `DD API.md` — the old grants
+left manager and admin unable to see a nav item for assessments they may
+create. Table in the conformance doc.
+
+**⚠ Four response shapes are guesses.** `DD API.md` describes the write cascade
+but never says what the endpoints return, so
+`DdAssessmentListResponse` / `DdProgress` / `DdAssessmentCreateResponse` /
+`DdResponseUpdateResponse` are the frontend's best reading and need BE owner
+confirmation. This is the most likely place the pass is wrong.
+
+Verified: `tsc --noEmit` clean, `next build` succeeded (64 pages). No frontend
+test harness covers the service layer, so adapter parity rests on the shared
+TypeScript port alone.
+
+### 2026-08-17 — The sales card carries a company and a reachable contact
+
+Redesign of manual entry so a pipeline card can actually be worked. Previously
+a card showed a title and an opaque `organizationId`, and the board offered no
+way to reach anyone — `SALES_KANBAN_INTEGRATION_HANDOFF` records this plainly:
+"`contactName`/`email` … are not part of the Sales API yet".
+
+**What changed, in product terms.** The Add-card form is now grouped the way a
+salesperson holds the information — *Customer* (company, contact name, job
+title, phone, email), then *Opportunity* (title, vertical, priority, stage,
+description), then *Value and timing*. A board card shows the company name and
+the contact with one-tap `tel:` / `mailto:` links; the detail panel repeats
+them in a Customer section.
+
+**Backend.** `deals.resolveContact` finds-or-creates a `contacts` row inside
+the resolved organization, matched by normalized email through the existing
+`by_normalizedEmail` index and re-checked against the organization (the index
+is global). It writes a `contact.created` audit row in the same mutation as the
+deal, so a half-created contact is impossible. Blanks on an existing contact
+are filled from what was typed; **an existing value is never overwritten** —
+this endpoint is not a contact editor. `isPrimary` is set only when the company
+has no primary contact yet.
+
+`convex/lib/cardParties.ts` (new) denormalizes `organizationName` and
+`primaryContact` onto every card the board reads. Reads are deduplicated by id
+per page, so a column full of deals for one customer costs one organization
+read, not one per card. A dangling or archived reference resolves to `null`
+rather than throwing — a board that will not render because one contact was
+archived is worse than a card with no phone number.
+
+**Rules enforced, and where.**
+
+| Rule | Source | Enforced |
+|---|---|---|
+| Contact needs at least email or phone | DEALFLOW § 5.1 | `deals.resolveContact`, mirrored in the gateway parser, the mock adapter and the form |
+| `contactName` required when any contact field is sent | same | gateway parser + mutation |
+| `primaryContactId` XOR the typed `contact*` group | this change | gateway parser + mutation |
+| `do_not_contact` gets no call/email affordance | DEALFLOW § 5.1 | `contactChannels()` in `models/sales.ts` — the single sanctioned way to build a link |
+
+**Owner is shown by name, or not at all.** The Record panel used to print
+`card.ownerId` — a raw Convex key like `ms767yfjnrhn1xfkt3c1stzrgs8ch435`,
+which tells a human nothing. `cardParties` now resolves `ownerName` the same
+way it resolves the company and contact, and `DealDetail` renders **"You"**
+when `card.ownerId === profile.user.id` (an exact comparison: `auth/me` and
+`deals.ownerId` both serialize the same `users._id`), the resolved name
+otherwise, and **omits the row entirely** when neither is available. It never
+falls back to the id.
+
+This does expose a staff member's display name to anyone who can already see
+the deal. That is a small, deliberate widening: a `sales` caller only ever sees
+deals they own, and manager/admin see the whole board by design. Flagging it so
+the BE owner can object rather than discover it.
+
+**⚠ Two things a reviewer should push on.**
+
+1. **`SalesCard` and `SalesCardDetail` grew required fields.** Any consumer
+   pinned to the previous contract release will fail `additionalProperties`
+   validation on the new keys. This is a contract change on *read* operations,
+   not just the new create — it needs the same FE/BE owner sign-off, and the
+   draft still must not be frozen or tagged (workflow § 8, § 15).
+2. **The contact links live inside the drag handle.** The whole card is the
+   board's drag surface, so `DealCardView` stops pointer-down propagation on
+   the two anchors. The trade-off is deliberate and documented in the file: you
+   cannot start a drag from those two small targets. If that turns out to annoy
+   people in practice, move the links to a hover-revealed footer rather than
+   removing the `stopPropagation`, which is what makes them clickable at all.
+
+**Verified.** Backend `tsc` clean, **86/86** tests passing (12 files) including
+a new `tests/sales-card-create.test.ts` covering create-both, reuse-both
+(different casing and spacing), the email-or-phone rejection with nothing
+partially written, the organization XOR, and a deal with no contact.
+`redocly lint` clean. Frontend `tsc` clean, `next build` succeeded (64 pages).
+
+**⚠ Correction to yesterday's entry.** The 2026-08-17 organization entry below
+claims "`vitest` 27/27". That was 27 of **86**: this sandbox held only 3 of the
+11 test files, so the run was a subset and the claim overstated. All 11
+pre-existing files were fetched and run for this change, and
+`tests/sales-routes.test.ts` did in fact fail to typecheck against yesterday's
+`createCard` addition — a real defect the missing files had hidden. It is fixed
+in this commit.
+
+### 2026-08-17 — Organization is created from a typed company name
+
+Supersedes the "paste an organization id" form shipped on 2026-08-15. The
+decision and its consequences are written up in the 2026-08-15 entry below,
+under "Organization and owner selection", so the whole story stays in one
+place. Files touched:
+
+| Repo | File | Change |
+|---|---|---|
+| BE | `convex/schema.ts` | `organizations.normalizedName` + `by_normalizedName` index |
+| BE | `convex/deals.ts` | `normalizeOrganizationName`, `resolveOrganization`, reworked `createFromGateway` args |
+| BE | `convex/salesGateway.ts` | `organizationName` parsed; `organizationId`/`ownerId` optional; XOR check |
+| BE | `src/domain/sales/types.ts` | request shape |
+| BE | `api-contracts/components.yaml`, `paths/sales-cards.yaml` | `oneOf` on the two organization inputs; clarification note removed |
+| FE | `src/models/sales.ts` | request shape |
+| FE | `src/components/sales/ManualDealModal.tsx` | one "Company name *" field; owner shown, not entered |
+| FE | `src/services/mock/index.ts` | mock mirrors the XOR rule and find-or-create |
+
+Files touched by the contact change:
+
+| Repo | File | Change |
+|---|---|---|
+| BE | `convex/lib/cardParties.ts` | **new** — per-page company/contact/owner-name hydration |
+| BE | `convex/deals.ts` | `resolveContact`, `normalizeContactEmail`, contact args on `createFromGateway`, parties on `getDetail` |
+| BE | `convex/dealflow.ts` | parties on the board page |
+| BE | `convex/salesGateway.ts` | contact parsing; `organizationName`/`primaryContact` serialized |
+| BE | `src/domain/sales/types.ts` | `SalesCardContact`; card and create-request shapes |
+| BE | `api-contracts/components.yaml` | `SalesCardContact` schema; card + create-request fields |
+| BE | `tests/sales-card-create.test.ts` | **new** — 5 cases |
+| BE | `tests/sales-routes.test.ts` | fixture updated; `createCard` added to the repository double |
+| FE | `src/models/sales.ts` | `SalesContactDto`, `contactChannels()`, card + request shapes |
+| FE | `src/components/sales/ManualDealModal.tsx` | three-section layout; contact fields and validation |
+| FE | `src/components/sales/DealCardView.tsx` | company name + tap-to-call/mail on the card |
+| FE | `src/components/sales/DealDetail.tsx` | Customer section; Owner shown as "You"/name, never the id |
+| FE | `src/components/sales/salesAdapter.ts` | maps the two new wire fields |
+| FE | `src/services/mock/salesFixtures.ts` | per-deal company/contact, incl. a `do_not_contact` case |
+
+Verified: frontend `tsc --noEmit` clean and `next build` succeeded; backend
+`tsc --noEmit` clean, `vitest` 27/27 passing, `redocly lint` clean. **No test
+covers `resolveOrganization` yet** — the existing suite does not exercise
+`createFromGateway`, and adding a convex-test case for find-or-create is the
+obvious next commit.
+
+### 2026-08-15 — Manual sales card creation (`POST /api/v1/sales/cards`)
+
+Closes the gap recorded in `docs/SALES_BOARD_CONTRACT_GAP.md` § 4 Gap A. The
+board's "+ Add card" button is back, and this time there is a real operation
+behind it.
+
+**Backend.** `convex/deals.ts` already contained a `create` mutation with the
+full UC-004 semantics, but it authorized through `requireRoleActor(ctx)` — the
+Convex auth identity — so the HMAC gateway hop could not reach it. Its body is
+now a shared `insertDeal` helper, called by two entry points:
+
+- `deals.create` — unchanged public Convex mutation.
+- `deals.createFromGateway` — new `internalMutationGeneric` taking
+  `clerkSubject`. It re-resolves the user and re-checks the role inside Convex;
+  the gateway is a transport, not an authority (DEALFLOW § 9.1).
+
+One mutation writes `deals` + the initial immutable `dealStageHistory` row +
+`auditLogs`, so a partial create is impossible. `stageId` defaults to the seeded
+`new` stage. Roles: `sales`, `manager`, `admin` (DEALFLOW § 9.2).
+
+Wiring: `POST` export on `app/api/v1/sales/cards/route.ts` →
+`handleCreateSalesCard` (201) → `SalesService.createCard` →
+`ConvexGatewayRepository.createCard` → `salesCardCreate` HTTP action →
+`deals.createFromGateway`. CORS already permitted `POST`.
+
+**Frontend.** `SalesCardCreateRequest`/`Response` in `models/sales.ts`,
+`createCard` on the `SalesService` port, implemented by **both** adapters, and a
+rewritten `ManualDealModal`. The modal accepts a major-unit amount and converts
+it with `BigInt` into the contract's minor-unit string — never through a float —
+omits absent optional fields rather than sending `null`, and surfaces the
+`correlationId` on failure so a defect ticket can be raised per workflow § 18.
+
+**Design decision worth knowing.** `createCard` is deliberately **not** on the
+Kanban `DataAdapter`. The library renders its own inline create affordance
+whenever that method exists, and that form cannot collect the organization a
+deal must be filed under, so it would always produce a 400. Creation goes
+through `ManualDealModal` only. The reasoning is comment-blocked in
+`salesAdapter.ts` so nobody re-adds it.
+
+**⚠ This is a contract change.** A new operation was added to the OpenAPI draft
+(`api-contracts/paths/sales-cards.yaml` + two schemas in `components.yaml`).
+Per collaboration workflow § 8 and § 15 an agent may draft, lint and diff a
+contract but **cannot approve or freeze it** — this needs FE owner and BE owner
+sign-off before any release is tagged.
+
+**Organization and owner selection — decided 2026-08-17 (was NEEDS
+CLARIFICATION).** The earlier build asked the operator to paste raw
+`organizationId` and `ownerId` values because no `GET /organizations` or
+`GET /users` operation exists to populate a picker, while `API_CONTRACT.md`
+§ 9.2 has the operator type a free-text company name that the accepted domain
+model had no field for. That is now resolved in favour of § 9.2:
+
+- `SalesCardCreateRequest` carries **exactly one** of `organizationId` or
+  `organizationName`. Sending both, or neither, is a 400 — the rule is enforced
+  twice, in `salesGateway.parseCreateFields` (shape) and in
+  `deals.createFromGateway` (authorization/consistency boundary).
+- `deals.resolveOrganization` normalizes the name (trim, lowercase, collapse
+  runs of whitespace), looks it up through the **new**
+  `organizations.by_normalizedName` index, and inserts a `customer`
+  organization in `prospect` status when nothing matches. The insert writes an
+  `organization.created` audit row alongside the deal's own audit row, in the
+  same mutation, so a half-created organization is impossible.
+- A supplied or matched organization that is `archivedAt` or `status:blocked`
+  is rejected as `VALIDATION_ERROR` rather than silently reused.
+- `ownerId` is now optional and defaults to the verified actor. This matters
+  more than it looks: `resolveKanbanScope` gives a `sales` caller
+  `{kind:"assigned"}`, so a card created with anyone else's owner would vanish
+  from the creator's board the moment it was saved.
+- The modal now shows one **"Company name *"** field plus a read-only line
+  naming the owner. It never sends `organizationId` or `ownerId`.
+
+**⚠ Schema change requiring a backfill — needs BE owner action.**
+`organizations.normalizedName` was added as `v.optional(v.string())` with an
+index, following the expand/backfill/contract pattern (and mirroring the
+existing `users.normalizedEmail` convention). Consequences, stated plainly:
+
+1. Organization rows that existed before this deploy have no `normalizedName`
+   and are therefore **invisible to the lookup**. Typing the name of an already
+   known company will create a second organization for it until a backfill
+   runs.
+2. A Convex index is not a uniqueness constraint. Two concurrent creates of the
+   same new name can both miss and both insert. The window is small and the
+   damage is a duplicate row rather than corruption, but it is real; a
+   deduplication pass or an application-level guard is the follow-up.
+
+Until (1) is done, treat auto-created organizations as provisional records for
+a back-office reviewer, not as a clean customer master.
+
+**Still not done, and still blocking a usable board:**
+
+- No deal exists in the database. `convex/seed.ts` seeds only the 10
+  `pipelineStages` and the DD template; there is no deal fixture.
+- No customer-intake endpoint creates a card transactionally with its
+  submission (`API_CONTRACT.md` § 9.2 — Gap B). Manual entry alone is not a
+  production data source.
+- `DELETE` remains undecided: `API_CONTRACT.md` § 9.8 allows Manager/Admin
+  delete with an audit event, `KANBAN_INTEGRATION.md` argues a lost deal belongs
+  in `lost` and must never be erased. Two project documents disagree; the
+  backend implemented neither and CORS does not allow `DELETE`.
+- A `sales` caller only sees deals they own (`resolveKanbanScope` → `assigned`).
+  Set `ownerId` to your own user id or a newly created card will be invisible to
+  you.
+
+### 2026-08-14 — Clerk authentication migration (CR-003)
 
 Driven by `PandaCloudBackend/docs/collaboration/PHASE_1_FRONTEND_AUTH_HANDOFF.md`
 ("Required frontend migration") and CR-003 in `docs/CONTRACT_CONFORMANCE.md`.
@@ -16,7 +342,7 @@ The full pre-implementation analysis, route protection table, customer/staff
 matrix and the 14 open questions are in **`docs/CLERK_AUTH_DESIGN.md`** — read
 that before touching auth.
 
-### What changed
+#### What changed
 
 - Clerk owns sign-in, sign-up, session, refresh, MFA and sign-out. PandaCloud
   issues, stores and refreshes **no token**.
@@ -41,7 +367,7 @@ that before touching auth.
   custom flows. Sign-up now includes the email-code step the backend requires
   before it will create a profile (`409 IDENTITY_EMAIL_REQUIRED`).
 
-### Dependency changes — require review
+#### Dependency changes — require review
 
 | Package | From | To | Why |
 |---|---|---|---|
@@ -54,7 +380,7 @@ unilateral upgrade of a major dependency — it is the minimum patch bump the ne
 peer range accepts — but it is called out here because AGENTS.md forbids
 changing an important dependency silently.
 
-### Two manual steps required on the developer machine
+#### Two manual steps required on the developer machine
 
 1. **Delete the retired file.** File transport into this workspace can write and
    overwrite but cannot delete, so `src/services/tokenStore.ts` is still on disk
@@ -72,7 +398,7 @@ changing an important dependency silently.
    `@kanban/library`, so its lockfile is not representative. Run `npm install`
    locally after repairing the Kanban dependency (section 12).
 
-### Out-of-scope fix, deliberately included
+#### Out-of-scope fix, deliberately included
 
 `src/app/submit-request/page.tsx` passed `redirectTo={(reference) => …}` — a
 function — from a Server Component to the `ContactForm` Client Component. React
@@ -112,7 +438,7 @@ The major commits are:
 
 The repository is no longer only a marketing site. It now contains:
 
-- the existing public Cloud Panda marketing experience;
+- the existing public Panda Cloud marketing experience;
 - Customer/User workspace under `/dashboard`;
 - Sales workspace under `/sales`;
 - Manager workspace under `/manager`;
@@ -577,6 +903,32 @@ properly vendored source/build output.
 
 ## 13. Validation status
 
+### 2026-08-15 (manual card creation)
+
+Run in an isolated Linux sandbox against a copy of both repositories, with
+dependencies installed from the public registry:
+
+```text
+panda_cloud        tsc --noEmit ........... PASS (0 errors)
+panda_cloud        next build ............. PASS (exit 0, 64 routes + middleware)
+PandaCloudBackend  tsc --noEmit ........... PASS (0 errors)
+PandaCloudBackend  vitest run ............. PASS (27 tests, 3 files)
+PandaCloudBackend  redocly lint ........... PASS ("Your API description is valid")
+```
+
+Not verified, and it matters:
+
+1. **No live `POST` was executed.** `deals.createFromGateway` is a new Convex
+   function; it must be deployed with `npx convex dev` (or `convex deploy`)
+   before the button can work at all. Until then the gateway will fail to
+   resolve the internal function.
+2. **No round trip through a real Clerk session or a real Convex deployment.**
+   Role enforcement, the HMAC hop, the atomic three-table write and the 409
+   revision behaviour are all argued from the code, not observed.
+3. One backend file could not be copied into the sandbox
+   (`app/api/v1/sales/cards/[dealId]/move/route.ts`) and was reconstructed
+   locally for the typecheck only. The real file was neither read nor modified.
+
 ### 2026-08-15 (contract-accurate Sales pipeline)
 
 Run in this repository with the real `@kanban/library` (local `kaban_cloud/`
@@ -699,6 +1051,24 @@ Environment constraints found during that audit:
    today, so no identity can ever become staff) and U-05.
 5. Review the forced `next` 14.2.5 -> 14.2.35 patch bump.
 
+### P0 — make the sales board usable
+
+1. Deploy the new Convex function (`npx convex dev`) — `deals.createFromGateway`
+   does not exist in the deployment yet, so "+ Add card" cannot work until it
+   does.
+2. Get FE + BE owner approval for the new `POST /sales/cards` contract
+   operation. An agent may draft it but cannot approve or freeze it
+   (collaboration workflow § 15).
+3. Decide organization/owner selection (see § 0, 2026-08-15) so the modal can
+   stop asking for raw identifiers.
+4. Seed a few demo deals behind the existing `SEED_ENABLED` / `SEED_SECRET`
+   guard so the board is demoable without hand-inserting rows.
+5. Decide the delete question — `API_CONTRACT.md` § 9.8 and
+   `KANBAN_INTEGRATION.md` currently contradict each other.
+6. Implement customer-intake endpoints that create a card transactionally with
+   the submission (`API_CONTRACT.md` § 9.2). Manual entry is not a production
+   data source.
+
 ### P0 — establish the backend contract
 
 1. Obtain and pin the backend OpenAPI release and generated client.
@@ -754,6 +1124,40 @@ Environment constraints found during that audit:
 
 - `HANDOFF.md`, `docs/AGENT_CONTEXT_SUMMARY.md`. No application source file was
   changed.
+
+### 2026-08-15 manual sales card creation
+
+`PandaCloudBackend` (first change to that repository in this handoff series):
+
+```text
+convex/deals.ts                         insertDeal helper + createFromGateway
+convex/gatewayPaths.ts                  + salesCardCreate
+convex/http.ts                          + route
+convex/salesGateway.ts                  + parseCreateFields, createSalesCard action
+src/domain/sales/types.ts               + SalesCardCreateRequest/Response
+src/domain/sales/service.ts             + createCard
+src/http/sales-handlers.ts              + handleCreateSalesCard (201)
+src/integrations/convex.ts              + repository createCard
+app/api/v1/sales/cards/route.ts         + POST export
+api-contracts/paths/sales-cards.yaml    + post operation  (DRAFT — needs owner approval)
+api-contracts/components.yaml           + 2 schemas       (DRAFT — needs owner approval)
+```
+
+`panda_cloud`:
+
+```text
+src/models/sales.ts                     + create types; header comment corrected
+src/services/contracts.ts               + SalesService.createCard
+src/services/http-impl/index.ts         + POST implementation
+src/services/mock/index.ts              + mockCreateSalesCard (both adapters stay identical)
+src/components/sales/salesAdapter.ts    comment block: why createCard is NOT here
+src/components/sales/ManualDealModal.tsx  recreated for the contract shape
+src/components/sales/SalesBoard.tsx     + button, modal, column load
+docs/SALES_BOARD_CONTRACT_GAP.md        new (rev 2 — rev 1 was wrong, see its header)
+docs/INTEGRATION_DEFECT_AUTH_ME_401.md  new (401 diagnosis, separate issue)
+docs/AGENT_CONTEXT_SUMMARY.md           fingerprint refresh + Sales section correction
+HANDOFF.md                              this section
+```
 
 ### 2026-08-14 Clerk migration
 

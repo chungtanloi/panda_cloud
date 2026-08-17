@@ -1,4 +1,15 @@
 import type {
+  KycCase,
+  KycCaseCreate,
+  KycCaseUpdate,
+  NcndaAgreementDetail,
+  NcndaAgreementUpsert,
+  DdAssessmentCreate,
+  DdAssessmentDetail,
+  DdAssessmentSummary,
+  DdMetrics,
+  DdResponse,
+  DdResponsePatch,
   AssessmentDraft,
   AssessmentSubmission,
   AuthProfile,
@@ -25,11 +36,13 @@ import type {
   WorkloadType,
   WorkspaceResourceKind,
   DealStatus,
+  SalesCardCreateRequest,
   SalesCardDetailDto,
   SalesCardListQuery,
   SalesCardMoveRequest,
   SalesCardUpdateRequest,
 } from "@/models";
+import { kycUpdateProblems } from "@/models";
 import type { ApiClient } from "../contracts";
 import { apiConfig } from "../config";
 import { ApiError } from "../http";
@@ -37,6 +50,16 @@ import { sessionBridge } from "../session";
 import { computeQuote } from "@/lib/booking/quote";
 import { mockDealCards, mockSalesColumns } from "./salesFixtures";
 import { mockWorkspaceTables } from "./workspaceFixtures";
+import {
+  mockKycCases,
+  mockNcndaAgreements,
+  toAgreementSummary,
+} from "./legalComplianceFixtures";
+import {
+  MOCK_TEMPLATE_VERSION_LABEL,
+  buildMockAssessments,
+  mockDdTemplateItems,
+} from "./ddFixtures";
 import {
   analyzeStage,
   buildSchedule,
@@ -342,6 +365,123 @@ function mockSalesCardPage(query: SalesCardListQuery): {
   return { items, nextCursor };
 }
 
+let mockDealSequence = 0;
+let mockOrganizationSequence = 0;
+/** Mock stand-in for the `organizations.by_normalizedName` index. */
+const mockOrganizationNames = new Map<string, string>();
+
+/**
+ * Mirrors the backend create mutation closely enough to exercise the UI:
+ * validates the required references exist, derives `status` from the target
+ * column's category, defaults to the `new` column, and starts at revision 1.
+ *
+ * The real invariants (atomic stage-history + audit rows, role check, active
+ * staff owner) are the backend's; this only has to make the board behave.
+ */
+function mockCreateSalesCard(body: SalesCardCreateRequest): { dealId: string; revision: number } {
+  const column = body.stageId
+    ? mockSalesColumns.find((candidate) => candidate.columnId === body.stageId)
+    : mockSalesColumns.find((candidate) => candidate.code === "new");
+  if (!column) {
+    throw new ApiError({ code: "NOT_FOUND", message: "Stage was not found.", status: 404 });
+  }
+  const title = body.title?.trim() ?? "";
+  const organizationName = body.organizationName?.trim() ?? "";
+  // Mirror the gateway's XOR rule so a payload that would 400 in production
+  // also fails here — an adapter that is more permissive than the real one
+  // hides integration defects until deploy (workflow § 6).
+  if (Boolean(body.organizationId) === Boolean(organizationName)) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "Provide exactly one of organizationId or organizationName.",
+      status: 400,
+    });
+  }
+  if (!title || !body.vertical) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "Title and vertical are required.",
+      status: 400,
+    });
+  }
+
+  // Mirror the backend contact rule (DEALFLOW § 5.1) so the mock rejects
+  // exactly what the gateway rejects.
+  const contactName = body.contactName?.trim() ?? "";
+  const contactEmail = body.contactEmail?.trim() ?? "";
+  const contactPhone = body.contactPhone?.trim() ?? "";
+  if ((contactEmail || contactPhone) && !contactName) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "A contact name is required.",
+      status: 400,
+    });
+  }
+  if (contactName && !contactEmail && !contactPhone) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "A contact needs at least an email or a phone number.",
+      status: 400,
+    });
+  }
+
+  // Find-or-create by normalized name, as `deals.resolveOrganization` does.
+  const normalized = organizationName.toLowerCase().replace(/\s+/g, " ");
+  const matched = salesCards.find(
+    (card) => mockOrganizationNames.get(card.organizationId) === normalized,
+  );
+  let organizationId = body.organizationId ?? matched?.organizationId;
+  if (!organizationId) {
+    mockOrganizationSequence += 1;
+    organizationId = `org_mock_${mockOrganizationSequence}`;
+    mockOrganizationNames.set(organizationId, normalized);
+  }
+
+  mockDealSequence += 1;
+  const timestamp = new Date().toISOString();
+  const created: SalesCardDetailDto = {
+    dealId: `deal_mock_${mockDealSequence}`,
+    title,
+    organizationId,
+    organizationName: organizationName || null,
+    ownerName: "Ada Mensah",
+    primaryContact: contactName
+      ? {
+          contactId: `ct_mock_${mockDealSequence + 1}`,
+          fullName: contactName,
+          jobTitle: body.contactJobTitle?.trim() || null,
+          email: contactEmail || null,
+          phone: contactPhone || null,
+          status: "active" as const,
+        }
+      : null,
+    // The backend defaults an omitted owner to the authenticated actor; the
+    // mock has no session, so it uses its own sales fixture identity.
+    ownerId: body.ownerId ?? "user_sales_01",
+    columnId: column.columnId,
+    status: dealStatusForColumn(column.columnId),
+    vertical: body.vertical,
+    priority: body.priority ?? "normal",
+    estimatedValueMinor: body.estimatedValueMinor ?? null,
+    currency: body.currency ?? null,
+    probabilityPercent: body.probabilityPercent ?? null,
+    expectedCloseDate: body.expectedCloseDate ?? null,
+    lastContactAt: null,
+    lastContactMethod: null,
+    revision: 1,
+    updatedAt: timestamp,
+    description: body.description ?? null,
+    lostReason: null,
+    wonAt: null,
+    projectId: null,
+    createdAt: timestamp,
+    createdBy: "user_sales_01",
+    archivedAt: null,
+  };
+  salesCards = [created, ...salesCards];
+  return { dealId: created.dealId, revision: created.revision };
+}
+
 function mockUpdateSalesCard(id: string, body: SalesCardUpdateRequest): { dealId: string; revision: number } {
   const index = salesCards.findIndex((deal) => deal.dealId === id);
   if (index === -1) {
@@ -431,6 +571,414 @@ function mockMoveSalesCard(id: string, body: SalesCardMoveRequest): { dealId: st
 
   salesCards = salesCards.map((deal, i) => (i === index ? next : deal));
   return { dealId: id, status, revision: next.revision };
+}
+
+
+/* ------------------------- Due Diligence (DD API.md) ---------------------- */
+
+const ddState = buildMockAssessments();
+let ddSequence = 100;
+
+function findAssessment(assessmentId: string): DdAssessmentSummary {
+  const found = ddState.summaries.find((row) => row.id === assessmentId);
+  if (!found) {
+    throw new ApiError({
+      code: "NOT_FOUND",
+      message: `Assessment ${assessmentId} not found.`,
+      status: 404,
+    });
+  }
+  return found;
+}
+
+/**
+ * DEALFLOW § 6, verbatim:
+ *
+ *   completionRate   = reviewedItems / totalItems
+ *   complianceRate   = (compliant + 0.5 * partiallyCompliant) / applicableReviewedItems
+ *   criticalFailures = count(criticality = critical AND status = non_compliant)
+ *
+ * A zero denominator yields `null`, never 0 — "nothing measured yet" and
+ * "measured zero" are different facts and the UI renders them differently.
+ */
+function computeMetrics(responses: readonly DdResponse[]): DdMetrics {
+  const totalItems = mockDdTemplateItems.length;
+  const answered = responses.filter((row) => row.status !== "not_reviewed");
+  const applicable = answered.filter((row) => row.status !== "not_applicable");
+  const compliant = applicable.filter((row) => row.status === "compliant").length;
+  const partial = applicable.filter((row) => row.status === "partially_compliant").length;
+
+  const criticalCodes = new Set(
+    mockDdTemplateItems.filter((item) => item.criticality === "critical").map((item) => item.id),
+  );
+
+  return {
+    totalItems,
+    reviewedItems: answered.length,
+    completionRate: totalItems === 0 ? null : answered.length / totalItems,
+    complianceRate: applicable.length === 0 ? null : (compliant + 0.5 * partial) / applicable.length,
+    criticalFailures: responses.filter(
+      (row) => row.status === "non_compliant" && criticalCodes.has(row.templateItemId),
+    ).length,
+  };
+}
+
+function withMetrics(summary: DdAssessmentSummary): DdAssessmentSummary {
+  return { ...summary, metrics: computeMetrics(ddState.responsesByAssessment[summary.id] ?? []) };
+}
+
+function mockGetAssessment(assessmentId: string): DdAssessmentDetail {
+  const summary = withMetrics(findAssessment(assessmentId));
+  return {
+    ...summary,
+    items: mockDdTemplateItems,
+    responses: ddState.responsesByAssessment[assessmentId] ?? [],
+  };
+}
+
+function mockCreateAssessment(dealId: string, body: DdAssessmentCreate) {
+  if (body.dealId && body.dealId !== dealId) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "The body dealId must match the path.",
+      status: 400,
+    });
+  }
+  ddSequence += 1;
+  const id = `dd_mock_${ddSequence}`;
+  const now = new Date().toISOString();
+  ddState.summaries.unshift({
+    id,
+    dealId,
+    dealTitle: `Deal ${dealId}`,
+    organizationName: "—",
+    templateVersionLabel: MOCK_TEMPLATE_VERSION_LABEL,
+    status: "not_started",
+    ...(body.assignedToUserId ? { assignedToName: body.assignedToUserId } : {}),
+    updatedAt: now,
+    revision: 1,
+    metrics: computeMetrics([]),
+  });
+  ddState.responsesByAssessment[id] = [];
+  return { assessmentId: id, revision: 1 };
+}
+
+function mockUpdateResponse(
+  assessmentId: string,
+  templateItemId: string,
+  body: DdResponsePatch,
+) {
+  const summary = findAssessment(assessmentId);
+
+  // DD API.md: 409 when the revision is stale OR the assessment is already
+  // completed/cancelled. Both are the same class of "you are acting on a
+  // version of reality that no longer exists".
+  if (summary.status === "completed" || summary.status === "cancelled") {
+    throw new ApiError({
+      code: "CONFLICT",
+      message: `This assessment is ${summary.status} and can no longer be edited.`,
+      status: 409,
+    });
+  }
+  if (!mockDdTemplateItems.some((item) => item.id === templateItemId)) {
+    throw new ApiError({
+      code: "NOT_FOUND",
+      message: `Requirement ${templateItemId} is not in this template.`,
+      status: 404,
+    });
+  }
+
+  const responses = ddState.responsesByAssessment[assessmentId] ?? [];
+  const index = responses.findIndex((row) => row.templateItemId === templateItemId);
+  // A requirement nobody has answered yet has no row, so revision 0 is the
+  // caller's way of saying "I believe this is unanswered" — the upsert case.
+  const current = index === -1 ? null : responses[index]!;
+  if (body.expectedRevision !== (current?.revision ?? 0)) {
+    throw new ApiError({
+      code: "CONFLICT",
+      message: "This response changed on the server. Reloading the latest version.",
+      status: 409,
+    });
+  }
+
+  const now = new Date().toISOString();
+  const next: DdResponse = {
+    id: current?.id ?? `ddr_mock_${assessmentId}_${templateItemId}`,
+    assessmentId,
+    templateItemId,
+    status: body.status ?? current?.status ?? "not_reviewed",
+    ...(body.responseValue !== undefined
+      ? { responseValue: body.responseValue }
+      : current?.responseValue !== undefined
+        ? { responseValue: current.responseValue }
+        : {}),
+    ...(body.comments !== undefined
+      ? { comments: body.comments }
+      : current?.comments !== undefined
+        ? { comments: current.comments }
+        : {}),
+    ...(body.markReviewed
+      ? { reviewedBy: "Technical reviewer", reviewedAt: now }
+      : current?.reviewedBy
+        ? { reviewedBy: current.reviewedBy, reviewedAt: current.reviewedAt }
+        : {}),
+    updatedAt: now,
+    revision: (current?.revision ?? 0) + 1,
+    evidence: current?.evidence ?? [],
+  };
+
+  const updated =
+    index === -1
+      ? [...responses, next]
+      : responses.map((row, position) => (position === index ? next : row));
+  ddState.responsesByAssessment[assessmentId] = updated;
+
+  // DD API.md: response rev+1 -> recompute progress -> assessment snapshot
+  // rev+1. The deal DD summary bump has no frontend surface to observe it.
+  const summaryIndex = ddState.summaries.findIndex((row) => row.id === assessmentId);
+  const progress = computeMetrics(updated);
+  const bumped: DdAssessmentSummary = {
+    ...summary,
+    status: summary.status === "not_started" ? "in_progress" : summary.status,
+    updatedAt: now,
+    revision: summary.revision + 1,
+    metrics: progress,
+  };
+  ddState.summaries[summaryIndex] = bumped;
+
+  return {
+    assessmentId,
+    templateItemId,
+    responseRevision: next.revision,
+    assessmentRevision: bumped.revision,
+    progress,
+  };
+}
+
+
+/* ---------------------- Legal (NCNDA) and Compliance (KYC) ---------------- */
+
+let ncndaAgreements: NcndaAgreementDetail[] = [...mockNcndaAgreements];
+let kycCases: KycCase[] = [...mockKycCases];
+let legalSequence = 100;
+
+function findAgreement(agreementId: string): NcndaAgreementDetail {
+  const found = ncndaAgreements.find((row) => row.agreementId === agreementId);
+  if (!found) {
+    throw new ApiError({
+      code: "NOT_FOUND",
+      message: `Agreement ${agreementId} not found.`,
+      status: 404,
+    });
+  }
+  return found;
+}
+
+/**
+ * Mirrors `convex/ncnda.ts#upsertAgreement`, including the rules that make it
+ * fail. An adapter that is more permissive than the backend hides integration
+ * defects until deploy.
+ */
+function mockUpsertAgreement(body: NcndaAgreementUpsert) {
+  // "Active NCNDA requires effectiveDate."
+  if (body.status === "active" && !/^\d{4}-\d{2}-\d{2}$/.test(body.effectiveDate ?? "")) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "An active NCNDA needs an effective date (YYYY-MM-DD).",
+      status: 400,
+    });
+  }
+
+  const existingId = (body as { agreementId?: string }).agreementId;
+  const current = existingId ? findAgreement(existingId) : null;
+
+  // "An active NCNDA already exists." — at most one per deal + counterparty.
+  if (body.status === "active") {
+    const clash = ncndaAgreements.find(
+      (row) =>
+        row.status === "active" &&
+        row.dealId === body.dealId &&
+        row.counterpartyOrganizationId === body.counterpartyOrganizationId &&
+        row.agreementId !== existingId,
+    );
+    if (clash) {
+      throw new ApiError({
+        code: "CONFLICT",
+        message: "An active NCNDA already exists for this deal and counterparty.",
+        status: 409,
+      });
+    }
+  }
+
+  const now = new Date().toISOString();
+
+  if (current) {
+    // "expectedRevision is required."
+    if (body.expectedRevision === undefined) {
+      throw new ApiError({
+        code: "VALIDATION_ERROR",
+        message: "expectedRevision is required when updating an agreement.",
+        status: 400,
+      });
+    }
+    if (body.expectedRevision !== current.revision) {
+      throw new ApiError({
+        code: "CONFLICT",
+        message: "This agreement changed on the server. Reloading the latest version.",
+        status: 409,
+      });
+    }
+    const next: NcndaAgreementDetail = {
+      ...current,
+      status: body.status,
+      effectiveDate: body.effectiveDate ?? null,
+      expiresAt: body.expiresAt ?? null,
+      sentAt: body.sentAt ?? null,
+      signedAt: body.signedAt ?? null,
+      countersignedAt: body.countersignedAt ?? null,
+      ownerId: body.ownerId,
+      notes: body.notes ?? null,
+      updatedAt: now,
+      revision: current.revision + 1,
+    };
+    ncndaAgreements = ncndaAgreements.map((row) =>
+      row.agreementId === current.agreementId ? next : row,
+    );
+    return { agreementId: next.agreementId, revision: next.revision, created: false };
+  }
+
+  legalSequence += 1;
+  const agreementId = `ncnda_mock_${legalSequence}`;
+  ncndaAgreements = [
+    {
+      agreementId,
+      dealId: body.dealId,
+      dealTitle: null,
+      counterpartyOrganizationId: body.counterpartyOrganizationId,
+      counterpartyName: null,
+      status: body.status,
+      effectiveDate: body.effectiveDate ?? null,
+      expiresAt: body.expiresAt ?? null,
+      sentAt: body.sentAt ?? null,
+      signedAt: body.signedAt ?? null,
+      countersignedAt: body.countersignedAt ?? null,
+      ownerId: body.ownerId,
+      ownerName: null,
+      notes: body.notes ?? null,
+      updatedAt: now,
+      revision: 1,
+      versions: [],
+    },
+    ...ncndaAgreements,
+  ];
+  return { agreementId, revision: 1, created: true };
+}
+
+function findCase(caseId: string): KycCase {
+  const found = kycCases.find((row) => row.caseId === caseId);
+  if (!found) {
+    throw new ApiError({
+      code: "NOT_FOUND",
+      message: `KYC case ${caseId} not found.`,
+      status: 404,
+    });
+  }
+  return found;
+}
+
+/** Mirrors `convex/kyc.ts#createCase`, failures included. */
+function mockCreateKycCase(body: KycCaseCreate) {
+  // "Exactly one KYC subject is required."
+  if (Boolean(body.subjectOrganizationId) === Boolean(body.subjectContactId)) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "Provide exactly one subject — an organization or a contact.",
+      status: 400,
+    });
+  }
+  // "provider and providerCaseId must be supplied together."
+  if (Boolean(body.provider) !== Boolean(body.providerCaseId)) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: "Provider and provider case id must be supplied together.",
+      status: 400,
+    });
+  }
+  if (
+    body.provider &&
+    kycCases.some(
+      (row) => row.provider === body.provider && row.providerCaseId === body.providerCaseId,
+    )
+  ) {
+    throw new ApiError({
+      code: "CONFLICT",
+      message: "That provider case already exists.",
+      status: 409,
+    });
+  }
+
+  legalSequence += 1;
+  const caseId = `kyc_mock_${legalSequence}`;
+  kycCases = [
+    {
+      caseId,
+      dealId: body.dealId,
+      dealTitle: null,
+      subject: body.subjectOrganizationId
+        ? {
+            kind: "organization",
+            organizationId: body.subjectOrganizationId,
+            displayName: null,
+          }
+        : { kind: "contact", contactId: body.subjectContactId!, displayName: null },
+      provider: body.provider ?? null,
+      providerCaseId: body.providerCaseId ?? null,
+      status: body.status ?? "not_started",
+      riskLevel: body.riskLevel ?? null,
+      assignedToId: body.assignedTo ?? null,
+      assignedToName: null,
+      rejectionReason: null,
+      submittedAt: null,
+      verifiedAt: null,
+      expiresAt: null,
+      updatedAt: new Date().toISOString(),
+      revision: 1,
+    },
+    ...kycCases,
+  ];
+  return { caseId, revision: 1 };
+}
+
+/** Mirrors `convex/kyc.ts#updateCase`, failures included. */
+function mockUpdateKycCase(caseId: string, body: KycCaseUpdate) {
+  const current = findCase(caseId);
+  if (body.expectedRevision !== current.revision) {
+    throw new ApiError({
+      code: "CONFLICT",
+      message: "This case changed on the server. Reloading the latest version.",
+      status: 409,
+    });
+  }
+  const problems = kycUpdateProblems(body);
+  if (problems.length > 0) {
+    throw new ApiError({ code: "VALIDATION_ERROR", message: problems[0]!, status: 400 });
+  }
+
+  const next: KycCase = {
+    ...current,
+    status: body.status,
+    riskLevel: body.riskLevel ?? null,
+    assignedToId: body.assignedTo ?? null,
+    assignedToName: body.assignedTo ? current.assignedToName : null,
+    rejectionReason: body.rejectionReason ?? null,
+    submittedAt: body.submittedAt ?? null,
+    verifiedAt: body.verifiedAt ?? null,
+    expiresAt: body.expiresAt ?? null,
+    updatedAt: new Date().toISOString(),
+    revision: current.revision + 1,
+  };
+  kycCases = kycCases.map((row) => (row.caseId === caseId ? next : row));
+  return { caseId, revision: next.revision };
 }
 
 export const mockApi: ApiClient = {
@@ -540,6 +1088,13 @@ export const mockApi: ApiClient = {
     getReceipt: (ref: string) => delay({ ...mockReceipt, reference: ref }),
   },
 
+  submissions: {
+    create: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Submission mock is not configured.", status: 501 }); },
+    list: async () => ({ leads: [], continueCursor: null, isDone: true }),
+    get: async () => { throw new ApiError({ code: "NOT_FOUND", message: "Submission not found.", status: 404 }); },
+    convert: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Submission conversion mock is not configured.", status: 501 }); },
+  },
+
   workspace: {
     getResource: (kind: WorkspaceResourceKind) => delay(mockWorkspaceTables[kind]),
   },
@@ -559,11 +1114,71 @@ export const mockApi: ApiClient = {
       return delay({ ...card });
     },
 
+    createCard: (body: SalesCardCreateRequest) => delay(mockCreateSalesCard(body)),
+
     updateCard: (id: string, body: SalesCardUpdateRequest) =>
       delay(mockUpdateSalesCard(id, body)),
 
     moveCard: (id: string, body: SalesCardMoveRequest) =>
       delay(mockMoveSalesCard(id, body)),
+  },
+
+  /**
+   * Technical Due Diligence — `DD API.md`, the same five operations the HTTP
+   * adapter exposes and no others.
+   *
+   * It recomputes the metrics from the stored responses
+   * using the formulas in DEALFLOW § 6 rather than serving a canned number, so
+   * a screen built against it behaves like the real thing — including the
+   * `null`-on-zero-denominator rule, which must render as an em dash and never
+   * as "0%".
+   */
+  dueDiligence: {
+    listAssessments: (dealId: string) =>
+      delay({ items: ddState.summaries.filter((row) => row.dealId === dealId).map(withMetrics) }),
+
+    createAssessment: (dealId: string, body: DdAssessmentCreate) =>
+      delay(mockCreateAssessment(dealId, body)),
+
+    getAssessment: (assessmentId: string) => delay(mockGetAssessment(assessmentId)),
+
+    getProgress: (assessmentId: string) => {
+      const summary = withMetrics(findAssessment(assessmentId));
+      return delay({
+        assessmentId: summary.id,
+        status: summary.status,
+        revision: summary.revision,
+        ...summary.metrics,
+      });
+    },
+
+    updateResponse: (assessmentId: string, templateItemId: string, body: DdResponsePatch) =>
+      delay(mockUpdateResponse(assessmentId, templateItemId, body)),
+  },
+
+  /**
+   * NCNDA — Legal. Enforces exactly the rules `convex/ncnda.ts` enforces, so a
+   * form that passes here passes there.
+   */
+  legal: {
+    listAgreements: (dealId: string) => delay({ items: ncndaAgreements.filter((row) => row.dealId === dealId).map(toAgreementSummary) }),
+    getAgreement: (agreementId: string) => delay({ ...findAgreement(agreementId) }),
+    upsertAgreement: (body: NcndaAgreementUpsert) => delay(mockUpsertAgreement(body)),
+    listDocuments: (agreementId: string) => delay(findAgreement(agreementId).versions),
+    attachDocument: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Document attachment is unavailable in the mock adapter.", status: 501 }); },
+    detachDocument: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Document detachment is unavailable in the mock adapter.", status: 501 }); },
+  },
+
+  /** KYC — Compliance. The HTTP adapter is the production gateway path. */
+  compliance: {
+    listCases: (dealId: string) => delay({ items: kycCases.filter((row) => row.dealId === dealId).map((row) => ({ ...row })) }),
+    getCase: (caseId: string) => delay({ ...findCase(caseId) }),
+    createCase: (dealId: string, body: Omit<KycCaseCreate, "dealId">) => delay(mockCreateKycCase({ ...body, dealId })),
+    updateCase: (caseId: string, body: KycCaseUpdate) =>
+      delay(mockUpdateKycCase(caseId, body)),
+    listDocuments: async () => ({ caseId: "", documents: [] }),
+    attachDocument: async () => ({ linkId: "mock-link", documentId: "mock-document" }),
+    detachDocument: async (_caseId: string, documentId: string) => ({ documentId, detached: true }),
   },
 
   leads: {

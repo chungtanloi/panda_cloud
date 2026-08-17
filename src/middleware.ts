@@ -26,6 +26,13 @@ const isProtectedRoute = createRouteMatcher([
   "/sales(.*)",
   "/manager(.*)",
   "/admin(.*)",
+  // Staff workspaces added 2026-08-17. Every one is staff-only, so the
+  // authentication gate belongs here; which staff role may open which
+  // workspace is still decided by `RoleGuard` after the profile loads, and
+  // ultimately by the backend.
+  "/technical(.*)",
+  "/legal(.*)",
+  "/compliance(.*)",
   "/requests(.*)",
 ]);
 

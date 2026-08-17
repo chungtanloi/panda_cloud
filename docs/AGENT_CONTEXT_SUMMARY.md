@@ -7,21 +7,26 @@
 - `branch_at_refresh`: `main`
 - `head_at_refresh`: `3c127eb239f33f09d3d48bb5bd68c159166a8c44` (diagnostic only; the
   working tree carries uncommitted Clerk-migration and Sales-pipeline changes)
-- `source_file_count`: `12`
-- `source_fingerprint`: `9d59616595ec66a9345ec185936cdb449c391a0bcc56525e759060d652dfbd50`
+- `source_file_count`: `16`
+- `source_fingerprint`: `83bf504acf9bd293738648e55962a92a5815c7e7d61bea5924b4c064df17e5c5`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-15T09:15:00Z`
+- `last_context_refresh_at_utc`: `2026-08-17T06:30:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
 authority.
 
-> 2026-08-15 incremental refresh: the corpus gained
+> 2026-08-15 incremental refresh (09:15): the corpus gained
 > `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` (new file, read and incorporated);
 > every other manifest digest was unchanged. The Sales pipeline section below
 > was rewritten to match the contract-accurate board implementation shipped on
 > the same day; the Sales pipeline code is not part of this corpus, so the
 > fingerprint does not cover it.
+
+> 2026-08-15 incremental refresh (10:40): the corpus gained
+> `docs/SALES_BOARD_CONTRACT_GAP.md` (new file, read and incorporated). The
+> Sales pipeline section was corrected again — a create operation now exists,
+> which the 09:15 revision stated it did not.
 
 ## Product purpose
 
@@ -122,6 +127,42 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 - Production catalog and calculator gaps must fail closed with a clear
   unavailable state until approved OpenAPI operations exist.
 
+### Technical, Legal and Compliance workspaces
+
+- Eleven routes exist under `/technical`, `/legal`, `/compliance`, built to
+  ROLE_PERMISSION_MATRIX §§ 5.2, 6.2, 7.2, 11. `docs/WORKSPACES_DESIGN.md` is
+  the write-up — read it first.
+- **None of the three has a backend.** The gateway has ten paths (identity,
+  webhooks, sales). `convex/ncnda.ts` and `convex/kyc.ts` hold **mutations
+  only, no queries** — listing is a missing backend function, not just a
+  missing gateway. Mock adapter only.
+- The NCNDA/KYC paths in `endpoints.ts` and the shapes in `models/ncnda.ts` /
+  `models/kyc.ts` are **proposals**, not a contract. Do not treat them as
+  settled.
+- Blocked-by-design screens, each with an on-page `GapNotice`: the Technical
+  overview and list (no cross-deal list; Technical cannot enumerate deals),
+  the evidence page (out of scope), and the KYC documents page (§ 7.4 explicit
+  schema gap — never invent `kycCaseDocuments`).
+- `config/lifecycle.ts` maps every status enum to a colour as
+  `Record<Status, Tone>`, so a new backend status is a compile error rather
+  than a silently grey pill.
+
+### Due Diligence
+
+- `DD API.md` (repo root, `D:\Project`) is the DD contract: **five operations
+  over four paths**, nothing else. `docs/DD_API_CONFORMANCE.md` is the frontend
+  audit against it — read that first.
+- **The backend gateway does not exist yet.** No `ddGateway.ts`, no DD paths, no
+  DD routes. Every DD call through the HTTP adapter 404s; use the mock adapter.
+  Do not stub around this.
+- `updateResponse` is keyed by `templateItemId`, not response id (upsert).
+  `expectedRevision: 0` means "unanswered". 409 on a stale revision **or** on a
+  completed/cancelled assessment.
+- Never add a complete/cancel method — `DD API.md` forbids it explicitly.
+- Evidence upload, eligible-deals and the workspace overview have **no
+  operation**. They live under a "NOT ON THE WIRE" banner in
+  `models/dueDiligence.ts`. The `/technical` overview page has no data source.
+
 ### Sales pipeline
 
 - `/sales/pipeline` (and `/dashboard/sales`, the legacy entry point) embeds the
@@ -131,13 +172,55 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
   `api.sales`, preserving the common mock/HTTP adapter boundary. It maps the
   backend wire DTOs (`SalesColumnDto`, `SalesCardDto`, `SalesCardDetailDto`) to
   the board shapes; `order` is derived from backend order and never sent back.
-- The board is written against the pinned backend contract exactly:
+- The board is written against the backend contract exactly:
   `GET /sales/columns`, `GET /sales/cards` (paginated per column, follows
-  `nextCursor`), `GET|PATCH /sales/cards/{dealId}`, and
-  `POST /sales/cards/{dealId}/move`. **There is no create and no delete**
-  operation, so the adapter and the UI expose neither; customer-flow submissions
-  create cards transactionally on the backend. Legacy `Deal*` types and the
-  manual card modal are gone.
+  `nextCursor`), `GET|PATCH /sales/cards/{dealId}`,
+  `POST /sales/cards/{dealId}/move`, and — since 2026-08-15 —
+  `POST /sales/cards` for manual outbound/offline entry.
+- Manual creation goes through `ManualDealModal`, **not** the Kanban adapter.
+  Exposing `createCard` on the adapter would make the library render its own
+  inline create form, which cannot supply the organization the deal must be
+  filed under and would always produce a 400.
+- Organization selection on create is settled (2026-08-17): the request carries
+  **exactly one** of `organizationId` or `organizationName`, and the UI always
+  sends the name. `deals.resolveOrganization` matches the name
+  case-insensitively via the new `organizations.by_normalizedName` index and
+  creates a `customer`/`prospect` organization when nothing matches, audited as
+  `organization.created`. `ownerId` is optional and defaults to the
+  authenticated actor, so a sales member always sees the card they just made.
+  `normalizedName` is `v.optional` — pre-existing organization rows are
+  invisible to the index until backfilled, so a duplicate can be created for a
+  company that already exists.
+- Since 2026-08-17 every card also carries `organizationName` and
+  `primaryContact` (`contactId`, `fullName`, `jobTitle`, `email`, `phone`,
+  `status`), denormalized by `convex/lib/cardParties.ts` per page. The board
+  shows the company and one-tap `tel:`/`mailto:` links; `DealDetail` repeats
+  them. Never build a contact link by hand — `contactChannels()` in
+  `models/sales.ts` is the only sanctioned way, because it is what suppresses
+  the link for a `do_not_contact` record (DEALFLOW § 5.1).
+- Cards also carry `ownerName`. **Never render `ownerId` in the UI** — it is an
+  opaque Convex key. `DealDetail` shows "You" when it matches
+  `profile.user.id` (same underlying `users._id`), the resolved name otherwise,
+  and hides the row when neither is available.
+- The card links sit inside the board's drag handle, so `DealCardView` stops
+  pointer-down propagation on them. Dragging cannot start from those two
+  targets; that is intentional, not a bug to "fix" by removing the handler.
+- Manual create also finds-or-creates the contact: `contactName` plus at least
+  one of `contactEmail`/`contactPhone`, matched by normalized email within the
+  organization. `primaryContactId` and the typed `contact*` group are mutually
+  exclusive. An existing contact's values are never overwritten.
+- **There is still no delete operation.** `API_CONTRACT.md` § 9.8 and
+  `KANBAN_INTEGRATION.md` disagree on whether one should exist; the backend
+  implemented neither and CORS does not permit `DELETE`. A lost deal is moved to
+  the `lost` column, preserving the audit trail.
+- Customer-flow submissions are still expected to create their card
+  transactionally with the submission, but **no intake endpoint exists yet**, so
+  manual entry is currently the only way a card can appear.
+- A `sales` caller sees only deals they own (`resolveKanbanScope` → `assigned`);
+  manager and admin see all. A card created with another owner is invisible to a
+  sales user.
+- The `deals` collection is empty in a fresh deployment: `convex/seed.ts` seeds
+  the 10 `pipelineStages` and the DD template only.
 - Every state change carries `expectedRevision`; a 409/CONFLICT surfaces "This
   deal changed on the server. Reloading the latest version." and refreshes the
   board without blind retry. Won/Lost moves are manager/admin-only on the
@@ -246,4 +329,24 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-14T01:20:00Z` |
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-14T01:20:00Z` |
 | `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-14T01:20:00Z` |
+| `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-15T10:40:00Z` |
 | `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-14T01:20:00Z` |
+| `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-17T06:30:00Z` |
+| `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-17T06:30:00Z` |
+| `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-17T06:30:00Z` |
+
+## 2026-08-17 frontend API migration
+
+The frontend now targets the implemented backend gateways for KYC, submissions,
+and technical due diligence. KYC is deal-scoped and includes document links;
+submissions support anonymous creation, cursor pagination, and explicit
+Sales/Manager/Admin conversion; DD maps the implemented assessment, progress,
+and response routes with required optimistic-concurrency revisions. NCNDA was
+already aligned to its implemented gateway. See `KYC_API_CONFORMANCE.md`,
+`SUBMISSIONS_API_CONFORMANCE.md`, and `DD_API_CONFORMANCE.md` for exact
+endpoint and DTO mappings. No browser code calls Convex directly, and backend
+authorization remains authoritative.
+
+Validation note: migration code type-checks; the repository-wide check still
+reports pre-existing optional `createCard` fixture errors in
+`src/components/sales/salesAdapter.test.ts`.

@@ -26,7 +26,7 @@ export function AssessmentHeader({
       <Link href="/" className="flex items-center gap-[8px]">
         <BrandMark className="h-[16px] w-[22px]" />
         <span className="font-sans text-[16px] font-semibold leading-[24px] text-white">
-          Cloud Panda
+          Panda Cloud
         </span>
       </Link>
 
@@ -54,10 +54,10 @@ export function AssessmentFooter({ note }: { note?: string }) {
   return (
     <footer className="mt-auto flex w-full flex-wrap items-center justify-between gap-[12px] border-t border-line-band px-[24px] py-[24px] lg:px-[40px]">
       <span className="font-sans text-[14px] font-semibold leading-[20px] text-white">
-        Cloud Panda
+        Panda Cloud
       </span>
       <span className="font-sans text-[12px] leading-[18px] tracking-[0.6px] text-accent-dim">
-        © 2024 Cloud Panda Inc. All systems operational.
+        © 2024 Panda Cloud Inc. All systems operational.
         {note ? ` ${note}` : ""}
       </span>
     </footer>

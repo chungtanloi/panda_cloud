@@ -16,7 +16,7 @@ import { clerkEnabled } from "@/services/config";
 import { ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
 /**
- * Figma node 2:887 — "Sign Up | Cloud Panda". Card, badge, field variants and
+ * Figma node 2:887 — "Sign Up | Panda Cloud". Card, badge, field variants and
  * submit button measurements are unchanged; the handler is a Clerk custom
  * flow. This pass reshapes the same three fields (full name, email,
  * password) into a clearer two-step experience — it adds no field the
@@ -173,7 +173,7 @@ function SignUpView() {
 
           <p className="font-sans text-[16px] leading-[25.6px] text-ink-dim">
             {awaitingCode
-              ? `We sent a six-digit code to ${form.values.email}. Cloud Panda needs a verified email before it can create your profile.`
+              ? `We sent a six-digit code to ${form.values.email}. Panda Cloud needs a verified email before it can create your profile.`
               : "We'll create your account and drop you straight into the Land Owner Assessment flow."}
           </p>
         </header>

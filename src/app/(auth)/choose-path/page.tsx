@@ -9,7 +9,7 @@ import { PATH_OPTIONS, type PathOption } from "@/config/paths";
 import type { UserPath } from "@/models/auth";
 
 /**
- * Figma node 2:961 — "Choose Your Path | Cloud Panda".
+ * Figma node 2:961 — "Choose Your Path | Panda Cloud".
  *   glow    — rgba(0,242,255,.05), blur 60, h 384, inset 15%, max-w 896 (2:962)
  *   heading — 36px bold, tracking -0.72px, leading 39.6px
  *   sub     — 18px / 28.8px dim

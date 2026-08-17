@@ -6,7 +6,7 @@ import { BrandMark } from "./BrandMark";
  * Figma node 1:153 — "Footer Component".
  *   bar    — #0c0e12, 1px top rule rgba(58,73,75,.2)
  *   inner  — max 1440px, px 64, py 63.5
- *   brand  — 22×16 mark + "Cloud Panda" 24px semibold white
+ *   brand  — 22×16 mark + "Panda Cloud" 24px semibold white
  *   links  — gap 24, 12px medium, tracking 1.2px, #b9cacb at 80% opacity
  *   CTA    — "Get Started" underlined, #00dbe7
  *   legal  — #00dbe7, 12px medium, right aligned
@@ -18,7 +18,7 @@ export function Footer() {
         <Link href="/" className="flex shrink-0 items-center gap-[8px]">
           <BrandMark className="h-[16px] w-[22px]" />
           <span className="font-sans text-[24px] font-semibold leading-[31.2px] text-white">
-            Cloud Panda
+            Panda Cloud
           </span>
         </Link>
 
@@ -42,7 +42,7 @@ export function Footer() {
         </nav>
 
         <p className="shrink-0 text-right font-sans text-[12px] font-medium leading-[16px] tracking-[1.2px] text-accent-dim">
-          © 2024 Cloud Panda Inc. All systems operational.
+          © 2024 Panda Cloud Inc. All systems operational.
         </p>
       </div>
 

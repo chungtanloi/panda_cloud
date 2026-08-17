@@ -1,4 +1,35 @@
 import type {
+  NcndaAgreementDetail,
+  NcndaAgreementListResponse,
+  NcndaAgreementUpsert,
+  NcndaAgreementUpsertResponse,
+  NcndaDocumentAttach,
+  KycCase,
+  KycCaseCreate,
+  KycCaseCreateResponse,
+  KycCaseListResponse,
+  KycCaseUpdate,
+  KycCaseUpdateResponse,
+  KycDocumentAttach,
+  KycDocument,
+  KycDocumentListResponse,
+  Submission,
+  SubmissionListResponse,
+  SubmissionCreateRequest,
+  SubmissionCreateResponse,
+  SubmissionConvertRequest,
+  SubmissionConvertResponse,
+  DdAssessmentCreate,
+  DdAssessmentCreateResponse,
+  DdAssessmentDetail,
+  DdAssessmentSummary,
+  DdAssessmentListResponse,
+  DdProgress,
+  DdResponsePatch,
+  DdResponseUpdateResponse,
+  DdMetrics,
+  DdTemplateItem,
+  DdResponse,
   AssessmentResult,
   AssessmentSubmission,
   AuthProfile,
@@ -32,6 +63,8 @@ import type {
   RequestReceipt,
   TokenRate,
   UploadedDocument,
+  SalesCardCreateRequest,
+  SalesCardCreateResponse,
   SalesCardDetailDto,
   SalesCardListQuery,
   SalesCardMoveRequest,
@@ -51,6 +84,29 @@ import { http } from "../http";
  * and nothing more. All error handling, auth headers, retries and envelope
  * unwrapping live in `services/http.ts`.
  */
+export type BackendNcndaAgreement = NcndaAgreementDetail & { documentVersions?: NcndaAgreementDetail["versions"] };
+
+function isoToMillis(value: string | null | undefined): number | undefined {
+  if (!value) return undefined;
+  const millis = Date.parse(value);
+  return Number.isFinite(millis) ? millis : undefined;
+}
+
+function mapNcndaAgreement(raw: BackendNcndaAgreement): NcndaAgreementDetail {
+  return {
+    ...raw,
+    dealTitle: raw.dealTitle ?? null,
+    counterpartyName: raw.counterpartyName ?? null,
+    ownerName: raw.ownerName ?? null,
+    versions: raw.versions ?? raw.documentVersions ?? [],
+  };
+}
+
+type BackendKycCase = { caseId: string; dealId: string; subjectOrganizationId: string | null; subjectContactId: string | null; provider: string | null; providerCaseId: string | null; status: KycCase["status"]; riskLevel: KycCase["riskLevel"]; assignedTo: string | null; rejectionReason: string | null; submittedAt: string | number | null; verifiedAt: string | number | null; expiresAt: string | number | null; revision: number; updatedAt: string | number; };
+function dateIso(value: string | number | null | undefined): string | null { if (value === null || value === undefined) return null; const date = typeof value === "number" ? new Date(value) : new Date(value); return Number.isNaN(date.getTime()) ? null : date.toISOString(); }
+function mapKycCase(raw: BackendKycCase): KycCase { return { caseId: raw.caseId, dealId: raw.dealId, dealTitle: null, subject: raw.subjectOrganizationId ? { kind: "organization", organizationId: raw.subjectOrganizationId, displayName: null } : { kind: "contact", contactId: raw.subjectContactId ?? "", displayName: null }, provider: raw.provider, providerCaseId: raw.providerCaseId, status: raw.status, riskLevel: raw.riskLevel, assignedToId: raw.assignedTo, assignedToName: null, rejectionReason: raw.rejectionReason, submittedAt: dateIso(raw.submittedAt), verifiedAt: dateIso(raw.verifiedAt), expiresAt: dateIso(raw.expiresAt), revision: raw.revision, updatedAt: dateIso(raw.updatedAt) ?? new Date(0).toISOString() }; }
+function dateMillis(value?: string | null): number | undefined { if (!value) return undefined; const n=Date.parse(value); return Number.isFinite(n) ? n : undefined; }
+
 export const httpApi: ApiClient = {
   auth: {
     me: () => http.get<AuthProfile>(endpoints.auth.me).then(normalizeAuthProfile),
@@ -145,7 +201,22 @@ export const httpApi: ApiClient = {
 
   leads: {
     create: (payload: LeadRequest) =>
-      http.post<LeadResponse>(endpoints.leads.create, payload, { anonymous: true }),
+      http.post<LeadResponse>(endpoints.submissions.collection, {
+        source: "website",
+        persona: "other",
+        summary: payload.useCase ?? `${payload.contactName}: ${payload.interests.join(", ")}`,
+      }, { anonymous: true }),
+  },
+
+  submissions: {
+    create: (body: SubmissionCreateRequest) =>
+      http.post<SubmissionCreateResponse>(endpoints.submissions.collection, body, { anonymous: true }),
+    list: (query = {}) =>
+      http.get<SubmissionListResponse>(endpoints.submissions.collection, { query }),
+    get: (submissionId: string) =>
+      http.get<Submission>(endpoints.submissions.byId(submissionId)),
+    convert: (submissionId: string, body: SubmissionConvertRequest) =>
+      http.post<SubmissionConvertResponse>(endpoints.submissions.convert(submissionId), body),
   },
 
   workspace: {
@@ -163,13 +234,183 @@ export const httpApi: ApiClient = {
 
     getCard: (id: string) => http.get<SalesCardDetailDto>(endpoints.sales.cardById(id)),
 
+    createCard: (body: SalesCardCreateRequest) =>
+      http.post<SalesCardCreateResponse>(endpoints.sales.cards, body),
+
     updateCard: (id: string, body: SalesCardUpdateRequest) =>
       http.patch<SalesCardUpdateResponse>(endpoints.sales.cardById(id), body),
 
     moveCard: (id: string, body: SalesCardMoveRequest) =>
       http.post<SalesCardMoveResponse>(endpoints.sales.moveCard(id), body),
   },
+
+  /** Technical Due Diligence gateway operations. */
+  dueDiligence: {
+    listAssessments: async (dealId: string) => {
+      const response = await http.get<{ assessments: BackendDdAssessmentSummary[] }>(
+        endpoints.dueDiligence.dealAssessments(dealId),
+      );
+      return { items: response.assessments.map(mapDdAssessment) };
+    },
+
+    createAssessment: (dealId: string, body: DdAssessmentCreate) =>
+      http.post<DdAssessmentCreateResponse>(
+        endpoints.dueDiligence.dealAssessments(dealId),
+        {
+          ...(body.templateVersionId ? { templateVersionId: body.templateVersionId } : {}),
+          ...(body.assignedToUserId ? { assignedTo: body.assignedToUserId } : {}),
+        },
+      ),
+
+    getAssessment: async (assessmentId: string) => {
+      const response = await http.get<BackendDdAssessmentDetail>(
+        endpoints.dueDiligence.assessmentById(assessmentId),
+      );
+      return mapDdDetail(response);
+    },
+
+    getProgress: async (assessmentId: string) => {
+      const response = await http.get<BackendDdProgress>(
+        endpoints.dueDiligence.assessmentProgress(assessmentId),
+      );
+      const live = mapDdMetrics(response.live);
+      return { assessmentId, status: "in_progress", revision: 0, ...live, materialized: response.materialized ? mapDdMetrics(response.materialized) : null, live, consistent: response.consistent };
+    },
+
+    updateResponse: async (assessmentId: string, templateItemId: string, body: DdResponsePatch) => {
+      const response = await http.patch<{ responseId: string; revision: number; progress: BackendDdMetrics }>(
+        endpoints.dueDiligence.response(assessmentId, templateItemId),
+        {
+          ...(body.status ? { status: body.status } : {}),
+          ...(body.responseValue !== undefined ? { responseValue: body.responseValue } : {}),
+          ...(body.comments !== undefined ? { comments: body.comments } : {}),
+          expectedRevision: body.expectedRevision,
+        },
+      );
+      return { assessmentId, templateItemId, responseRevision: response.revision, assessmentRevision: response.revision, progress: mapDdMetrics(response.progress) };
+    },
+  },
+
+  /** NCNDA gateway operations. */
+  legal: {
+    listAgreements: async (dealId: string) => {
+      const response = await http.get<{ agreements: BackendNcndaAgreement[] }>(
+        endpoints.ncnda.agreementsForDeal(dealId),
+      );
+      return { items: response.agreements.map(mapNcndaAgreement) };
+    },
+
+    getAgreement: async (agreementId: string) => {
+      const response = await http.get<{ agreement: BackendNcndaAgreement }>(
+        endpoints.ncnda.agreementById(agreementId),
+      );
+      return mapNcndaAgreement(response.agreement);
+    },
+
+    upsertAgreement: (body: NcndaAgreementUpsert) =>
+      http.patch<NcndaAgreementUpsertResponse>(
+        endpoints.ncnda.agreementsForDeal(body.dealId),
+        {
+          ...body,
+          expectedRevision: body.expectedRevision ?? 1,
+          ...(body.expiresAt ? { expiresAt: isoToMillis(body.expiresAt) } : {}),
+          ...(body.sentAt ? { sentAt: isoToMillis(body.sentAt) } : {}),
+          ...(body.signedAt ? { signedAt: isoToMillis(body.signedAt) } : {}),
+          ...(body.countersignedAt ? { countersignedAt: isoToMillis(body.countersignedAt) } : {}),
+        },
+      ),
+
+    listDocuments: async (agreementId: string) => {
+      const response = await http.get<{ versions: NcndaAgreementDetail["versions"] }>(
+        endpoints.ncnda.agreementDocuments(agreementId),
+      );
+      return response.versions;
+    },
+
+    attachDocument: (agreementId: string, body: NcndaDocumentAttach) =>
+      http.post<NcndaAgreementDetail["versions"][number]>(
+        endpoints.ncnda.agreementDocuments(agreementId),
+        body,
+      ),
+
+    detachDocument: async (agreementId: string, documentId: string) => {
+      await http.delete<{ documentId: string; detached: boolean }>(
+        endpoints.ncnda.agreementDocument(agreementId, documentId),
+        { documentId },
+      );
+    },
+  },
+
+  /** KYC gateway operations. */
+  compliance: {
+    listCases: async (dealId: string) => {
+      const response = await http.get<{ cases: BackendKycCase[] }>(endpoints.kyc.casesForDeal(dealId));
+      return { items: response.cases.map(mapKycCase) };
+    },
+    getCase: async (caseId: string) => {
+      const response = await http.get<{ case: BackendKycCase; documents?: KycDocument[] }>(endpoints.kyc.caseById(caseId));
+      return { ...mapKycCase(response.case), ...(response.documents ? { documents: response.documents } : {}) };
+    },
+    createCase: (dealId: string, body: Omit<KycCaseCreate, "dealId">) =>
+      http.post<KycCaseCreateResponse>(endpoints.kyc.casesForDeal(dealId), body),
+    updateCase: (caseId: string, body: KycCaseUpdate) =>
+      http.patch<KycCaseUpdateResponse>(endpoints.kyc.caseById(caseId), {
+        ...body,
+        ...(body.submittedAt ? { submittedAt: dateMillis(body.submittedAt) } : {}),
+        ...(body.verifiedAt ? { verifiedAt: dateMillis(body.verifiedAt) } : {}),
+        ...(body.expiresAt ? { expiresAt: dateMillis(body.expiresAt) } : {}),
+      }),
+    listDocuments: (caseId: string) =>
+      http.get<KycDocumentListResponse>(endpoints.kyc.caseDocuments(caseId)),
+    attachDocument: (caseId: string, body: KycDocumentAttach) =>
+      http.post<{ linkId: string; documentId: string }>(endpoints.kyc.caseDocuments(caseId), body),
+    detachDocument: (caseId: string, documentId: string) =>
+      http.delete<{ documentId: string; detached: boolean }>(endpoints.kyc.caseDocument(caseId, documentId)),
+  },
 };
+
+type BackendDdMetrics = {
+  totalItems: number;
+  reviewedItems: number;
+  applicableReviewedItems: number;
+  compliantItems: number;
+  partiallyCompliantItems: number;
+  criticalFailures: number;
+  completionRate: number | null;
+  complianceRate: number | null;
+};
+type BackendDdAssessmentSummary = {
+  assessmentId: string;
+  dealId: string;
+  templateVersionId: string;
+  status: DdAssessmentSummary["status"];
+  assignedTo: string | null;
+  createdBy: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  summarySnapshot: BackendDdMetrics | null;
+  revision: number;
+  updatedAt: string;
+};
+type BackendDdAssessmentDetail = {
+  assessment: BackendDdAssessmentSummary;
+  items: Array<Record<string, unknown>>;
+  responses: Array<Record<string, unknown>>;
+};
+type BackendDdProgress = { materialized: BackendDdMetrics | null; live: BackendDdMetrics; consistent: boolean };
+function mapDdMetrics(raw: BackendDdMetrics | null | undefined): DdMetrics {
+  return { totalItems: raw?.totalItems ?? 0, reviewedItems: raw?.reviewedItems ?? 0, completionRate: raw?.completionRate ?? null, complianceRate: raw?.complianceRate ?? null, criticalFailures: raw?.criticalFailures ?? 0 };
+}
+function mapDdAssessment(raw: BackendDdAssessmentSummary): DdAssessmentSummary {
+  return { id: raw.assessmentId, dealId: raw.dealId, dealTitle: raw.dealId, organizationName: "—", templateVersionLabel: raw.templateVersionId, status: raw.status, ...(raw.assignedTo ? { assignedToName: raw.assignedTo } : {}), ...(raw.startedAt ? { startedAt: raw.startedAt } : {}), ...(raw.completedAt ? { completedAt: raw.completedAt } : {}), updatedAt: raw.updatedAt, revision: raw.revision, metrics: mapDdMetrics(raw.summarySnapshot) };
+}
+function mapDdDetail(raw: BackendDdAssessmentDetail): DdAssessmentDetail {
+  return {
+    ...mapDdAssessment(raw.assessment),
+    items: raw.items.map((item) => ({ id: String(item.templateItemId ?? ""), requirementCode: String(item.requirementCode ?? ""), position: Number(item.position ?? 0), category: String(item.category ?? ""), ...(item.subcategory ? { subcategory: String(item.subcategory) } : {}), ...(item.requirementType ? { requirementType: String(item.requirementType) } : {}), criticality: item.criticality as DdTemplateItem["criticality"], question: String(item.question ?? ""), ...(item.targetCriteria ? { targetCriteria: String(item.targetCriteria) } : {}), ...(item.unit ? { unit: String(item.unit) } : {}), responseType: item.responseType as DdTemplateItem["responseType"], ...(item.requiredEvidence ? { requiredEvidence: String(item.requiredEvidence) } : {}), required: Boolean(item.required) })),
+    responses: raw.responses.map((response) => ({ id: String(response.responseId ?? ""), assessmentId: String(response.assessmentId ?? raw.assessment.assessmentId), templateItemId: String(response.templateItemId ?? ""), status: response.status as DdResponse["status"], ...(response.responseValue !== null && response.responseValue !== undefined ? { responseValue: response.responseValue as DdResponse["responseValue"] } : {}), ...(response.comments ? { comments: String(response.comments) } : {}), ...(response.reviewedBy ? { reviewedBy: String(response.reviewedBy) } : {}), ...(response.reviewedAt ? { reviewedAt: String(response.reviewedAt) } : {}), updatedAt: String(response.updatedAt ?? raw.assessment.updatedAt), revision: Number(response.revision ?? 0), evidence: [] })),
+  };
+}
 
 /**
  * Fail-closed membership normalisation.

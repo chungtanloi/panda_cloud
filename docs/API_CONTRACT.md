@@ -1,4 +1,4 @@
-# Cloud Panda — API requirements input
+# Panda Cloud — API requirements input
 
 > ## ⚠ THIS IS NOT THE CONTRACT
 >

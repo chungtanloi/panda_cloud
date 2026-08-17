@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /**
- * The cloud glyph beside the "Cloud Panda" wordmark.
+ * The cloud glyph beside the "Panda Cloud" wordmark.
  * Figma nodes 1:177 (nav, 25.7×18.7) and 1:156 (footer, 22×16).
  *
  * ⚠ PLACEHOLDER — the real mark is an exported SVG asset that could not be

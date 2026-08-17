@@ -32,6 +32,8 @@ import type {
   RequestReceipt,
   TokenRate,
   UploadedDocument,
+  SalesCardCreateRequest,
+  SalesCardCreateResponse,
   SalesCardDetailDto,
   SalesCardListQuery,
   SalesCardMoveRequest,
@@ -40,6 +42,33 @@ import type {
   SalesCardUpdateRequest,
   SalesCardUpdateResponse,
   SalesColumnListResponse,
+  DdAssessmentCreate,
+  DdAssessmentCreateResponse,
+  DdAssessmentDetail,
+  DdAssessmentListResponse,
+  DdProgress,
+  DdResponsePatch,
+  DdResponseUpdateResponse,
+  NcndaAgreementDetail,
+  NcndaAgreementListResponse,
+  NcndaAgreementUpsert,
+  NcndaAgreementUpsertResponse,
+  NcndaDocumentAttach,
+  KycCase,
+  KycCaseCreate,
+  KycCaseCreateResponse,
+  KycCaseListResponse,
+  KycCaseUpdate,
+  KycCaseUpdateResponse,
+  KycDocument,
+  KycDocumentAttach,
+  KycDocumentListResponse,
+  SubmissionListResponse,
+  SubmissionCreateRequest,
+  SubmissionCreateResponse,
+  SubmissionConvertRequest,
+  SubmissionConvertResponse,
+  Submission,
 } from "@/models";
 
 /**
@@ -129,6 +158,13 @@ export interface LeadService {
  * asking for `users` must get `403`, not an empty table. The frontend's route
  * guards hide the navigation; they are not the control.
  */
+export interface SubmissionService {
+  create(body: SubmissionCreateRequest): Promise<SubmissionCreateResponse>;
+  list(query?: { status?: string; cursor?: string }): Promise<SubmissionListResponse>;
+  get(submissionId: string): Promise<Submission>;
+  convert(submissionId: string, body: SubmissionConvertRequest): Promise<SubmissionConvertResponse>;
+}
+
 export interface WorkspaceService {
   getResource(kind: WorkspaceResourceKind): Promise<ResourceTable>;
 }
@@ -147,10 +183,109 @@ export interface SalesService {
   listCards(query: SalesCardListQuery): Promise<SalesCardPage>;
   /** Heavier record for the detail panel — description, createdAt, createdBy, … */
   getCard(id: string): Promise<SalesCardDetailDto>;
+  /**
+   * Manual outbound/offline entry. Sales, manager and admin only — the backend
+   * enforces the role; the UI guard is convenience.
+   */
+  createCard(body: SalesCardCreateRequest): Promise<SalesCardCreateResponse>;
   /** Optimistic-concurrency partial update. Rejects 409 on a stale revision. */
   updateCard(id: string, body: SalesCardUpdateRequest): Promise<SalesCardUpdateResponse>;
   /** Stage transition, guarded by expectedRevision. */
   moveCard(id: string, body: SalesCardMoveRequest): Promise<SalesCardMoveResponse>;
+}
+
+/**
+ * Technical Due Diligence — `DD API.md`.
+ *
+ * Exactly the five documented operations, no more. `DD API.md` states the
+ * complete/cancel transitions are OPEN ("no authority exists") and instructs:
+ * "Do NOT invent POST /complete or POST /cancel." There is likewise no
+ * eligible-deals list, no workspace aggregate and no evidence upload — see the
+ * "Not on the wire" section of `models/dueDiligence.ts`.
+ *
+ * Authorization is the backend's. `DD API.md`: read is open to every staff
+ * role and denied to `customer`; create and response updates are
+ * technical/manager/admin only. The UI guard is convenience.
+ *
+ * The backend gateway is implemented; the mock adapter remains available for
+ * local UI development and contract tests.
+ */
+export interface DueDiligenceService {
+  /** Assessments on one deal. */
+  listAssessments(dealId: string): Promise<DdAssessmentListResponse>;
+  /** Initialize an assessment from the published template (UC-010). */
+  createAssessment(
+    dealId: string,
+    body: DdAssessmentCreate,
+  ): Promise<DdAssessmentCreateResponse>;
+  /** Full assessment: all 68 requirements plus every response recorded so far. */
+  getAssessment(assessmentId: string): Promise<DdAssessmentDetail>;
+  /** Just the metrics — cheap enough to poll after a write. */
+  getProgress(assessmentId: string): Promise<DdProgress>;
+  /**
+   * Upsert one requirement's response (UC-011). Keyed by template item.
+   * Rejects 409 when `expectedRevision` is stale, or when the assessment is
+   * already completed or cancelled.
+   */
+  updateResponse(
+    assessmentId: string,
+    templateItemId: string,
+    body: DdResponsePatch,
+  ): Promise<DdResponseUpdateResponse>;
+}
+
+/**
+ * NCNDA — the Legal workspace (UC-015).
+ *
+ * Authorization is the backend's: `convex/ncnda.ts` requires `legal`,
+ * `manager` or `admin`. Sales has read access per UC-015 ("Sales read"), but
+ * no read function exists to grant it through yet.
+ *
+ * Create and update are ONE operation, because the backend models it that way
+ * (`upsertAgreement`). `expectedRevision` is absent when creating and
+ * mandatory when updating; the backend rejects an update without it.
+ *
+ * There is no delete: an agreement that is off is `cancelled`, `rejected` or
+ * `expired`, preserving the audit trail — the same convention the sales board
+ * uses for lost deals.
+ *
+ * The HTTP adapter follows the NCNDA gateway contract; the mock adapter remains
+ * available for local UI development until the backend routes are deployed.
+ */
+export interface LegalService {
+  listAgreements(dealId: string): Promise<NcndaAgreementListResponse>;
+  /** Agreement plus its immutable version history, newest first. */
+  getAgreement(agreementId: string): Promise<NcndaAgreementDetail>;
+  /**
+   * Create or update. Rejects 409 when a second `active` agreement is
+   * attempted for the same (deal, counterparty), or on a stale revision.
+   */
+  upsertAgreement(body: NcndaAgreementUpsert): Promise<NcndaAgreementUpsertResponse>;
+  listDocuments(agreementId: string): Promise<NcndaAgreementDetail["versions"]>;
+  attachDocument(agreementId: string, body: NcndaDocumentAttach): Promise<NcndaAgreementDetail["versions"][number]>;
+  detachDocument(agreementId: string, documentId: string): Promise<void>;
+}
+
+/**
+ * KYC — the Compliance workspace (UC-016).
+ *
+ * Backend roles: `compliance`, `manager`, `admin`. Create and update are
+ * separate operations here because the backend models them separately, with
+ * different validation on each.
+ *
+ * Document links are part of the implemented KYC gateway. The mock adapter
+ * remains available for local UI development and contract tests.
+ */
+export interface ComplianceService {
+  listCases(dealId: string): Promise<KycCaseListResponse>;
+  getCase(caseId: string): Promise<KycCase>;
+  /** Exactly one subject. A duplicate provider case is a 409. */
+  createCase(dealId: string, body: Omit<KycCaseCreate, "dealId">): Promise<KycCaseCreateResponse>;
+  listDocuments(caseId: string): Promise<KycDocumentListResponse>;
+  attachDocument(caseId: string, body: KycDocumentAttach): Promise<{ linkId: string; documentId: string }>;
+  detachDocument(caseId: string, documentId: string): Promise<{ documentId: string; detached: boolean }>;
+  /** Full status write guarded by `expectedRevision`. */
+  updateCase(caseId: string, body: KycCaseUpdate): Promise<KycCaseUpdateResponse>;
 }
 
 /** The complete surface exposed by `services/api.ts`. */
@@ -162,6 +297,10 @@ export interface ApiClient {
   hyperscale: HyperscaleService;
   dashboard: DashboardService;
   leads: LeadService;
+  submissions: SubmissionService;
   sales: SalesService;
+  dueDiligence: DueDiligenceService;
+  legal: LegalService;
+  compliance: ComplianceService;
   workspace: WorkspaceService;
 }

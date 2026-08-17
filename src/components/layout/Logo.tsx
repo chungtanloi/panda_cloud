@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /**
- * Figma node 2:967 — a 27.5×20 brand mark beside the "Cloud Panda" wordmark.
+ * Figma node 2:967 — a 27.5×20 brand mark beside the "Panda Cloud" wordmark.
  *
  * ⚠ The mark itself is an exported SVG asset in Figma. Figma's asset URLs
  * expire after ~7 days, and this session had no shell access to download and
@@ -25,7 +25,7 @@ export function Logo({ className }: { className?: string }) {
         </svg>
       </span>
       <span className="font-sans text-[24px] font-semibold leading-[31.2px] text-ink">
-        Cloud Panda
+        Panda Cloud
       </span>
     </span>
   );

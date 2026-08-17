@@ -210,8 +210,8 @@ export const http = {
   patch: <T>(path: string, body?: unknown, options: Omit<RequestOptions, "method"> = {}) =>
     execute<T>(path, { ...options, method: "PATCH", body }),
 
-  delete: <T>(path: string, options: Omit<RequestOptions, "method" | "body"> = {}) =>
-    execute<T>(path, { ...options, method: "DELETE" }),
+  delete: <T>(path: string, body?: unknown, options: Omit<RequestOptions, "method"> = {}) =>
+    execute<T>(path, { ...options, method: "DELETE", body }),
 };
 
 /** Convert any thrown value into the shape views render. */

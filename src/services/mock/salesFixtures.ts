@@ -23,7 +23,55 @@ export const mockSalesColumns: SalesColumnDto[] = [
 const now = new Date().toISOString();
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
-function card(dto: Omit<SalesCardDetailDto, "revision" | "updatedAt" | "createdAt" | "createdBy" | "archivedAt" | "description" | "lostReason" | "wonAt" | "projectId"> & Partial<SalesCardDetailDto>, revision = 1, updatedDaysAgo = 0): SalesCardDetailDto {
+/**
+ * Distinct company + contact per fixture so the board exercises the real
+ * shapes: a normal reachable contact, a contact with only a phone, one with
+ * only an email, a deal with no contact at all, and a `do_not_contact` record
+ * whose details must render WITHOUT a call/email link (DEALFLOW § 5.1).
+ */
+const parties: Record<string, Pick<SalesCardDetailDto, "organizationId" | "organizationName" | "primaryContact">> = {
+  deal_01: {
+    organizationId: "org_northwind",
+    organizationName: "Northwind Energy",
+    primaryContact: { contactId: "ct_01", fullName: "Freya Lindqvist", jobTitle: "Head of Development", email: "freya@northwind.example", phone: "+46 8 555 0142", status: "active" },
+  },
+  deal_02: {
+    organizationId: "org_helio",
+    organizationName: "Helio Labs",
+    primaryContact: { contactId: "ct_02", fullName: "Marcus Ihejirika", jobTitle: "VP Infrastructure", email: "marcus@heliolabs.example", phone: "+1 415 555 0117", status: "active" },
+  },
+  deal_03: {
+    organizationId: "org_tessellate",
+    organizationName: "Tessellate Capital",
+    // Email only — the card must show one channel, not an empty phone slot.
+    primaryContact: { contactId: "ct_03", fullName: "Priya Raghunathan", jobTitle: null, email: "p.raghunathan@tessellate.example", phone: null, status: "active" },
+  },
+  deal_04: {
+    organizationId: "org_meridian",
+    organizationName: "Meridian Build",
+    // Phone only.
+    primaryContact: { contactId: "ct_04", fullName: "Dieter Krause", jobTitle: "Project Director", email: null, phone: "+49 30 555 0188", status: "active" },
+  },
+  deal_05: {
+    organizationId: "org_kestrel",
+    organizationName: "Kestrel AI",
+    // Inbound enquiry with nobody named yet.
+    primaryContact: null,
+  },
+  deal_06: {
+    organizationId: "org_aurora",
+    organizationName: "Aurora Grid",
+    primaryContact: { contactId: "ct_06", fullName: "Sofia Marchetti", jobTitle: "Community Lead", email: "sofia@auroragrid.example", phone: "+39 06 555 0163", status: "active" },
+  },
+  deal_07: {
+    organizationId: "org_cobalt",
+    organizationName: "Cobalt Works",
+    // Opted out. Details still render; no tel:/mailto: link may be offered.
+    primaryContact: { contactId: "ct_07", fullName: "Alan Whitfield", jobTitle: "COO", email: "alan@cobaltworks.example", phone: "+44 20 555 0129", status: "do_not_contact" },
+  },
+};
+
+function card(dto: Omit<SalesCardDetailDto, "revision" | "updatedAt" | "createdAt" | "createdBy" | "archivedAt" | "description" | "lostReason" | "wonAt" | "projectId" | "organizationName" | "ownerName" | "primaryContact"> & Partial<SalesCardDetailDto>, revision = 1, updatedDaysAgo = 0): SalesCardDetailDto {
   return {
     description: null,
     lostReason: null,
@@ -34,7 +82,14 @@ function card(dto: Omit<SalesCardDetailDto, "revision" | "updatedAt" | "createdA
     createdBy: "user_staff_01",
     revision,
     updatedAt: daysAgo(updatedDaysAgo),
+    organizationName: null,
+    primaryContact: null,
     ...dto,
+    // Mirrors the two seeded sales identities. Applied after `dto` so a
+    // fixture never has to restate it, and after the spread so it wins.
+    ownerName: dto.ownerName ?? (dto.ownerId === "user_sales_02" ? "Jonas Weber" : "Ada Mensah"),
+    // Applied last: a fixture never has to restate the company and contact.
+    ...(parties[dto.dealId] ?? {}),
   };
 }
 

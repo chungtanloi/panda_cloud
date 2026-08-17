@@ -1,0 +1,105 @@
+  ▲ Next.js 14.2.35
+  - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/73) ...
+   Generating static pages (18/73) 
+   Generating static pages (36/73) 
+   Generating static pages (54/73) 
+ ✓ Generating static pages (73/73)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                               Size     First Load JS
+┌ ○ /                                     6.05 kB         108 kB
+├ ○ /_not-found                           876 B          88.7 kB
+├ ○ /admin                                213 B          96.7 kB
+├ ○ /admin/audit-logs                     147 B           126 kB
+├ ○ /admin/permissions                    155 B            88 kB
+├ ○ /admin/roles                          214 B          96.7 kB
+├ ○ /admin/settings                       213 B          96.7 kB
+├ ○ /admin/system                         213 B          96.7 kB
+├ ○ /admin/users                          146 B           126 kB
+├ ○ /assessment                           971 B          97.5 kB
+├ ○ /assessment/energy-source             4.47 kB         130 kB
+├ ○ /assessment/facilities                3.04 kB         129 kB
+├ ○ /assessment/land-profile              3.28 kB         134 kB
+├ ○ /assessment/power-capacity            2.49 kB         128 kB
+├ ○ /assessment/results                   5.74 kB         131 kB
+├ ○ /booking                              971 B          97.5 kB
+├ ○ /booking/hardware                     5.45 kB         127 kB
+├ ○ /booking/power-cooling                4.3 kB          126 kB
+├ ○ /booking/review                       6.56 kB         134 kB
+├ ○ /booking/scale                        4.39 kB         126 kB
+├ ○ /booking/workload                     5.11 kB         127 kB
+├ ○ /buy-gpu                              3.57 kB         140 kB
+├ ○ /choose-path                          2.08 kB        98.6 kB
+├ ○ /compliance                           3.43 kB         125 kB
+├ ○ /compliance/cases                     6.22 kB         128 kB
+├ ƒ /compliance/cases/[id]                6.61 kB         128 kB
+├ ƒ /compliance/cases/[id]/documents      213 B          96.7 kB
+├ ○ /dashboard                            4.28 kB         126 kB
+├ ○ /dashboard/gpu-clusters               146 B           126 kB
+├ ○ /dashboard/instances                  155 B            88 kB
+├ ○ /dashboard/portfolio                  1.95 kB         115 kB
+├ ○ /dashboard/profile                    1.95 kB         115 kB
+├ ○ /dashboard/projects                   147 B           126 kB
+├ ○ /dashboard/sales                      3.82 kB         126 kB
+├ ○ /dashboard/settings                   1.95 kB         115 kB
+├ ○ /dashboard/transactions               147 B           126 kB
+├ ○ /dashboard/wallet                     1.95 kB         115 kB
+├ ○ /energy-land                          4.38 kB         136 kB
+├ ○ /financing                            209 B           133 kB
+├ ○ /gpu-renting                          6.8 kB          138 kB
+├ ○ /hyperscale                           155 B            88 kB
+├ ○ /hyperscale/capacity                  4.71 kB         127 kB
+├ ○ /hyperscale/geography                 5.35 kB         127 kB
+├ ○ /hyperscale/rfp                       4.27 kB         126 kB
+├ ○ /hyperscale/stage                     4.32 kB         126 kB
+├ ○ /infrastructure                       209 B           133 kB
+├ ○ /investment                           1.95 kB        98.5 kB
+├ ○ /investment/confirmation              5.09 kB         131 kB
+├ ○ /investment/intent                    1.91 kB         103 kB
+├ ○ /investment/kyc                       3.28 kB         130 kB
+├ ○ /investment/payment                   2.6 kB          129 kB
+├ ○ /investment/volume                    3.45 kB         130 kB
+├ ○ /legal                                3.16 kB         125 kB
+├ ○ /legal/agreements                     4.1 kB          126 kB
+├ ƒ /legal/agreements/[id]                6.45 kB         128 kB
+├ ○ /login                                5.71 kB         158 kB
+├ ○ /manager                              213 B          96.7 kB
+├ ○ /manager/approvals                    147 B           126 kB
+├ ○ /manager/operations                   213 B          96.7 kB
+├ ○ /manager/pipeline                     2.28 kB        90.1 kB
+├ ○ /manager/reports                      213 B          96.7 kB
+├ ○ /manager/sales                        155 B            88 kB
+├ ○ /manager/team                         146 B           126 kB
+├ ƒ /requests/[reference]                 4.08 kB         126 kB
+├ ○ /sales                                214 B          96.7 kB
+├ ○ /sales/customers                      146 B           126 kB
+├ ○ /sales/leads                          147 B           126 kB
+├ ƒ /sales/leads/[id]                     1.82 kB         115 kB
+├ ○ /sales/pipeline                       2.28 kB        90.1 kB
+├ ○ /sales/quotes                         147 B           126 kB
+├ ○ /sales/reports                        213 B          96.7 kB
+├ ○ /sales/tasks                          146 B           126 kB
+├ ○ /signup                               6.85 kB         134 kB
+├ ○ /submit-request                       1.79 kB         129 kB
+├ ○ /technical                            213 B          96.7 kB
+├ ○ /technical/assessments                4.55 kB         126 kB
+├ ƒ /technical/assessments/[id]           6.22 kB         128 kB
+└ ƒ /technical/assessments/[id]/evidence  213 B          96.7 kB
++ First Load JS shared by all             87.8 kB
+  ├ chunks/2117-ac8a4c871ddadd5a.js       31.7 kB
+  ├ chunks/fd9d1056-48635034cb51355f.js   53.6 kB
+  └ other shared chunks (total)           2.46 kB
+
+
+ƒ Middleware                              78.8 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

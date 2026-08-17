@@ -21,7 +21,7 @@ import { WorkspacePage } from "./WorkspacePage";
  */
 
 const META: Record<WorkspaceResourceKind, { eyebrow: string; title: string; description: string }> = {
-  projects: { eyebrow: "Customer / Projects", title: "Projects", description: "Track every Cloud Panda request from draft through delivery." },
+  projects: { eyebrow: "Customer / Projects", title: "Projects", description: "Track every Panda Cloud request from draft through delivery." },
   clusters: { eyebrow: "Customer / Compute", title: "GPU Clusters", description: "Capacity, utilization, deployment status and backend-provided costs." },
   transactions: { eyebrow: "Customer / Finance", title: "Transactions", description: "Search and review wallet, token and infrastructure activity." },
   leads: { eyebrow: "Sales / CRM", title: "Leads", description: "Qualify inbound demand, assign ownership and keep follow-ups moving." },

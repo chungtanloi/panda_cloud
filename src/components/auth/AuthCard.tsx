@@ -62,7 +62,7 @@ export function ClerkNotConfigured({ action }: { action: string }) {
           href="/"
           className="inline-flex justify-center rounded-full border border-line-strong px-[22px] py-[10px] font-sans text-[12px] font-medium leading-[18px] text-ink transition-colors hover:border-accent hover:text-accent"
         >
-          Back to Cloud Panda
+          Back to Panda Cloud
         </Link>
       </AuthCard>
     </main>

@@ -15,7 +15,7 @@ import { clerkEnabled } from "@/services/config";
 import { AuthCard, ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
 /**
- * Figma node 2:930 — "Log In | Cloud Panda". The card, type scale and button
+ * Figma node 2:930 — "Log In | Panda Cloud". The card, type scale and button
  * are unchanged; only the submit handler moved to Clerk.
  *
  * PHASE_1_FRONTEND_AUTH_HANDOFF: "The existing PandaCloud visual design can
@@ -139,7 +139,7 @@ function LoginView() {
             Welcome back
           </h1>
           <p className="font-sans text-[16px] leading-[25.6px] text-ink-dim">
-            Log in to your Cloud Panda dashboard.
+            Log in to your Panda Cloud dashboard.
           </p>
         </header>
 

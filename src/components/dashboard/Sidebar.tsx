@@ -55,7 +55,7 @@ export function Sidebar({ profile }: { profile: AuthProfile | null }) {
 
       <div className="relative p-[20px]">
         <p className="font-sans text-[24px] font-semibold leading-[31.2px] tracking-[-0.6px] text-ink">
-          Cloud Panda
+          Panda Cloud
         </p>
       </div>
 

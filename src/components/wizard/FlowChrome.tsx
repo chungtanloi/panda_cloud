@@ -31,7 +31,7 @@ export function FlowHeader({
       <Link href="/" className="flex items-center gap-[8px]">
         <BrandMark className="h-[16px] w-[22px]" />
         <span className="font-sans text-[16px] font-semibold leading-[24px] text-white">
-          Cloud Panda
+          Panda Cloud
         </span>
       </Link>
 
@@ -59,7 +59,7 @@ export function FlowFooter({ note }: { note?: string }) {
   return (
     <footer className="mt-auto flex w-full flex-wrap items-center justify-center gap-[12px] px-[24px] py-[24px] text-center lg:px-[40px]">
       <span className="font-sans text-[11px] leading-[16px] tracking-[0.6px] text-ink-faint">
-        {note ?? "© 2024 Cloud Panda Inc. All systems operational."}
+        {note ?? "© 2024 Panda Cloud Inc. All systems operational."}
       </span>
     </footer>
   );

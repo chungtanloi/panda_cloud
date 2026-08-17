@@ -35,7 +35,7 @@ export default function RequestReceivedPage() {
         <Link href="/" className="flex items-center gap-[8px]">
           <BrandMark className="h-[16px] w-[22px]" />
           <span className="font-sans text-[16px] font-semibold leading-[24px] text-white">
-            Cloud Panda
+            Panda Cloud
           </span>
         </Link>
       </header>

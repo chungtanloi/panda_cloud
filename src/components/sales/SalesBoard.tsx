@@ -8,15 +8,17 @@ import { Kanban } from "@kanban/library";
 //   corePlugins: { preflight: false }
 // A library should not ship a global reset — the host app already has one.
 import "@kanban/library/styles.css";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SALES_BOARD, VERTICAL_LABELS } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
+import { api } from "@/services/api";
 import { primaryRole } from "@/models/auth";
-import type { DealVertical, SalesCard } from "@/models/sales";
+import type { DealVertical, SalesCard, SalesColumnDto } from "@/models/sales";
 import { cn } from "@/lib/cn";
 import { createSalesAdapter } from "./salesAdapter";
 import { DealCardView } from "./DealCardView";
 import { DealDetail } from "./DealDetail";
+import { ManualDealModal } from "./ManualDealModal";
 
 /**
  * The sales pipeline board.
@@ -25,9 +27,14 @@ import { DealDetail } from "./DealDetail";
  * survives server rendering. The page that mounts this imports it with
  * `ssr: false`.
  *
- * There is deliberately no "Add card" or "Delete card" surface: the backend
- * contract has no create or delete operation, so the adapter does not expose
- * them and the board must not either.
+ * "Add card" is manual outbound/offline entry only — `POST /api/v1/sales/cards`
+ * (UC-004). Cards produced by a customer flow are created by the backend inside
+ * the submission transaction, so the board must never create one after a form
+ * submission (API_CONTRACT § 9.2).
+ *
+ * There is deliberately still no "Delete card" surface: the contract has no
+ * delete operation, and a lost deal belongs in the `lost` column rather than
+ * being erased, which preserves the audit trail.
  *
  * Permissions are passed through to the library rather than enforced by hiding
  * UI: `canEditCard` and `canMoveCard` gate the affordances, and the backend
@@ -39,6 +46,28 @@ export function SalesBoard() {
   const { profile, user } = useAuth();
   const [verticalFilter, setVerticalFilter] = useState<DealVertical | "all">("all");
   const [boardVersion, setBoardVersion] = useState(0);
+  const [showCreate, setShowCreate] = useState(false);
+  const [columns, setColumns] = useState<readonly SalesColumnDto[]>([]);
+
+  // The create form offers an explicit stage, so it needs the column list the
+  // board already loads. Failing to load it is not fatal: the modal falls back
+  // to "New (default)" and the backend picks the seeded `new` stage.
+  useEffect(() => {
+    let cancelled = false;
+    void api.sales
+      .listColumns()
+      .then(({ columns: loaded }) => {
+        if (!cancelled) setColumns(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setColumns([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [boardVersion]);
+
+  const refreshBoard = useCallback(() => setBoardVersion((version) => version + 1), []);
 
   // Recreating the adapter would refetch the whole board on every render.
   // boardVersion is deliberately a dependency even though the memo doesn't read
@@ -92,6 +121,15 @@ export function SalesBoard() {
         {/* Vertical filter. Client-side: the board holds every card already, so
             a round trip per filter change would be wasted. */}
         <div className="flex flex-wrap items-center justify-end gap-[8px]">
+          {/* Backend enforces sales/manager/admin and answers 403 otherwise;
+              this is a convenience guard, not access control. */}
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="rounded-full bg-accent px-[14px] py-[7px] font-sans text-[12px] font-bold uppercase tracking-wider text-accent-fg transition-opacity hover:opacity-90"
+          >
+            + Add card
+          </button>
           <FilterChip
             active={verticalFilter === "all"}
             onClick={() => setVerticalFilter("all")}
@@ -119,6 +157,13 @@ export function SalesBoard() {
       >
         <Kanban key={boardVersion} {...config} className="min-h-0 min-w-0" />
       </div>
+
+      <ManualDealModal
+        open={showCreate}
+        columns={columns}
+        onClose={() => setShowCreate(false)}
+        onCreated={refreshBoard}
+      />
     </div>
   );
 }

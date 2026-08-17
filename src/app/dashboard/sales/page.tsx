@@ -57,7 +57,7 @@ export default function SalesPage() {
             </h1>
 
             <p className="font-sans text-[13px] leading-[21px] text-ink-dim">
-              The sales pipeline is available to Cloud Panda staff. If you think you should have
+              The sales pipeline is available to Panda Cloud staff. If you think you should have
               access, ask an administrator to update your role.
             </p>
 

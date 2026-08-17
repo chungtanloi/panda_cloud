@@ -88,6 +88,9 @@ export function mapCardDto(dto: WireCard, order: number): SalesCard {
     expectedCloseDate: dto.expectedCloseDate,
     lastContactAt: dto.lastContactAt,
     lastContactMethod: dto.lastContactMethod,
+    organizationName: dto.organizationName,
+    ownerName: dto.ownerName,
+    primaryContact: dto.primaryContact,
     revision: dto.revision,
 
     description: dto.description,
@@ -172,6 +175,21 @@ export function createSalesAdapter(service: SalesService = api.sales): DataAdapt
       );
       return cards;
     },
+
+    /**
+     * `createCard` is deliberately NOT implemented here.
+     *
+     * The library renders its own inline create affordance whenever the adapter
+     * exposes this method, and that affordance can only supply the fields the
+     * board knows about. Manual creation additionally requires `organizationId`
+     * and `ownerId` (both required FKs on `deals`), which the board never
+     * holds — so the library's form would always produce a 400.
+     *
+     * Creation therefore goes through `ManualDealModal`, which collects the
+     * full `SalesCardCreateRequest` and calls `api.sales.createCard` directly,
+     * then remounts the board to refetch. Adding the method back here would
+     * give the user two create surfaces, one of which cannot work.
+     */
 
     // Lazy heavier record for the detail panel — description, createdAt, …
     fetchCardDetail: async (id: string) => {

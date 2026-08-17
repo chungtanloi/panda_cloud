@@ -57,8 +57,10 @@ export const endpoints = {
     receipt: (reference: string) => `/requests/${reference}/receipt`,
   },
 
-  leads: {
-    create: "/leads",
+  submissions: {
+    collection: "/submissions",
+    byId: (id: string) => `/submissions/${id}`,
+    convert: (id: string) => `/submissions/${id}/convert`,
   },
 
   /**
@@ -72,6 +74,40 @@ export const endpoints = {
    */
   workspace: {
     resource: (kind: string) => `/workspace/resources/${kind}`,
+  },
+
+  /**
+   * Technical Due Diligence — `DD API.md`, five operations over four paths.
+   * Two path families: assessments are listed and created **under a deal**,
+   * then addressed **by their own id** once they exist.
+   *
+   * Implemented by the backend DD gateway. The mock adapter remains available
+   * for local UI development.
+   */
+  dueDiligence: {
+    dealAssessments: (dealId: string) => `/deals/${dealId}/due-diligence/assessments`,
+    assessmentById: (assessmentId: string) => `/due-diligence/assessments/${assessmentId}`,
+    assessmentProgress: (assessmentId: string) =>
+      `/due-diligence/assessments/${assessmentId}/progress`,
+    /** Keyed by template item — a never-answered requirement has no response row. */
+    response: (assessmentId: string, templateItemId: string) =>
+      `/due-diligence/assessments/${assessmentId}/responses/${templateItemId}`,
+  },
+
+  /** NCNDA gateway operations (see ncnda api.md). */
+  ncnda: {
+    agreementsForDeal: (dealId: string) => `/deals/${dealId}/ncnda`,
+    agreementById: (agreementId: string) => `/ncnda/${agreementId}`,
+    agreementDocuments: (agreementId: string) => `/ncnda/${agreementId}/documents`,
+    agreementDocument: (agreementId: string, documentId: string) =>
+      `/ncnda/${agreementId}/documents/${documentId}`,
+  },
+  /** KYC gateway operations. */
+  kyc: {
+    casesForDeal: (dealId: string) => `/deals/${dealId}/kyc`,
+    caseById: (id: string) => `/kyc/${id}`,
+    caseDocuments: (id: string) => `/kyc/${id}/documents`,
+    caseDocument: (caseId: string, documentId: string) => `/kyc/${caseId}/documents/${documentId}`,
   },
 
   sales: {
