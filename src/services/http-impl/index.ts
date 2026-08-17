@@ -9,11 +9,6 @@ import type {
   WorkloadRecommendation,
   WorkloadType,
   DashboardSummary,
-  DealCard,
-  DealCardCreate,
-  DealCardPatch,
-  DealColumn,
-  DealStage,
   GpuModel,
   ResourceTable,
   WorkspaceResourceKind,
@@ -37,6 +32,14 @@ import type {
   RequestReceipt,
   TokenRate,
   UploadedDocument,
+  SalesCardDetailDto,
+  SalesCardListQuery,
+  SalesCardMoveRequest,
+  SalesCardMoveResponse,
+  SalesCardPage,
+  SalesCardUpdateRequest,
+  SalesCardUpdateResponse,
+  SalesColumnListResponse,
 } from "@/models";
 import { normalizeMembershipRole } from "@/models";
 import type { ApiClient } from "../contracts";
@@ -153,21 +156,18 @@ export const httpApi: ApiClient = {
   // Staff only — every call carries the bearer token, and the backend must
   // reject non-sales roles with 403 rather than relying on the UI guard.
   sales: {
-    listColumns: () => http.get<DealColumn[]>(endpoints.sales.columns),
+    listColumns: () => http.get<SalesColumnListResponse>(endpoints.sales.columns),
 
-    listCards: () => http.get<DealCard[]>(endpoints.sales.cards),
+    listCards: (query: SalesCardListQuery) =>
+      http.get<SalesCardPage>(endpoints.sales.cards, { query: { ...query } }),
 
-    getCard: (id: string) => http.get<DealCard>(endpoints.sales.cardById(id)),
+    getCard: (id: string) => http.get<SalesCardDetailDto>(endpoints.sales.cardById(id)),
 
-    createCard: (payload: DealCardCreate) => http.post<DealCard>(endpoints.sales.cards, payload),
+    updateCard: (id: string, body: SalesCardUpdateRequest) =>
+      http.patch<SalesCardUpdateResponse>(endpoints.sales.cardById(id), body),
 
-    updateCard: (id: string, patch: DealCardPatch) =>
-      http.patch<DealCard>(endpoints.sales.cardById(id), patch),
-
-    moveCard: (id: string, toColumnId: DealStage, order?: number) =>
-      http.post<DealCard>(endpoints.sales.moveCard(id), { toColumnId, order }),
-
-    deleteCard: (id: string) => http.delete<void>(endpoints.sales.cardById(id)),
+    moveCard: (id: string, body: SalesCardMoveRequest) =>
+      http.post<SalesCardMoveResponse>(endpoints.sales.moveCard(id), body),
   },
 };
 

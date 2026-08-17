@@ -6,10 +6,6 @@ import type {
   BookingRequestResult,
   BookingSubmission,
   BuildingClassification,
-  DealCard,
-  DealCardCreate,
-  DealCardPatch,
-  DealStage,
   EnergyMix,
   FiberProximity,
   GridTier,
@@ -28,13 +24,18 @@ import type {
   SubstationDistance,
   WorkloadType,
   WorkspaceResourceKind,
+  DealStatus,
+  SalesCardDetailDto,
+  SalesCardListQuery,
+  SalesCardMoveRequest,
+  SalesCardUpdateRequest,
 } from "@/models";
 import type { ApiClient } from "../contracts";
 import { apiConfig } from "../config";
 import { ApiError } from "../http";
 import { sessionBridge } from "../session";
 import { computeQuote } from "@/lib/booking/quote";
-import { mockDealCards, mockDealColumns } from "./salesFixtures";
+import { mockDealCards, mockSalesColumns } from "./salesFixtures";
 import { mockWorkspaceTables } from "./workspaceFixtures";
 import {
   analyzeStage,
@@ -75,7 +76,7 @@ function reference(prefix: string): string {
  * Module-scoped rather than per-call: the board reads it back after every move,
  * and a fresh array each time would undo the user's last action.
  */
-let salesCards: DealCard[] = [...mockDealCards];
+let salesCards: SalesCardDetailDto[] = [...mockDealCards];
 
 /**
  * Mock authorization so every role is reachable without a backend.
@@ -310,6 +311,128 @@ function buildBookingResult(id: string, payload: BookingSubmission): BookingRequ
   };
 }
 
+/* ------------------------- Sales pipeline (mock) ------------------------- */
+
+const MOCK_COLUMN_BY_ID = new Map(mockSalesColumns.map((column) => [column.columnId, column]));
+
+function dealStatusForColumn(columnId: string): DealStatus {
+  const category = MOCK_COLUMN_BY_ID.get(columnId)?.stageCategory;
+  if (category === "won") return "won";
+  if (category === "lost") return "lost";
+  if (category === "paused") return "on_hold";
+  return "open";
+}
+
+function mockSalesCardPage(query: SalesCardListQuery): {
+  items: SalesCardDetailDto[];
+  nextCursor: string | null;
+} {
+  const columnId = query.columnId;
+  const filtered = salesCards
+    .filter((card) => card.columnId === columnId)
+    .filter((card) => (query.vertical ? card.vertical === query.vertical : true))
+    .filter((card) => (query.ownerId ? card.ownerId === query.ownerId : true))
+    .filter((card) => (query.priority ? card.priority === query.priority : true))
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
+
+  const limit = Math.min(Math.max(query.limit ?? 25, 1), 100);
+  const offset = query.cursor ? Number(atob(query.cursor)) : 0;
+  const items = filtered.slice(offset, offset + limit);
+  const nextCursor = offset + limit < filtered.length ? btoa(String(offset + limit)) : null;
+  return { items, nextCursor };
+}
+
+function mockUpdateSalesCard(id: string, body: SalesCardUpdateRequest): { dealId: string; revision: number } {
+  const index = salesCards.findIndex((deal) => deal.dealId === id);
+  if (index === -1) {
+    throw new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 });
+  }
+  const card = salesCards[index]!;
+  if (body.expectedRevision !== card.revision) {
+    throw new ApiError({
+      code: "CONFLICT",
+      message: "This deal changed on the server. Reloading the latest version.",
+      status: 409,
+    });
+  }
+
+  const next: SalesCardDetailDto = { ...card };
+  // Both omission and explicit null mean "no change" in this contract.
+  if (body.title !== undefined && body.title !== null) next.title = body.title;
+  if (body.description !== undefined && body.description !== null) next.description = body.description;
+  if (body.priority !== undefined && body.priority !== null) next.priority = body.priority;
+  if (body.estimatedValueMinor !== undefined && body.estimatedValueMinor !== null) {
+    next.estimatedValueMinor = body.estimatedValueMinor;
+    next.currency = body.currency ?? null;
+  }
+  if (body.probabilityPercent !== undefined && body.probabilityPercent !== null) {
+    next.probabilityPercent = body.probabilityPercent;
+  }
+  if (body.expectedCloseDate !== undefined && body.expectedCloseDate !== null) {
+    next.expectedCloseDate = body.expectedCloseDate;
+  }
+  next.revision = card.revision + 1;
+  next.updatedAt = new Date().toISOString();
+
+  salesCards = salesCards.map((deal, i) => (i === index ? next : deal));
+  return { dealId: id, revision: next.revision };
+}
+
+function mockMoveSalesCard(id: string, body: SalesCardMoveRequest): { dealId: string; status: DealStatus; revision: number } {
+  const index = salesCards.findIndex((deal) => deal.dealId === id);
+  if (index === -1) {
+    throw new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 });
+  }
+  const card = salesCards[index]!;
+  if (body.expectedRevision !== card.revision) {
+    throw new ApiError({
+      code: "CONFLICT",
+      message: "This deal changed on the server. Reloading the latest version.",
+      status: 409,
+    });
+  }
+  const target = MOCK_COLUMN_BY_ID.get(body.toColumnId);
+  if (!target) {
+    throw new ApiError({
+      code: "NOT_FOUND",
+      message: `Column ${body.toColumnId} not found or inactive.`,
+      status: 404,
+    });
+  }
+
+  const roles = mockProfile().authorization.memberships.map((membership) => membership.role);
+  if (target.stageCategory === "won" || target.stageCategory === "lost") {
+    if (!roles.includes("manager") && !roles.includes("admin")) {
+      throw new ApiError({
+        code: "FORBIDDEN",
+        message: "Only managers and admins can move a deal to Won or Lost.",
+        status: 403,
+      });
+    }
+  }
+  if ((target.stageCategory === "lost" || target.stageCategory === "paused") && !body.reason) {
+    throw new ApiError({
+      code: "VALIDATION_ERROR",
+      message: `A reason is required when moving to "${target.name}".`,
+      status: 400,
+    });
+  }
+
+  const status = dealStatusForColumn(body.toColumnId);
+  const next: SalesCardDetailDto = {
+    ...card,
+    columnId: body.toColumnId,
+    status,
+    revision: card.revision + 1,
+    updatedAt: new Date().toISOString(),
+  };
+  if (status === "won") next.wonAt = next.updatedAt;
+  if (status === "lost") next.lostReason = body.reason ?? null;
+
+  salesCards = salesCards.map((deal, i) => (i === index ? next : deal));
+  return { dealId: id, status, revision: next.revision };
+}
+
 export const mockApi: ApiClient = {
   auth: {
     me: () => delay(mockProfile()),
@@ -422,78 +545,25 @@ export const mockApi: ApiClient = {
   },
 
   sales: {
-    listColumns: () => delay(mockDealColumns),
+    listColumns: () => delay({ columns: mockSalesColumns }),
 
-    listCards: () => delay(salesCards),
+    listCards: (query: SalesCardListQuery) => delay(mockSalesCardPage(query)),
 
     getCard: (id: string) => {
-      const card = salesCards.find((deal) => deal.id === id);
+      const card = salesCards.find((deal) => deal.dealId === id);
       if (!card) {
         return Promise.reject(
           new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }),
         );
       }
-      return delay(card);
+      return delay({ ...card });
     },
 
-    createCard: (payload: DealCardCreate) => {
-      if (!mockProfile().authorization.isStaff) return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Staff access required.", status: 403 }));
-      const now = new Date().toISOString();
-      const created: DealCard = {
-        ...payload,
-        id: reference("deal").toLowerCase(),
-        reference: reference("CP-MAN"),
-        order: salesCards.filter((card) => card.columnId === payload.columnId).length,
-        createdAt: now,
-        updatedAt: now,
-      };
-      salesCards = [...salesCards, created];
-      return delay(created);
-    },
+    updateCard: (id: string, body: SalesCardUpdateRequest) =>
+      delay(mockUpdateSalesCard(id, body)),
 
-    updateCard: (id: string, patch: DealCardPatch) => {
-      const index = salesCards.findIndex((deal) => deal.id === id);
-      if (index === -1) {
-        return Promise.reject(
-          new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }),
-        );
-      }
-
-      const updated: DealCard = {
-        ...salesCards[index]!,
-        ...patch,
-        updatedAt: new Date().toISOString(),
-      };
-      salesCards = salesCards.map((deal, i) => (i === index ? updated : deal));
-      return delay(updated);
-    },
-
-    moveCard: (id: string, toColumnId: DealStage, order?: number) => {
-      const card = salesCards.find((deal) => deal.id === id);
-      if (!card) {
-        return Promise.reject(
-          new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }),
-        );
-      }
-
-      const updated: DealCard = {
-        ...card,
-        columnId: toColumnId,
-        order: order ?? card.order,
-        updatedAt: new Date().toISOString(),
-      };
-      salesCards = salesCards.map((deal) => (deal.id === id ? updated : deal));
-      return delay(updated);
-    },
-
-    deleteCard: (id: string) => {
-      const managerRoles = mockProfile().authorization.memberships.map((membership) => membership.role);
-      if (!managerRoles.includes("manager") && !managerRoles.includes("admin")) return Promise.reject(new ApiError({ code: "FORBIDDEN", message: "Manager access required.", status: 403 }));
-      const exists = salesCards.some((card) => card.id === id);
-      if (!exists) return Promise.reject(new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 }));
-      salesCards = salesCards.filter((card) => card.id !== id);
-      return delay(undefined);
-    },
+    moveCard: (id: string, body: SalesCardMoveRequest) =>
+      delay(mockMoveSalesCard(id, body)),
   },
 
   leads: {

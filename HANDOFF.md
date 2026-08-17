@@ -344,47 +344,79 @@ directly.
 
 Current behavior:
 
-- Cards and columns load through the Sales service.
-- Drag-and-drop moves use the separate move operation.
-- Sales-source filters preserve cards instead of unmounting them.
-- The layout adds `min-h-0`, `min-w-0`, and overflow boundaries to make the
-  pipeline scroll inside the workspace.
-- Sales, Manager, and Admin staff can create a manual outbound/offline card.
-- Customer flow submissions are expected to create cards automatically on the
-  backend; the board must not create a duplicate after form submission.
-- Manager/Admin can delete a card from its detail panel after a confirmation
-  step.
-- Deletion is expected to preserve a backend audit event and never delete the
-  underlying customer submission.
+- Cards and columns load through the Sales service against the pinned backend
+  wire contract (5 operations, 4 paths — see `src/services/endpoints.ts`).
+- Card list loads are paginated per column (`limit` 100, followed by
+  `nextCursor`) and flattened into the board with a library-only visual order
+  derived from backend order; that order is never sent back.
+- Drag-and-drop moves POST the move operation with the card's current
+  `expectedRevision`; the adapter reconciles with the fresh detail after the
+  move and the library replaces the optimistic card with server truth.
+- A 409/CONFLICT on move refreshes the adapter's revision cache and surfaces
+  the error (no blind retry). Backend 403 (Won/Lost is manager/admin only) and
+  400 (missing reason for Lost/On Hold) roll the optimistic state back and
+  toast the backend message — the expected UX for an attempted transition the
+  backend forbids.
+- Edits (probability, expected close, description) PATCH with
+  `expectedRevision`; a 409 shows "This deal changed on the server. Reloading
+  the latest version." and refreshes the board without retrying.
+- The board exposes **no create and no delete**: the contract has no
+  `POST /sales/cards` and no `DELETE /sales/cards/{id}`, so the adapter omits
+  them and the UI renders no such affordance. Customer-flow submissions create
+  cards transactionally on the backend.
+- The detail panel is a custom `detailPanelRender` (`DealDetail.tsx`). Deal
+  value and record fields are read-only and rendered from real backend fields
+  via `formatMinorUnits`; only the sales-owned fields are editable.
+- Vertical filters (land/GPU/token/hyperscale) hide cards with CSS
+  (`data-deal-vertical` + `.kanban-scope[data-vertical-filter=…]`) instead of
+  unmounting them, so scroll and drag state survive.
+- On save the board bumps `boardVersion` after ~700 ms so the panel shows
+  "Saved" before the board remounts and refetches the latest revision.
 - Sales and Manager pipeline routes share the same board implementation and
   vary by permissions, not by forked board code.
 
-Transitional Sales operations in `src/services/endpoints.ts`:
+Wire operations in `src/services/endpoints.ts` (match the backend OpenAPI):
 
 - `GET /sales/columns`
-- `GET /sales/cards`
-- `GET /sales/cards/{id}`
-- `POST /sales/cards`
-- `PATCH /sales/cards/{id}`
-- `POST /sales/cards/{id}/move`
-- `DELETE /sales/cards/{id}`
+- `GET /sales/cards?columnId=…` (+ `limit`/`cursor`/`vertical`/`ownerId`/`priority`)
+- `GET /sales/cards/{dealId}`
+- `PATCH /sales/cards/{dealId}`
+- `POST /sales/cards/{dealId}/move`
 
-All paths and payloads remain requirements input until present in a pinned
-backend OpenAPI release.
+### Pipeline tests
+
+Vitest was added (`npm test`) for this work — 21 tests across three files:
+
+- `src/components/sales/salesAdapter.test.ts` — adapter mapping, paginated
+  loading, update/move payloads (including that `columnId`/`order` are never
+  sent), 409 no-blind-retry, and that create/delete are not exposed.
+- `src/services/http-impl/httpErrors.test.ts` — 4xx/5xx are normalized to
+  backend error codes, never mislabeled `NETWORK_ERROR`.
+- `src/components/sales/SalesBoard.test.tsx` — board chrome: vertical filters
+  render and no add/delete affordance exists.
 
 ### Pipeline risks
 
-- Manual create/delete currently increments `boardVersion` and remounts the
-  board. This refreshes data but also resets the library's internal scroll and
-  selection state.
+- Saving still bumps `boardVersion` and remounts the board, which refreshes
+  data but resets the library's internal scroll and selection state. The
+  delayed bump lets the panel's "Saved" state show first.
 - Scroll styling targets library/Tailwind class structure and can break after a
   library update.
-- `docs/KANBAN_INTEGRATION.md` is stale: it still says create/delete are absent,
-  while the current source implements both.
+- The library's dist types do not re-export the `Column` interface (only the
+  `Column` component value); `salesAdapter.ts` defines a structural `BoardColumn`
+  twin instead. If the library regenerates dist types, prefer importing the
+  real interface.
+- `docs/KANBAN_INTEGRATION.md` predates the contract-accurate rewrite and may
+  lag the source (e.g. it described create/delete behavior before the contract
+  dropped those operations).
 - `/dashboard/sales` and `/sales/pipeline` expose two entry points to the same
   feature.
 - Backend authorization, card-order reconciliation, WIP-limit rejection, and
   immutable deletion audit are not proven by frontend mocks.
+- Protected routes (`/sales/*`) return an HTTP 404 to a bare curl when signed
+  out because Clerk's middleware rewrites unauthenticated requests to its
+  interstitial route; in a browser this is the normal sign-in redirect. Use a
+  real session to exercise the board.
 
 ## 8. Dynamic product data and API connection
 
@@ -544,6 +576,31 @@ one strategy: Git submodule, npm/package registry, monorepo workspace, or
 properly vendored source/build output.
 
 ## 13. Validation status
+
+### 2026-08-15 (contract-accurate Sales pipeline)
+
+Run in this repository with the real `@kanban/library` (local `kaban_cloud/`
+`dist-lib`) installed:
+
+```text
+tsc --noEmit ............................. PASS (0 errors)
+next lint ............................... PASS (0 warnings/errors) — see below
+next build .............................. PASS (exit 0, routes emitted)
+vitest run .............................. PASS (21/21 tests, 3 files)
+```
+
+The 2026-08-14 caveat that `@kanban/library` was a type stub no longer applies:
+the board compiles and builds against the real library, and `next lint` now has
+a committed `.eslintrc.json` (`next/core-web-vitals`) so the lint run is
+deterministic.
+
+Runtime smoke test (production server): `/` serves 200; the protected
+`/sales/*` routes correctly intercept unauthenticated requests — Clerk's
+middleware rewrites them to its interstitial route, which a bare `curl` sees as
+404 (`x-clerk-auth-status: signed-out`), and a browser sees as the normal
+sign-in redirect. Exercising the board itself requires a real Clerk session;
+that part remains unverified here, as does everything in the runtime checklist
+below.
 
 ### 2026-08-14 (Clerk migration)
 

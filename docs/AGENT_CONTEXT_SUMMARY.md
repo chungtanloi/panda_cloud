@@ -6,21 +6,22 @@
 - `repository`: `panda_cloud`
 - `branch_at_refresh`: `main`
 - `head_at_refresh`: `3c127eb239f33f09d3d48bb5bd68c159166a8c44` (diagnostic only; the
-  working tree carries uncommitted Clerk-migration changes)
-- `source_file_count`: `11`
-- `source_fingerprint`: `41ba8d73cd21f9fcee3228c814c5fe623ce5977f65221ab7b1e0cbb073ef681f`
+  working tree carries uncommitted Clerk-migration and Sales-pipeline changes)
+- `source_file_count`: `12`
+- `source_fingerprint`: `9d59616595ec66a9345ec185936cdb449c391a0bcc56525e759060d652dfbd50`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-14T02:35:00Z`
+- `last_context_refresh_at_utc`: `2026-08-15T09:15:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
 authority.
 
-> The previous summary recorded fingerprint
-> `f2c95e01141e6e6b9130671ca5d04defe0da63431de560684c3e61492c8916b5` over 9
-> files. That fingerprint was stale: `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md`
-> was absent from the manifest and `README.md` had changed. The complete corpus
-> was therefore re-read on 2026-08-14 before any implementation work.
+> 2026-08-15 incremental refresh: the corpus gained
+> `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` (new file, read and incorporated);
+> every other manifest digest was unchanged. The Sales pipeline section below
+> was rewritten to match the contract-accurate board implementation shipped on
+> the same day; the Sales pipeline code is not part of this corpus, so the
+> fingerprint does not cover it.
 
 ## Product purpose
 
@@ -81,10 +82,13 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 - Marketing pages, authentication, Choose Your Path, the five-step Land Owner
   Assessment, and Dashboard Overview are documented as built. Some marketing
   imagery remains placeholder content.
-- The Clerk migration typechecks and builds clean in an isolated sandbox, with
-  two caveats recorded in `HANDOFF.md` section 13: `@kanban/library` was
-  substituted with a type stub, and no runtime behaviour was exercised against a
-  live Clerk instance or gateway.
+- The Clerk migration typechecks and builds clean. The 2026-08-14 caveat that
+  `@kanban/library` had been substituted with a type stub is resolved: the
+  Sales board compiles, builds and is unit-tested against the real library, and
+  a deterministic `next lint` now exists (`.eslintrc.json`,
+  `next/core-web-vitals`). No runtime behaviour has yet been exercised against a
+  live Clerk instance or gateway — protected `/sales/*` routes intercept
+  unauthenticated requests via Clerk middleware as designed.
 - A pre-existing RSC boundary defect in `src/app/submit-request/page.tsx` was
   fixed because it aborted `next build` before any page was emitted. It was
   unrelated to Clerk; the build had never previously been executed.
@@ -120,18 +124,42 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 
 ### Sales pipeline
 
-- `/dashboard/sales` embeds the local `@kanban/library` project from
-  `kaban_cloud/`. The library must be built before the host app installs/uses
-  its `dist-lib` output.
+- `/sales/pipeline` (and `/dashboard/sales`, the legacy entry point) embeds the
+  local `@kanban/library` project from `kaban_cloud/`. The library must be built
+  before the host app installs/uses its `dist-lib` output.
 - `components/sales/salesAdapter.ts` is the sole bridge between Kanban types and
-  `api.sales`, preserving the common mock/HTTP adapter boundary.
-- Customer submissions create cards in the backend; the frontend board does not
-  expose delete/create behavior for that path. Lost deals preserve audit
-  history.
+  `api.sales`, preserving the common mock/HTTP adapter boundary. It maps the
+  backend wire DTOs (`SalesColumnDto`, `SalesCardDto`, `SalesCardDetailDto`) to
+  the board shapes; `order` is derived from backend order and never sent back.
+- The board is written against the pinned backend contract exactly:
+  `GET /sales/columns`, `GET /sales/cards` (paginated per column, follows
+  `nextCursor`), `GET|PATCH /sales/cards/{dealId}`, and
+  `POST /sales/cards/{dealId}/move`. **There is no create and no delete**
+  operation, so the adapter and the UI expose neither; customer-flow submissions
+  create cards transactionally on the backend. Legacy `Deal*` types and the
+  manual card modal are gone.
+- Every state change carries `expectedRevision`; a 409/CONFLICT surfaces "This
+  deal changed on the server. Reloading the latest version." and refreshes the
+  board without blind retry. Won/Lost moves are manager/admin-only on the
+  backend; a 403 rolls the optimistic drag back and toasts the backend message.
+- The detail panel is a custom `detailPanelRender` (`DealDetail.tsx`). Deal
+  value and record fields render real backend fields read-only via
+  `formatMinorUnits` (minor units + ISO 4217, `—` when absent); probability,
+  expected close and description are the editable sales fields.
+- Vertical filters (land/GPU/token/hyperscale) hide cards with CSS
+  (`data-deal-vertical` + `.kanban-scope[data-vertical-filter=…]`) instead of
+  unmounting them, so scroll and drag state survive.
 - UI role guards are convenience only. The backend must reject every staff
   operation for a non-staff token. A missing membership means customer.
 - The Kanban package may ship a conflicting Tailwind preflight reset; if styles
   drift on the sales page, disable preflight in the library and rebuild it.
+  (Current `dist-lib` CSS carries no preflight.)
+- Tests run with vitest (`npm test`): 21 tests covering adapter mapping,
+  pagination, update/move payloads, the 409 no-blind-retry rule, HTTP error
+  normalization (4xx/5xx never mislabeled `NETWORK_ERROR`), and the board
+  chrome (filters render, no add/delete affordance). The library's dist types
+  do not re-export the `Column` interface, so `salesAdapter.ts` defines a
+  structural `BoardColumn` twin.
 
 ## Frontend-backend contract
 
@@ -213,6 +241,7 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-14T01:20:00Z` |
 | `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-14T01:20:00Z` |
 | `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-14T01:20:00Z` |
+| `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-15T09:15:00Z` |
 | `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-14T01:20:00Z` |
 | `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-14T01:20:00Z` |
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-14T01:20:00Z` |

@@ -9,15 +9,14 @@ import { Kanban } from "@kanban/library";
 // A library should not ship a global reset — the host app already has one.
 import "@kanban/library/styles.css";
 import { useMemo, useState } from "react";
-import { SALES_BOARD, SOURCE_LABELS, type DealSource } from "@/config/sales";
+import { SALES_BOARD, VERTICAL_LABELS } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
-import { canManageSalesBoard, isStaff, primaryRole } from "@/models/auth";
-import type { DealCard } from "@/models/sales";
+import { primaryRole } from "@/models/auth";
+import type { DealVertical, SalesCard } from "@/models/sales";
 import { cn } from "@/lib/cn";
 import { createSalesAdapter } from "./salesAdapter";
 import { DealCardView } from "./DealCardView";
 import { DealDetail } from "./DealDetail";
-import { ManualDealModal } from "./ManualDealModal";
 
 /**
  * The sales pipeline board.
@@ -26,24 +25,27 @@ import { ManualDealModal } from "./ManualDealModal";
  * survives server rendering. The page that mounts this imports it with
  * `ssr: false`.
  *
+ * There is deliberately no "Add card" or "Delete card" surface: the backend
+ * contract has no create or delete operation, so the adapter does not expose
+ * them and the board must not either.
+ *
  * Permissions are passed through to the library rather than enforced by hiding
  * UI: `canEditCard` and `canMoveCard` gate the affordances, and the backend
- * must reject the same operations independently. A UI guard alone is not
- * access control.
+ * must reject the same operations independently (a UI guard alone is not
+ * access control — the backend restricts Won/Lost transitions to manager and
+ * admin, which is enforced server-side and surfaced cleanly here).
  */
 export function SalesBoard() {
   const { profile, user } = useAuth();
-  const [sourceFilter, setSourceFilter] = useState<DealSource | "all">("all");
-  const [showCreate, setShowCreate] = useState(false);
+  const [verticalFilter, setVerticalFilter] = useState<DealVertical | "all">("all");
   const [boardVersion, setBoardVersion] = useState(0);
 
   // Recreating the adapter would refetch the whole board on every render.
+  // boardVersion is deliberately a dependency even though the memo doesn't read
+  // it: bumping it recreates the adapter (fresh revision cache + column load)
+  // when the board remounts after a save.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const adapter = useMemo(() => createSalesAdapter(), [boardVersion]);
-
-  // sales_manager gets the same board power as admin here — see the doc
-  // comment on canManageSalesBoard for why this is a separate check from
-  // "is admin".
-  const canManageBoard = canManageSalesBoard(profile);
 
   const config = useMemo(
     () => ({
@@ -53,18 +55,17 @@ export function SalesBoard() {
       // identity holds several active memberships.
       user: user ? { id: user.id, role: primaryRole(profile) ?? undefined } : undefined,
 
-      cardRender: (card: DealCard) => <DealCardView card={card} />,
+      cardRender: (card: SalesCard) => <DealCardView card={card} />,
 
-      detailPanelRender: (card: DealCard, close: () => void) => (
+      detailPanelRender: (card: SalesCard, close: () => void) => (
         <DealDetail
           card={card}
           close={close}
           canEdit={Boolean(user)}
-          canDelete={canManageBoard}
-          onDeleted={() => setBoardVersion((version) => version + 1)}
           onSaved={() => {
-            // The library refetches on close; nothing to do here beyond
-            // letting the panel keep its own saved state.
+            // Show the panel's own "Saved" state, then refetch the board so the
+            // latest revision is reflected.
+            window.setTimeout(() => setBoardVersion((version) => version + 1), 700);
           }}
         />
       ),
@@ -72,12 +73,8 @@ export function SalesBoard() {
       /** Any signed-in staff member may work a deal. */
       canEditCard: () => Boolean(user),
       canMoveCard: () => Boolean(user),
-      /** Staff may add outbound/offline leads; customer forms still create cards automatically. */
-      canCreateCard: () => isStaff(profile),
-      /** Sales managers and admins only, and even then the backend should prefer "Lost". */
-      canDeleteCard: () => canManageBoard,
     }),
-    [adapter, profile, user, canManageBoard],
+    [adapter, profile, user],
   );
 
   return (
@@ -92,21 +89,20 @@ export function SalesBoard() {
           </p>
         </div>
 
-        {/* Source filter. Client-side: the board holds every card already, so
+        {/* Vertical filter. Client-side: the board holds every card already, so
             a round trip per filter change would be wasted. */}
         <div className="flex flex-wrap items-center justify-end gap-[8px]">
-          <button type="button" onClick={() => setShowCreate(true)} className="rounded-full bg-accent px-4 py-2 font-sans text-[12px] font-bold uppercase tracking-wider text-accent-fg">+ Add card</button>
           <FilterChip
-            active={sourceFilter === "all"}
-            onClick={() => setSourceFilter("all")}
+            active={verticalFilter === "all"}
+            onClick={() => setVerticalFilter("all")}
             label={SALES_BOARD.filterAllLabel}
           />
-          {(Object.keys(SOURCE_LABELS) as DealSource[]).map((source) => (
+          {(Object.keys(VERTICAL_LABELS) as DealVertical[]).map((vertical) => (
             <FilterChip
-              key={source}
-              active={sourceFilter === source}
-              onClick={() => setSourceFilter(source)}
-              label={SOURCE_LABELS[source]}
+              key={vertical}
+              active={verticalFilter === vertical}
+              onClick={() => setVerticalFilter(vertical)}
+              label={VERTICAL_LABELS[vertical]}
             />
           ))}
         </div>
@@ -115,15 +111,14 @@ export function SalesBoard() {
       <div
         className={cn(
           "kanban-scope min-h-0 min-w-0 flex-1 overflow-hidden rounded-[28px] border border-line-hair bg-card p-[16px]",
-          // Hides cards whose source is filtered out without unmounting them,
+          // Hides cards whose vertical is filtered out without unmounting them,
           // so drag state and scroll position survive a filter change.
-          sourceFilter !== "all" && `filter-${sourceFilter}`,
+          verticalFilter !== "all" && `filter-${verticalFilter}`,
         )}
-        data-source-filter={sourceFilter}
+        data-vertical-filter={verticalFilter}
       >
         <Kanban key={boardVersion} {...config} className="min-h-0 min-w-0" />
       </div>
-      <ManualDealModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={() => setBoardVersion((version) => version + 1)} />
     </div>
   );
 }
