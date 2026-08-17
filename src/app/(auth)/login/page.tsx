@@ -55,6 +55,8 @@ function LoginView() {
     : null;
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
   useEffect(() => {
     if (!isLoaded || !isAuthenticated) return;
     let active = true;
@@ -85,18 +87,32 @@ function LoginView() {
 
     setSubmitting(true);
     try {
-      const attempt = await signIn.create({
-        identifier: form.values.email,
-        password: form.values.password,
-      });
+      let attempt;
+      if (verificationRequired) {
+        if (!verificationCode.trim()) {
+          setFormError("Enter the verification code sent by Clerk.");
+          return;
+        }
+        attempt = await signIn.attemptSecondFactor({
+          strategy: "email_code",
+          code: verificationCode.trim(),
+        });
+      } else {
+        attempt = await signIn.create({
+          identifier: form.values.email,
+          password: form.values.password,
+        });
 
-      if (attempt.status !== "complete") {
-        // MFA, a password reset, or another factor is outstanding. Clerk owns
-        // those flows and no screen for them is designed yet.
-        // ⚠ NEEDS CLARIFICATION — no second-factor screen exists in the Figma set.
-        setFormError(
-          "Additional verification is required to finish signing in. Please complete it in your Clerk account, or contact support.",
-        );
+        if (attempt.status === "needs_second_factor") {
+          await signIn.prepareSecondFactor({ strategy: "email_code" });
+          setVerificationRequired(true);
+          setFormError("A verification code was sent to your email.");
+          return;
+        }
+      }
+
+      if (attempt.status !== "complete" || !attempt.createdSessionId) {
+        setFormError("Additional verification is required to finish signing in.");
         return;
       }
 
@@ -139,17 +155,28 @@ function LoginView() {
             error={form.touched.email ? form.errors.email : undefined}
           />
 
-          <Input
-            label="Password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={form.values.password}
-            onChange={(e) => form.setField("password", e.target.value)}
-            onBlur={() => form.blurField("password")}
-            error={form.touched.password ? form.errors.password : undefined}
-          />
-
+          {verificationRequired ? (
+            <Input
+              label="Verification code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value)}
+            />
+          ) : (
+            <Input
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={form.values.password}
+              onChange={(e) => form.setField("password", e.target.value)}
+              onBlur={() => form.blurField("password")}
+              error={form.touched.password ? form.errors.password : undefined}
+            />
+          )}
           {formError ? (
             <p role="alert" className="font-sans text-[12px] text-red-400">
               {formError}
@@ -161,7 +188,7 @@ function LoginView() {
 
           <div className="pt-[8px]">
             <Button type="submit" variant="pill" loading={submitting} iconRight={<ArrowUpRight />}>
-              Log In
+              {verificationRequired ? "Verify code" : "Log In"}
             </Button>
           </div>
         </form>
