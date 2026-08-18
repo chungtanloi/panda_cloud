@@ -198,7 +198,6 @@ export function SalesBoard() {
 
       /** Any signed-in staff member may work a deal. */
       canEditCard: () => Boolean(user),
-
       /**
        * ⚠ WHY THIS IS NOT `() => Boolean(user)` ANY MORE.
        *

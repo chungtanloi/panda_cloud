@@ -13,7 +13,7 @@ this integration work, but is not an owner-approved released contract tag.
 |---|---|---|
 | `/sales` | LIVE_BACKEND | `GET /sales/overview` |
 | `/sales/leads`, `/sales/leads/{id}` | LIVE_BACKEND | list/detail/qualify Sales lead operations |
-| `/sales/pipeline` | LIVE_BACKEND | columns, cursor-paginated cards, detail, PATCH, and move |
+| `/sales/pipeline` | LIVE_BACKEND | columns, cursor-paginated cards, detail, PATCH, and move; Won/Lost targets are Manager/Admin-only in the UI and gateway |
 | `/sales/tasks` | LIVE_BACKEND | cursor-paginated Sales tasks and task PATCH; deal lookup selector |
 | `/sales/customers`, `/sales/customers/{id}` | LIVE_BACKEND | cursor-paginated customer 360 list/detail |
 | `/sales/reports` | LIVE_BACKEND / policy caveat | conversion, activity, and forecast reports |
@@ -81,10 +81,15 @@ Lead ownership or assignment UI.
   policy.
 - No direct browser-to-Convex request, no password endpoint, and no custom
   PandaCloud token lifecycle were added.
+- **Deal Change Requests:** not consumed. The cited post-freeze candidate must
+  be owner-approved and released before this branch adds a request/decision UX.
+  The existing frozen contract already reserves Won/Lost moves to Manager/Admin,
+  so Sales is now prevented from starting those direct drag transitions.
+- **NCNDA CR-004 draft:** ignored until approved and frozen.
 
 ## Automated evidence
 
-`npm test` currently passes **35 tests in 7 files**.
+`npm test` currently passes **36 tests in 7 files**.
 
 - `src/services/http-impl/authenticatedSalesClient.test.ts`: Clerk bearer
   attachment, no-session behavior, and typed lookup query forwarding.
@@ -92,7 +97,8 @@ Lead ownership or assignment UI.
   buckets/error state, lead pagination/qualification, task update/deal lookup,
   customer list/detail, and report policy/currency rendering.
 - Existing `salesAdapter.test.ts` and `SalesBoard.test.tsx` retain pipeline
-  pagination, revision/OCC, and board chrome coverage.
+  pagination, revision/OCC, board chrome, and Sales-vs-Manager/Admin terminal
+  transition guard coverage.
 - `src/models/common.test.ts`: large minor-unit values do not round through a
   JavaScript number.
 - `src/components/sales/ManualDealModal.test.tsx`: Manager/Admin authorized

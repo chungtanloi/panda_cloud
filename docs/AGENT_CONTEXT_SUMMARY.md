@@ -7,9 +7,9 @@
 - `branch_at_refresh`: `feat/integration-candidate-v1-sales`
 - `head_at_refresh`: `8115eb4` (diagnostic only)
 - `source_file_count`: `21`
-- `source_fingerprint`: `a0bd1a0d264ffb1bde301a0f9e00e662186f067f6ab972d8db00539ce5e44966`
+- `source_fingerprint`: `8da1a73adb9b0e8e5081cfef3523c502d818315e09f99a4012ffa4b0b6917d51`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-18T09:21:00Z`
+- `last_context_refresh_at_utc`: `2026-08-18T09:42:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -38,6 +38,12 @@ authority.
 > tests: Manager/Admin manual-card selectors forward only authorized opaque
 > Organization, Contact, and Owner identifiers. Sales callers retain the
 > existing free-text find-or-create path and default owner behavior.
+
+> 2026-08-18 incremental refresh: the Sales handoff was reread after the
+> frozen-contract compatibility audit. Sales is now prevented from starting a
+> direct Won/Lost drag, while Manager/Admin retain that UI path; the proposed
+> Deal Change Requests and NCNDA CR-004 contracts remain unconsumed. The suite
+> records 36 passing tests.
 
 ## Product purpose
 
@@ -344,7 +350,7 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |
 | `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-18T02:45:00Z` |
 | `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-18T02:45:00Z` |
-| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `ebdb4178189aadfe2986c5aa6fafbb50470207cb0a27b19a5735870e9e86e361` | 5977 | `2026-08-18T09:21:00Z` |
+| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `be934619d16a81ebaee9b419dc8bedaf9fc8a2b08a7eab5ceb9fee57f927daab` | 6466 | `2026-08-18T09:42:00Z` |
 | `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `9e538b7f3ba5d7cee60bad4e2ef585cd5cf3f61636b4ad65b2883e233a7d1a5d` | 1666 | `2026-08-18T09:12:36Z` |
 | `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-18T02:45:00Z` |
 | `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-18T02:45:00Z` |
