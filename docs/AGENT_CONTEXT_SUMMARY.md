@@ -4,12 +4,12 @@
 
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
-- `branch_at_refresh`: `feat/integration-v1-technical-documents`
-- `head_at_refresh`: `b3cb8c6` (diagnostic only)
-- `source_file_count`: `25`
-- `source_fingerprint`: `a71b3d8e2bc6f470855839ac91a08ff09420f7e01912780306799b29b5af87c4`
+- `branch_at_refresh`: `feat/integration-v1-kyc-ncnda`
+- `head_at_refresh`: `4dc8e5a` (diagnostic only)
+- `source_file_count`: `26`
+- `source_fingerprint`: `5c74d4320e6b6499239ab237436bca44c63b6c43dbb47da9e705fe7394463413`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-18T10:53:37Z`
+- `last_context_refresh_at_utc`: `2026-08-18T12:36:45Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -52,6 +52,12 @@ authority.
 > approvals, shared lookups, documents, and Legal/Compliance work were
 > retained; Sales screens use the shared lookup service rather than a parallel
 > port. The merged suite records 93 passing tests.
+
+> 2026-08-18 incremental refresh: KYC + NCNDA Phase 1 was audited against
+> backend `79160d1`. The new handoff was read and incorporated. Production
+> Legal/Compliance routes retain only approved deal-scoped KYC/NCNDA operations;
+> CR-004 queue and transition proposals remain isolated and unconsumed. The
+> suite records 105 passing tests.
 
 ## Product purpose
 
@@ -157,8 +163,10 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 - Technical, Legal and Compliance routes retain their workspace-specific
   navigation and UI guards; the API gateway remains authoritative.
 - Technical DD now has an implemented assessment and secure-evidence flow.
-  Legal and Compliance use their existing implemented NCNDA/KYC integration
-  paths; do not infer a common generic workflow from the screens.
+  Legal and Compliance use approved deal-scoped NCNDA/KYC paths with shared
+  secure upload, attach/detach and signed download. Their global queues are
+  blocked: Legal must not consume CR-004 draft paths, and Compliance must not
+  use Sales enumeration to fabricate discovery.
 - The Technical global overview remains intentionally blocked: assessment reads
   are deal-scoped and Technical cannot enumerate a canonical global deal scope.
 - `config/lifecycle.ts` maps every status enum to a colour as
@@ -350,6 +358,7 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-18T02:45:00Z` |
 | `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-18T02:45:00Z` |
 | `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-18T02:45:00Z` |
+| `docs/KYC_NCNDA_INTEGRATION_PHASE_1_HANDOFF.md` | `a48c7b85e5ce35e70779bfe6bc6c73af2acfc394d223b174800edc6514c1276f` | 4876 | `2026-08-18T12:36:45Z` |
 | `docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md` | `6d0f275b40f523aa58a497dea33f4a96835bc02f68f410fd7be743c85bb6e8c4` | 3422 | `2026-08-18T02:45:00Z` |
 | `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-18T02:45:00Z` |
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |

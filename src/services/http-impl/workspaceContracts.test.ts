@@ -25,8 +25,25 @@ describe("workspace HTTP contracts", () => {
 
   it("creates NCNDA through the deal-scoped PATCH contract", async () => {
     patch.mockResolvedValue({ agreementId: "agreement-1", revision: 1, created: true });
-    await httpApi.legal.upsertAgreement({ dealId: "deal-1", counterpartyOrganizationId: "org-1", ownerId: "user-1", status: "drafting" });
-    expect(patch).toHaveBeenCalledWith("/deals/deal-1/ncnda", expect.objectContaining({ counterpartyOrganizationId: "org-1", ownerId: "user-1", status: "drafting" }));
+    await httpApi.legal.upsertAgreement({ dealId: "deal-1", counterpartyOrganizationId: "org-1", ownerId: "user-1", status: "drafting", expectedRevision: 1 });
+    expect(patch).toHaveBeenCalledWith("/deals/deal-1/ncnda", { counterpartyOrganizationId: "org-1", ownerId: "user-1", status: "drafting", expectedRevision: 1 });
+    expect(patch.mock.calls[0]![1]).not.toHaveProperty("dealId");
+    expect(patch.mock.calls[0]![1]).not.toHaveProperty("role");
+    expect(patch.mock.calls[0]![1]).not.toHaveProperty("organizationId");
+  });
+
+  it("uses only approved NCNDA document paths", async () => {
+    get.mockResolvedValue({ agreementId: "agreement-1", versions: [] });
+    post.mockResolvedValue({ versionId: "version-1", documentId: "document-1" });
+    remove.mockResolvedValue({ documentId: "document-1", detached: true });
+
+    await httpApi.legal.listDocuments("agreement-1");
+    await httpApi.legal.attachDocument("agreement-1", { documentId: "document-1", documentRole: "signed" });
+    await httpApi.legal.detachDocument("agreement-1", "document-1");
+
+    expect(get).toHaveBeenCalledWith("/ncnda/agreement-1/documents");
+    expect(post).toHaveBeenCalledWith("/ncnda/agreement-1/documents", { documentId: "document-1", documentRole: "signed" });
+    expect(remove).toHaveBeenCalledWith("/ncnda/agreement-1/documents/document-1");
   });
 
   it("uses the implemented DD deal list endpoint", async () => {

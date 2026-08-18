@@ -43,6 +43,15 @@ import { api } from "@/services/api";
  */
 
 const MAX_CONCURRENT = 4;
+const READINESS_INVALIDATED_EVENT = "panda-cloud:readiness-invalidated";
+
+/** Notify the centralized readiness cache after an approved lane mutation. */
+export function notifyDealReadinessChanged(dealId: string): void {
+  if (typeof window === "undefined" || !dealId) return;
+  window.dispatchEvent(
+    new CustomEvent<{ dealId: string }>(READINESS_INVALIDATED_EVENT, { detail: { dealId } }),
+  );
+}
 
 interface ReadinessContextValue {
   /** Result for a deal, or null while it is unknown. */
@@ -127,6 +136,22 @@ export function DealReadinessProvider({
     },
     [pump],
   );
+
+  useEffect(() => {
+    function invalidate(event: Event) {
+      const dealId = (event as CustomEvent<{ dealId?: string }>).detail?.dealId;
+      if (!dealId) return;
+      requested.current.delete(dealId);
+      queue.current = queue.current.filter((id) => id !== dealId);
+      setResults((previous) => {
+        const { [dealId]: _stale, ...remaining } = previous;
+        return remaining;
+      });
+      request(dealId);
+    }
+    window.addEventListener(READINESS_INVALIDATED_EVENT, invalidate);
+    return () => window.removeEventListener(READINESS_INVALIDATED_EVENT, invalidate);
+  }, [request]);
 
   const value = useMemo<ReadinessContextValue>(
     () => ({

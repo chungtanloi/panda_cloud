@@ -21,6 +21,8 @@ import {
 import type { NormalizedError } from "@/models/common";
 import { api, normalizeError } from "@/services/api";
 import { SecureDocumentUpload } from "@/components/documents/SecureDocumentUpload";
+import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
+import { notifyDealReadinessChanged } from "@/controllers/ReadinessContext";
 
 function dateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -32,17 +34,15 @@ function dateTime(iso: string | null): string {
 /**
  * `/legal/agreements/[id]` — ROLE_PERMISSION_MATRIX § 6.2 and § 6.3.
  *
- * The lifecycle form mirrors `convex/ncnda.ts#upsertAgreement`, including both
- * of its failure modes, so the reviewer learns about a problem here rather than
- * from a 400:
+ * The approved endpoint supports a manual, revision-guarded status update. It
+ * does not define a frontend-controlled NCNDA transition graph.
  *
  *   - `active` requires an effective date;
  *   - only one `active` agreement may exist per deal + counterparty, so a
  *     second one is a 409 and the message says why.
  *
- * Version history is read-only by design, not by omission — UC-015 makes every
- * version immutable with at most one current. There is no upload control
- * because no upload operation exists.
+ * Version history is read-only. Upload, attach, detach and signed download use
+ * the shared secure-documents flow.
  */
 export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }: { agreementId: string; backHref?: string }) {
   const { profile } = useAuth();
@@ -58,7 +58,6 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
   const [saving, setSaving] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
-  const [documentId, setDocumentId] = useState("");
   const [documentRole, setDocumentRole] = useState<"draft" | "redline" | "signed" | "countersigned">("draft");
   const [documentSaving, setDocumentSaving] = useState(false);
   const [documentMessage, setDocumentMessage] = useState<string | null>(null);
@@ -67,7 +66,11 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
     setLoading(true);
     setError(null);
     try {
-      const next = await api.legal.getAgreement(agreementId);
+      const [agreement, versions] = await Promise.all([
+        api.legal.getAgreement(agreementId),
+        api.legal.listDocuments(agreementId),
+      ]);
+      const next = { ...agreement, versions };
       setDetail(next);
       setStatus(next.status);
       setEffectiveDate(next.effectiveDate ?? "");
@@ -128,18 +131,9 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
     }
   }
 
-  async function attachDocument(event: React.FormEvent) {
-    event.preventDefault(); setDocumentMessage(null);
-    if (!documentId.trim()) { setDocumentMessage("Enter a registered document id."); return; }
-    setDocumentSaving(true);
-    try { await api.legal.attachDocument(detail!.agreementId, { documentId: documentId.trim(), documentRole }); setDocumentId(""); setDocumentMessage("Document attached."); await load(); }
-    catch (cause) { const normalized = normalizeError(cause); setDocumentMessage(normalized.correlationId ? normalized.message + " (correlation " + normalized.correlationId + ")" : normalized.message); }
-    finally { setDocumentSaving(false); }
-  }
-
   async function detachDocument(version: Detail["versions"][number]) {
     setDocumentMessage(null); setDocumentSaving(true);
-    try { await api.legal.detachDocument(detail!.agreementId, version.documentId); setDocumentMessage("Document detached."); await load(); }
+    try { await api.legal.detachDocument(detail!.agreementId, version.documentId); notifyDealReadinessChanged(detail!.dealId); setDocumentMessage("Document detached."); await load(); }
     catch (cause) { setDocumentMessage(normalizeError(cause).message); }
     finally { setDocumentSaving(false); }
   }
@@ -155,7 +149,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
     <WorkspacePage
       eyebrow="Legal / Agreement"
       title={detail.counterpartyName ?? "Unnamed counterparty"}
-      description={detail.dealTitle ?? detail.dealId}
+      description={detail.dealTitle ?? "Agreement opened from its deal readiness context."}
     >
       <div className="mb-6">
         <Link
@@ -169,7 +163,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-[24px] border border-line bg-surface p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-ink">Lifecycle</h2>
+            <h2 className="text-sm font-semibold text-ink">Manual status update</h2>
             <StatusPill
               label={NCNDA_STATUS_LABELS[detail.status]}
               tone={NCNDA_STATUS_TONES[detail.status]}
@@ -177,13 +171,6 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
           </div>
 
           <form onSubmit={save} className="mt-5 grid gap-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              {(["sent", "under_review", "signed", "countersigned", "active"] as const).map((next) => (
-                <button key={next} type="button" disabled={!canManage || saving} onClick={() => setStatus(next)} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50 hover:text-ink disabled:opacity-50">
-                  {NCNDA_STATUS_LABELS[next]}
-                </button>
-              ))}
-            </div>
             <Select
               label="Status"
               value={status}
@@ -288,10 +275,14 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
                         v{version.versionNumber} ·{" "}
                         {NCNDA_DOCUMENT_ROLE_LABELS[version.documentRole]}
                       </span>
-                      {version.isCurrent ? <StatusPill label="Current" tone="good" /> : null}{canManage && !version.isCurrent ? <button type="button" disabled={documentSaving} onClick={() => void detachDocument(version)} className="rounded-full border border-red-400/50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}
+                  <div className="flex items-center gap-2">
+                    {version.isCurrent ? <StatusPill label="Current" tone="good" /> : null}
+                    <DocumentDownloadButton documentId={version.documentId} />
+                    {canManage ? <button type="button" disabled={documentSaving} onClick={() => void detachDocument(version)} className="rounded-full border border-red-400/50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}
+                  </div>
                     </div>
                     <p className="mt-2 truncate text-xs text-ink">
-                      {version.originalFilename ?? version.documentId}
+                      {version.originalFilename ?? "Attached document"}
                     </p>
                     <p className="mt-1 text-[11px] text-ink-faint">
                       {version.uploadedByName ?? "—"} · {dateTime(version.uploadedAt)}
@@ -302,7 +293,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
             )}
           </section>
 
-          {canManage ? (<div className="grid gap-4"><div className="max-w-xs"><Select label="Document role" value={documentRole} onChange={(event) => setDocumentRole(event.target.value as typeof documentRole)} options={( ["draft", "redline", "signed", "countersigned"] as const).map((value) => ({ value, label: NCNDA_DOCUMENT_ROLE_LABELS[value] }))} /></div><SecureDocumentUpload contextType="ncnda" resourceId={detail.agreementId} retentionClass="legal" onFinalized={(finalized) => { if (finalized.malwareScanStatus === "clean") { void api.legal.attachDocument(detail.agreementId, { documentId: finalized.documentId, documentRole }).then(load).catch((cause) => setDocumentMessage(normalizeError(cause).message)); } else { setDocumentMessage(`Upload complete. Attachment is waiting for malware scan (${finalized.malwareScanStatus}).`); } }} />{documentMessage ? <p role="alert" className="text-xs text-ink-dim">{documentMessage}</p> : null}</div>) : null}
+          {canManage ? (<div className="grid gap-4"><div className="max-w-xs"><Select label="Document role" value={documentRole} onChange={(event) => setDocumentRole(event.target.value as typeof documentRole)} options={( ["draft", "redline", "signed", "countersigned"] as const).map((value) => ({ value, label: NCNDA_DOCUMENT_ROLE_LABELS[value] }))} /></div><SecureDocumentUpload contextType="ncnda" resourceId={detail.agreementId} retentionClass="legal" onFinalized={(finalized) => { if (finalized.malwareScanStatus === "clean") { void api.legal.attachDocument(detail.agreementId, { documentId: finalized.documentId, documentRole }).then(() => { notifyDealReadinessChanged(detail.dealId); return load(); }).catch((cause) => setDocumentMessage(normalizeError(cause).message)); } else { setDocumentMessage(`Upload complete. Attachment is waiting for malware scan (${finalized.malwareScanStatus}).`); } }} />{documentMessage ? <p role="alert" className="text-xs text-ink-dim">{documentMessage}</p> : null}</div>) : null}
         </div>
       </div>
     </WorkspacePage>

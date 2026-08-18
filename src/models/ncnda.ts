@@ -153,10 +153,9 @@ export interface NcndaAgreementListResponse {
 /**
  * Body of the upsert.
  *
- * Mirrors `convex/ncnda.ts#upsertAgreement` exactly:
+ * Mirrors the approved `PATCH /deals/{dealId}/ncnda` contract:
  *
- *   - `expectedRevision` is **required when updating** and must be absent when
- *     creating. The backend raises VALIDATION_ERROR if an update omits it.
+ *   - `expectedRevision` is required by the HTTP gateway for create and update.
  *   - `status: "active"` requires `effectiveDate` in `YYYY-MM-DD`.
  *   - At most one `active` agreement per (deal, counterparty) — a second one
  *     is a 409 CONFLICT.
@@ -178,8 +177,8 @@ export interface NcndaAgreementUpsert {
   countersignedAt?: IsoDateTime;
   ownerId: string;
   notes?: string;
-  /** Omit when creating; mandatory when updating. */
-  expectedRevision?: number;
+  /** Required by the approved HTTP gateway for create and update. */
+  expectedRevision: number;
 }
 
 export interface NcndaDocumentAttach {
