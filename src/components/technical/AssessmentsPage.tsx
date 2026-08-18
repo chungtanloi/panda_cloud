@@ -9,6 +9,8 @@ import { StatusPill } from "@/components/workspace/StatusPill";
 import { DealPicker } from "@/components/shared/DealPicker";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { DD_ASSESSMENT_STATUS_TONES } from "@/config/lifecycle";
+import { hasPermission } from "@/config/access";
+import { useAuth } from "@/controllers/AuthContext";
 import {
   DD_ASSESSMENT_STATUS_LABELS,
   formatRate,
@@ -39,12 +41,16 @@ import { api, normalizeError } from "@/services/api";
  */
 export function AssessmentsPage() {
   const router = useRouter();
+  const { profile } = useAuth();
   const params = useSearchParams();
   const dealIdFromUrl = params.get("dealId") ?? "";
+  const canCreate = hasPermission(profile, "dd:respond");
 
   const [items, setItems] = useState<readonly DdAssessmentSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<NormalizedError | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const load = useCallback(async (dealId: string) => {
     if (!dealId) {
@@ -80,6 +86,21 @@ export function AssessmentsPage() {
     [router],
   );
 
+  const createAssessment = useCallback(async () => {
+    if (!dealIdFromUrl) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const created = await api.dueDiligence.createAssessment(dealIdFromUrl, {
+      });
+      router.push(`/technical/assessments/${created.assessmentId}`);
+    } catch (cause) {
+      setCreateError(normalizeError(cause).message);
+    } finally {
+      setCreating(false);
+    }
+  }, [dealIdFromUrl, router]);
+
   return (
     <WorkspacePage
       eyebrow="Technical / Assessments"
@@ -112,6 +133,25 @@ export function AssessmentsPage() {
           />
         </div>
       </section>
+      {dealIdFromUrl && canCreate ? (
+        <section className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-line bg-surface p-4">
+          <div>
+            <p className="text-sm font-semibold text-ink">Initialize Technical DD</p>
+            <p className="mt-1 text-xs text-ink-dim">
+              The backend pins the published template and creates the response rows.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={creating}
+            onClick={() => void createAssessment()}
+            className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg disabled:opacity-40"
+          >
+            {creating ? "Initializing…" : "Create assessment"}
+          </button>
+        </section>
+      ) : null}
+      {createError ? <p role="alert" className="mb-4 text-xs text-red-300">{createError}</p> : null}
       {loading ? <LoadingState label="Loading assessments" /> : null}
 
       {!loading && error ? (
@@ -128,18 +168,18 @@ export function AssessmentsPage() {
       {!loading && !error && items && items.length > 0 ? (
         <ul className="mb-8 grid gap-4">
           {items.map((assessment) => (
-            <li key={assessment.id}>
+            <li key={assessment.assessmentId}>
               <Link
-                href={`/technical/assessments/${assessment.id}`}
+                href={`/technical/assessments/${assessment.assessmentId}`}
                 className="block rounded-[24px] border border-line bg-surface p-5 transition-colors hover:border-accent/40"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">
-                      {assessment.dealTitle}
+                      Due diligence assessment
                     </p>
                     <p className="mt-1 truncate text-xs text-ink-dim">
-                      {assessment.organizationName} · {assessment.templateVersionLabel}
+                      Pinned template · {assessment.templateVersionId}
                     </p>
                   </div>
                   <StatusPill
@@ -149,16 +189,16 @@ export function AssessmentsPage() {
                 </div>
 
                 <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <Metric label="Completion" value={formatRate(assessment.metrics.completionRate)} />
-                  <Metric label="Compliance" value={formatRate(assessment.metrics.complianceRate)} />
+                  <Metric label="Completion" value={formatRate(assessment.metrics?.completionRate)} />
+                  <Metric label="Compliance" value={formatRate(assessment.metrics?.complianceRate)} />
                   <Metric
                     label="Reviewed"
-                    value={`${assessment.metrics.reviewedItems} / ${assessment.metrics.totalItems}`}
+                    value={assessment.metrics ? `${assessment.metrics.reviewedItems} / ${assessment.metrics.totalItems}` : "—"}
                   />
                   <Metric
                     label="Critical failures"
-                    value={String(assessment.metrics.criticalFailures)}
-                    alarming={assessment.metrics.criticalFailures > 0}
+                    value={assessment.metrics ? String(assessment.metrics.criticalFailures) : "—"}
+                    alarming={(assessment.metrics?.criticalFailures ?? 0) > 0}
                   />
                 </dl>
               </Link>

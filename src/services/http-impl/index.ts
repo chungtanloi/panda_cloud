@@ -67,6 +67,12 @@ import type {
   DocumentUploadSessionRequest,
   DocumentUploadSessionResponse,
   DocumentFinalizeResponse,
+  DocumentSummary,
+  DocumentDownloadSessionResponse,
+  DdEvidenceAttachRequest,
+  DdEvidenceAttachResponse,
+  DdEvidenceDetachResponse,
+  DdEvidenceListResponse,
   DealChangeRequest,
   DealChangeRequestCreate,
   DealChangeRequestDecision,
@@ -297,7 +303,7 @@ export const httpApi: ApiClient = {
         endpoints.dueDiligence.dealAssessments(dealId),
         {
           ...(body.templateVersionId ? { templateVersionId: body.templateVersionId } : {}),
-          ...(body.assignedToUserId ? { assignedTo: body.assignedToUserId } : {}),
+          ...(body.assignedTo ? { assignedTo: body.assignedTo } : {}),
         },
       ),
 
@@ -313,7 +319,11 @@ export const httpApi: ApiClient = {
         endpoints.dueDiligence.assessmentProgress(assessmentId),
       );
       const live = mapDdMetrics(response.live);
-      return { assessmentId, status: "in_progress", revision: 0, ...live, materialized: response.materialized ? mapDdMetrics(response.materialized) : null, live, consistent: response.consistent };
+      return {
+        materialized: response.materialized ? mapDdMetrics(response.materialized) : null,
+        live,
+        consistent: response.consistent,
+      };
     },
 
     updateResponse: async (assessmentId: string, templateItemId: string, body: DdResponsePatch) => {
@@ -326,8 +336,26 @@ export const httpApi: ApiClient = {
           expectedRevision: body.expectedRevision,
         },
       );
-      return { assessmentId, templateItemId, responseRevision: response.revision, assessmentRevision: response.revision, progress: mapDdMetrics(response.progress) };
+      return {
+        responseId: response.responseId,
+        revision: response.revision,
+        progress: mapDdMetrics(response.progress),
+      };
     },
+
+    listEvidence: (assessmentId: string, templateItemId: string) =>
+      http.get<DdEvidenceListResponse>(endpoints.dueDiligence.evidence(assessmentId, templateItemId)),
+
+    attachEvidence: (assessmentId: string, templateItemId: string, body: DdEvidenceAttachRequest) =>
+      http.post<DdEvidenceAttachResponse>(
+        endpoints.dueDiligence.evidence(assessmentId, templateItemId),
+        body,
+      ),
+
+    detachEvidence: (assessmentId: string, templateItemId: string, documentId: string) =>
+      http.delete<DdEvidenceDetachResponse>(
+        endpoints.dueDiligence.evidenceDocument(assessmentId, templateItemId, documentId),
+      ),
   },
 
   /** NCNDA gateway operations. */
@@ -414,6 +442,10 @@ export const httpApi: ApiClient = {
     },
     finalize: (documentId: string) =>
       http.post<DocumentFinalizeResponse>(endpoints.documents.finalize(documentId), {}),
+    getDocument: (documentId: string) =>
+      http.get<DocumentSummary>(endpoints.documents.byId(documentId)),
+    createDownloadSession: (documentId: string) =>
+      http.post<DocumentDownloadSessionResponse>(endpoints.documents.downloadSession(documentId), {}),
   },
   admin: {
     overview: () => http.get<AdminOverview>(endpoints.admin.overview),
@@ -466,16 +498,48 @@ type BackendDdAssessmentDetail = {
 };
 type BackendDdProgress = { materialized: BackendDdMetrics | null; live: BackendDdMetrics; consistent: boolean };
 function mapDdMetrics(raw: BackendDdMetrics | null | undefined): DdMetrics {
-  return { totalItems: raw?.totalItems ?? 0, reviewedItems: raw?.reviewedItems ?? 0, completionRate: raw?.completionRate ?? null, complianceRate: raw?.complianceRate ?? null, criticalFailures: raw?.criticalFailures ?? 0 };
+  return {
+    totalItems: raw?.totalItems ?? 0,
+    reviewedItems: raw?.reviewedItems ?? 0,
+    applicableReviewedItems: raw?.applicableReviewedItems ?? 0,
+    compliantItems: raw?.compliantItems ?? 0,
+    partiallyCompliantItems: raw?.partiallyCompliantItems ?? 0,
+    completionRate: raw?.completionRate ?? null,
+    complianceRate: raw?.complianceRate ?? null,
+    criticalFailures: raw?.criticalFailures ?? 0,
+  };
 }
 function mapDdAssessment(raw: BackendDdAssessmentSummary): DdAssessmentSummary {
-  return { id: raw.assessmentId, dealId: raw.dealId, dealTitle: raw.dealId, organizationName: "—", templateVersionLabel: raw.templateVersionId, status: raw.status, ...(raw.assignedTo ? { assignedToName: raw.assignedTo } : {}), ...(raw.startedAt ? { startedAt: raw.startedAt } : {}), ...(raw.completedAt ? { completedAt: raw.completedAt } : {}), updatedAt: raw.updatedAt, revision: raw.revision, metrics: mapDdMetrics(raw.summarySnapshot) };
+  return {
+    assessmentId: raw.assessmentId,
+    dealId: raw.dealId,
+    templateVersionId: raw.templateVersionId,
+    status: raw.status,
+    assignedTo: raw.assignedTo,
+    createdBy: raw.createdBy,
+    startedAt: raw.startedAt,
+    completedAt: raw.completedAt,
+    updatedAt: raw.updatedAt,
+    revision: raw.revision,
+    metrics: raw.summarySnapshot ? mapDdMetrics(raw.summarySnapshot) : null,
+  };
 }
 function mapDdDetail(raw: BackendDdAssessmentDetail): DdAssessmentDetail {
   return {
     ...mapDdAssessment(raw.assessment),
     items: raw.items.map((item) => ({ id: String(item.templateItemId ?? ""), requirementCode: String(item.requirementCode ?? ""), position: Number(item.position ?? 0), category: String(item.category ?? ""), ...(item.subcategory ? { subcategory: String(item.subcategory) } : {}), ...(item.requirementType ? { requirementType: String(item.requirementType) } : {}), criticality: item.criticality as DdTemplateItem["criticality"], question: String(item.question ?? ""), ...(item.targetCriteria ? { targetCriteria: String(item.targetCriteria) } : {}), ...(item.unit ? { unit: String(item.unit) } : {}), responseType: item.responseType as DdTemplateItem["responseType"], ...(item.requiredEvidence ? { requiredEvidence: String(item.requiredEvidence) } : {}), required: Boolean(item.required) })),
-    responses: raw.responses.map((response) => ({ id: String(response.responseId ?? ""), assessmentId: String(response.assessmentId ?? raw.assessment.assessmentId), templateItemId: String(response.templateItemId ?? ""), status: response.status as DdResponse["status"], ...(response.responseValue !== null && response.responseValue !== undefined ? { responseValue: response.responseValue as DdResponse["responseValue"] } : {}), ...(response.comments ? { comments: String(response.comments) } : {}), ...(response.reviewedBy ? { reviewedBy: String(response.reviewedBy) } : {}), ...(response.reviewedAt ? { reviewedAt: String(response.reviewedAt) } : {}), updatedAt: String(response.updatedAt ?? raw.assessment.updatedAt), revision: Number(response.revision ?? 0), evidence: [] })),
+    responses: raw.responses.map((response) => ({
+      responseId: String(response.responseId ?? ""),
+      assessmentId: String(response.assessmentId ?? raw.assessment.assessmentId),
+      templateItemId: String(response.templateItemId ?? ""),
+      status: response.status as DdResponse["status"],
+      responseValue: (response.responseValue ?? null) as DdResponse["responseValue"],
+      comments: response.comments === null || response.comments === undefined ? null : String(response.comments),
+      reviewedBy: response.reviewedBy === null || response.reviewedBy === undefined ? null : String(response.reviewedBy),
+      reviewedAt: response.reviewedAt === null || response.reviewedAt === undefined ? null : String(response.reviewedAt),
+      updatedAt: String(response.updatedAt ?? raw.assessment.updatedAt),
+      revision: Number(response.revision ?? 0),
+    })),
   };
 }
 

@@ -35,6 +35,8 @@ import type {
   DocumentUploadSessionRequest,
   DocumentUploadSessionResponse,
   DocumentFinalizeResponse,
+  DocumentSummary,
+  DocumentDownloadSessionResponse,
   SalesCardCreateRequest,
   SalesCardCreateResponse,
   SalesCardDetailDto,
@@ -53,6 +55,10 @@ import type {
   DdProgress,
   DdResponsePatch,
   DdResponseUpdateResponse,
+  DdEvidenceAttachRequest,
+  DdEvidenceAttachResponse,
+  DdEvidenceDetachResponse,
+  DdEvidenceListResponse,
   NcndaAgreementDetail,
   NcndaAgreementListResponse,
   NcndaAgreementUpsert,
@@ -240,11 +246,9 @@ export interface DealChangeRequestService {
 /**
  * Technical Due Diligence — `DD API.md`.
  *
- * Exactly the five documented operations, no more. `DD API.md` states the
- * complete/cancel transitions are OPEN ("no authority exists") and instructs:
- * "Do NOT invent POST /complete or POST /cancel." There is likewise no
- * eligible-deals list, no workspace aggregate and no evidence upload — see the
- * "Not on the wire" section of `models/dueDiligence.ts`.
+ * Assessment workflow and evidence operations published by the backend
+ * gateway. Completion/cancellation remain OPEN; this client does not invent
+ * those transitions.
  *
  * Authorization is the backend's. `DD API.md`: read is open to every staff
  * role and denied to `customer`; create and response updates are
@@ -275,6 +279,17 @@ export interface DueDiligenceService {
     templateItemId: string,
     body: DdResponsePatch,
   ): Promise<DdResponseUpdateResponse>;
+  listEvidence(assessmentId: string, templateItemId: string): Promise<DdEvidenceListResponse>;
+  attachEvidence(
+    assessmentId: string,
+    templateItemId: string,
+    body: DdEvidenceAttachRequest,
+  ): Promise<DdEvidenceAttachResponse>;
+  detachEvidence(
+    assessmentId: string,
+    templateItemId: string,
+    documentId: string,
+  ): Promise<DdEvidenceDetachResponse>;
 }
 
 /**
@@ -335,6 +350,8 @@ export interface DocumentsService {
   createUploadSession(body: DocumentUploadSessionRequest): Promise<DocumentUploadSessionResponse>;
   uploadToSignedUrl(url: string, file: File, requiredHeaders?: Record<string, string>): Promise<void>;
   finalize(documentId: string): Promise<DocumentFinalizeResponse>;
+  getDocument(documentId: string): Promise<DocumentSummary>;
+  createDownloadSession(documentId: string): Promise<DocumentDownloadSessionResponse>;
 }
 /** The complete surface exposed by `services/api.ts`. */
 export interface ApiClient {

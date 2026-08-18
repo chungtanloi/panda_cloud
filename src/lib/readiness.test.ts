@@ -65,17 +65,22 @@ function kyc(overrides: Partial<KycCase> = {}): KycCase {
 
 function assessment(overrides: Partial<DdAssessmentSummary> = {}): DdAssessmentSummary {
   return {
-    id: "dd_1",
+    assessmentId: "dd_1",
     dealId: "deal_1",
-    dealTitle: "Deal one",
-    organizationName: "Org one",
-    templateVersionLabel: "v1",
+    templateVersionId: "template_v1",
     status: "completed",
+    assignedTo: null,
+    createdBy: "user_1",
+    startedAt: null,
+    completedAt: null,
     updatedAt: iso(-1),
     revision: 1,
     metrics: {
       totalItems: 68,
       reviewedItems: 68,
+      applicableReviewedItems: 68,
+      compliantItems: 68,
+      partiallyCompliantItems: 0,
       completionRate: 1,
       complianceRate: 1,
       criticalFailures: 0,
@@ -163,7 +168,7 @@ describe("evaluateReadiness — guards stricter than status equality", () => {
     const result = evaluateReadiness({
       ...ready(),
       assessments: [
-        assessment({ metrics: { totalItems: 68, reviewedItems: 68, completionRate: 1, complianceRate: 0.9, criticalFailures: 1 } }),
+        assessment({ metrics: { totalItems: 68, reviewedItems: 68, applicableReviewedItems: 68, compliantItems: 61, partiallyCompliantItems: 0, completionRate: 1, complianceRate: 0.9, criticalFailures: 1 } }),
       ],
     });
     expect(result.lanes.dd).toBe("blocked");
@@ -183,7 +188,7 @@ describe("lanePercent", () => {
     const result = evaluateReadiness({
       ...ready(),
       assessments: [
-        assessment({ status: "in_progress", metrics: { totalItems: 68, reviewedItems: 34, completionRate: 0.5, complianceRate: null, criticalFailures: 0 } }),
+        assessment({ status: "in_progress", metrics: { totalItems: 68, reviewedItems: 34, applicableReviewedItems: 0, compliantItems: 0, partiallyCompliantItems: 0, completionRate: 0.5, complianceRate: null, criticalFailures: 0 } }),
       ],
     });
     expect(lanePercent("dd", result)).toBe(50);
@@ -200,7 +205,7 @@ describe("laneNextAction", () => {
     const result = evaluateReadiness({
       ...ready(),
       assessments: [
-        assessment({ status: "in_progress", metrics: { totalItems: 68, reviewedItems: 34, completionRate: 0.5, complianceRate: null, criticalFailures: 0 } }),
+        assessment({ status: "in_progress", metrics: { totalItems: 68, reviewedItems: 34, applicableReviewedItems: 0, compliantItems: 0, partiallyCompliantItems: 0, completionRate: 0.5, complianceRate: null, criticalFailures: 0 } }),
       ],
     });
     expect(laneNextAction("dd", result.current)).toContain("34 of 68");

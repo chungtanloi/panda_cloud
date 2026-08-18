@@ -35,6 +35,67 @@ describe("workspace HTTP contracts", () => {
     expect(get).toHaveBeenCalledWith("/deals/deal-1/due-diligence/assessments");
   });
 
+  it("uses DD create, detail, progress and response OCC operations", async () => {
+    const metrics = {
+      totalItems: 68,
+      reviewedItems: 1,
+      applicableReviewedItems: 1,
+      compliantItems: 1,
+      partiallyCompliantItems: 0,
+      criticalFailures: 0,
+      completionRate: 1 / 68,
+      complianceRate: 1,
+    };
+    const publicMetrics = {
+      totalItems: 68,
+      reviewedItems: 1,
+      applicableReviewedItems: 1,
+      compliantItems: 1,
+      partiallyCompliantItems: 0,
+      completionRate: 1 / 68,
+      complianceRate: 1,
+      criticalFailures: 0,
+    };
+    post.mockResolvedValue({ assessmentId: "assessment-1", responseCount: 68, revision: 1 });
+    get
+      .mockResolvedValueOnce({ assessment: { assessmentId: "assessment-1", dealId: "deal-1", templateVersionId: "template-1", status: "not_started", assignedTo: null, createdBy: "user-1", startedAt: null, completedAt: null, summarySnapshot: null, revision: 1, updatedAt: "2026-08-18T00:00:00.000Z" }, items: [], responses: [] })
+      .mockResolvedValueOnce({ materialized: metrics, live: metrics, consistent: true });
+    patch.mockResolvedValue({ responseId: "response-1", revision: 2, progress: metrics });
+
+    const created = await httpApi.dueDiligence.createAssessment("deal-1", {});
+    const assessment = await httpApi.dueDiligence.getAssessment("assessment-1");
+    const progress = await httpApi.dueDiligence.getProgress("assessment-1");
+    const updated = await httpApi.dueDiligence.updateResponse("assessment-1", "item-1", {
+      status: "compliant",
+      expectedRevision: 1,
+      comments: "Verified against the supplied layout.",
+    });
+
+    expect(post).toHaveBeenCalledWith("/deals/deal-1/due-diligence/assessments", {});
+    expect(get).toHaveBeenNthCalledWith(1, "/due-diligence/assessments/assessment-1");
+    expect(get).toHaveBeenNthCalledWith(2, "/due-diligence/assessments/assessment-1/progress");
+    expect(patch).toHaveBeenCalledWith(
+      "/due-diligence/assessments/assessment-1/responses/item-1",
+      {
+        status: "compliant",
+        comments: "Verified against the supplied layout.",
+        expectedRevision: 1,
+      },
+    );
+    expect(patch.mock.calls[0]![1]).not.toHaveProperty("markReviewed");
+    expect(created).toEqual({ assessmentId: "assessment-1", responseCount: 68, revision: 1 });
+    expect(assessment).toEqual(expect.objectContaining({
+      assessmentId: "assessment-1",
+      templateVersionId: "template-1",
+      assignedTo: null,
+      createdBy: "user-1",
+      metrics: null,
+    }));
+    expect(assessment).not.toHaveProperty("dealTitle");
+    expect(progress).toEqual({ materialized: publicMetrics, live: publicMetrics, consistent: true });
+    expect(updated).toEqual({ responseId: "response-1", revision: 2, progress: expect.objectContaining({ reviewedItems: 1 }) });
+  });
+
   it("converts a Deal using OCC and idempotency only", async () => {
     const body = { expectedRevision: 7, idempotencyKey: "request-1", projectCode: "CP-001", projectName: "Project One" };
     post.mockResolvedValue({ projectId: "project-1" });
@@ -84,5 +145,31 @@ describe("workspace HTTP contracts", () => {
     await httpApi.documents.finalize("doc-1");
     expect(post).toHaveBeenNthCalledWith(1, "/document-upload-sessions", body);
     expect(post).toHaveBeenNthCalledWith(2, "/documents/doc-1/finalize", {});
+  });
+
+  it("uses the published DD evidence and document download operations without storage fields", async () => {
+    get.mockResolvedValue({ dealId: "deal-1", assessmentId: "assessment-1", templateItemId: "item-1", documents: [] });
+    post.mockResolvedValue({ documentId: "document-1" });
+    remove.mockResolvedValue({ documentId: "document-1", detached: true });
+
+    await httpApi.dueDiligence.listEvidence("assessment-1", "item-1");
+    await httpApi.dueDiligence.attachEvidence("assessment-1", "item-1", {
+      documentId: "document-1",
+      documentRole: "evidence",
+    });
+    await httpApi.dueDiligence.detachEvidence("assessment-1", "item-1", "document-1");
+    await httpApi.documents.getDocument("document-1");
+    await httpApi.documents.createDownloadSession("document-1");
+
+    expect(get).toHaveBeenNthCalledWith(1, "/due-diligence/assessments/assessment-1/responses/item-1/evidence");
+    expect(post).toHaveBeenNthCalledWith(1, "/due-diligence/assessments/assessment-1/responses/item-1/evidence", {
+      documentId: "document-1",
+      documentRole: "evidence",
+    });
+    expect(remove).toHaveBeenCalledWith("/due-diligence/assessments/assessment-1/responses/item-1/evidence/document-1");
+    expect(get).toHaveBeenNthCalledWith(2, "/documents/document-1");
+    expect(post).toHaveBeenNthCalledWith(2, "/documents/document-1/download-session", {});
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("bucket");
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("objectPath");
   });
 });

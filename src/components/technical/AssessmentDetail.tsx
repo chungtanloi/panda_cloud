@@ -27,11 +27,9 @@ import { cn } from "@/lib/cn";
 /**
  * `/technical/assessments/[id]` — the review surface (UC-011).
  *
- * Concurrency, stated once so every writer here follows it: each response
- * carries its own revision and every write sends `expectedRevision`. A
- * requirement nobody has answered has no response row at all, so its expected
- * revision is `0` — that is the upsert case `DD API.md` implies by keying the
- * operation on `templateItemId` rather than a response id.
+ * Concurrency, stated once so every writer here follows it: the backend creates
+ * one response row for every published template item, each carries its own
+ * positive revision, and every write sends that `expectedRevision`.
  *
  * On 409 the row is re-read rather than retried blindly: someone else moved,
  * and overwriting their work silently is worse than making this reviewer look
@@ -40,7 +38,6 @@ import { cn } from "@/lib/cn";
 export function AssessmentDetail({ assessmentId }: { assessmentId: string }) {
   const { profile } = useAuth();
   const canRespond = hasPermission(profile, "dd:respond");
-  const canReview = hasPermission(profile, "dd:review");
 
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +51,11 @@ export function AssessmentDetail({ assessmentId }: { assessmentId: string }) {
     setLoading(true);
     setError(null);
     try {
-      setDetail(await api.dueDiligence.getAssessment(assessmentId));
+      const [assessment, progress] = await Promise.all([
+        api.dueDiligence.getAssessment(assessmentId),
+        api.dueDiligence.getProgress(assessmentId),
+      ]);
+      setDetail({ ...assessment, metrics: progress.live });
     } catch (cause) {
       setDetail(null);
       setError(normalizeError(cause));
@@ -91,16 +92,20 @@ export function AssessmentDetail({ assessmentId }: { assessmentId: string }) {
 
   const terminal = detail?.status === "completed" || detail?.status === "cancelled";
 
-  async function save(item: DdTemplateItem, status: DdResponseStatus, markReviewed: boolean) {
+  async function save(item: DdTemplateItem, status: DdResponseStatus) {
     if (!detail) return;
+    const response = responsesByItem.get(item.id);
+    if (!response) {
+      setWriteError("The assessment did not return a response revision for this requirement. Reload before editing.");
+      return;
+    }
     setSavingItemId(item.id);
     setWriteError(null);
     try {
-      await api.dueDiligence.updateResponse(detail.id, item.id, {
+      await api.dueDiligence.updateResponse(detail.assessmentId, item.id, {
         status,
-        // Absent response row -> revision 0. See the header comment.
-        expectedRevision: responsesByItem.get(item.id)?.revision ?? 0,
-        ...(markReviewed ? { markReviewed: true } : {}),
+        // The backend initializes every response row at assessment creation.
+        expectedRevision: response.revision,
       });
       await load();
     } catch (cause) {
@@ -124,12 +129,12 @@ export function AssessmentDetail({ assessmentId }: { assessmentId: string }) {
   return (
     <WorkspacePage
       eyebrow="Technical / Assessment"
-      title={detail.dealTitle}
-      description={`${detail.organizationName} · ${detail.templateVersionLabel}`}
+      title="Due diligence assessment"
+      description="Technical assessment against the server-pinned template."
       stats={[
-        { label: "Completion", value: formatRate(detail.metrics.completionRate), detail: `${detail.metrics.reviewedItems} of ${detail.metrics.totalItems} reviewed` },
-        { label: "Compliance", value: formatRate(detail.metrics.complianceRate), detail: "Excludes not-applicable items" },
-        { label: "Critical failures", value: String(detail.metrics.criticalFailures) },
+        { label: "Completion", value: formatRate(detail.metrics?.completionRate), detail: detail.metrics ? `${detail.metrics.reviewedItems} of ${detail.metrics.totalItems} reviewed` : "Not materialized yet" },
+        { label: "Compliance", value: formatRate(detail.metrics?.complianceRate), detail: "Excludes not-applicable items" },
+        { label: "Critical failures", value: String(detail.metrics?.criticalFailures ?? "—") },
         { label: "Status", value: DD_ASSESSMENT_STATUS_LABELS[detail.status] },
       ]}
     >
@@ -157,7 +162,7 @@ export function AssessmentDetail({ assessmentId }: { assessmentId: string }) {
           </label>
         </div>
         <Link
-          href={`/technical/assessments/${detail.id}/evidence`}
+          href={`/technical/assessments/${detail.assessmentId}/evidence`}
           className="rounded-full border border-line px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-ink-dim hover:border-accent/40 hover:text-ink"
         >
           Evidence
@@ -229,24 +234,15 @@ export function AssessmentDetail({ assessmentId }: { assessmentId: string }) {
                     label="Response"
                     value={status}
                     disabled={!canRespond || terminal || saving}
-                    onChange={(event) =>
-                      void save(item, event.target.value as DdResponseStatus, false)
-                    }
+                    onChange={(event) => void save(item, event.target.value as DdResponseStatus)}
                     options={DD_RESPONSE_STATUSES.map((value) => ({
                       value,
                       label: DD_RESPONSE_STATUS_LABELS[value],
                     }))}
                   />
                 </div>
-                {canReview ? (
-                  <button
-                    type="button"
-                    disabled={terminal || saving || status === "not_reviewed"}
-                    onClick={() => void save(item, status, true)}
-                    className="rounded-full border border-line px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-ink-dim hover:border-accent/40 hover:text-ink disabled:pointer-events-none disabled:opacity-40"
-                  >
-                    {response?.reviewedAt ? "Reviewed" : "Mark reviewed"}
-                  </button>
+                {response?.reviewedAt ? (
+                  <span className="pb-3 text-xs text-ink-dim">Reviewed by the recorded response update.</span>
                 ) : null}
                 {saving ? <span className="pb-3 text-xs text-ink-dim">Saving…</span> : null}
               </div>

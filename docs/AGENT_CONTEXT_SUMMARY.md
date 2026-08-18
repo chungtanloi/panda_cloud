@@ -4,12 +4,12 @@
 
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
-- `branch_at_refresh`: `feat/integration-candidate-v1-sales`
-- `head_at_refresh`: `248e3c3` (diagnostic only)
-- `source_file_count`: `23`
-- `source_fingerprint`: `287b1258b5710be65a8b8987fa4b14358e8969914b3789434c957fe440c6f6b1`
+- `branch_at_refresh`: `feat/integration-v1-technical-documents`
+- `head_at_refresh`: `b3cb8c6` (diagnostic only)
+- `source_file_count`: `25`
+- `source_fingerprint`: `a71b3d8e2bc6f470855839ac91a08ff09420f7e01912780306799b29b5af87c4`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-18T10:00:00Z`
+- `last_context_refresh_at_utc`: `2026-08-18T10:53:37Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -154,39 +154,34 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 
 ### Technical, Legal and Compliance workspaces
 
-- Eleven routes exist under `/technical`, `/legal`, `/compliance`, built to
-  ROLE_PERMISSION_MATRIX §§ 5.2, 6.2, 7.2, 11. `docs/WORKSPACES_DESIGN.md` is
-  the write-up — read it first.
-- **None of the three has a backend.** The gateway has ten paths (identity,
-  webhooks, sales). `convex/ncnda.ts` and `convex/kyc.ts` hold **mutations
-  only, no queries** — listing is a missing backend function, not just a
-  missing gateway. Mock adapter only.
-- The NCNDA/KYC paths in `endpoints.ts` and the shapes in `models/ncnda.ts` /
-  `models/kyc.ts` are **proposals**, not a contract. Do not treat them as
-  settled.
-- Blocked-by-design screens, each with an on-page `GapNotice`: the Technical
-  overview and list (no cross-deal list; Technical cannot enumerate deals),
-  the evidence page (out of scope), and the KYC documents page (§ 7.4 explicit
-  schema gap — never invent `kycCaseDocuments`).
+- Technical, Legal and Compliance routes retain their workspace-specific
+  navigation and UI guards; the API gateway remains authoritative.
+- Technical DD now has an implemented assessment and secure-evidence flow.
+  Legal and Compliance use their existing implemented NCNDA/KYC integration
+  paths; do not infer a common generic workflow from the screens.
+- The Technical global overview remains intentionally blocked: assessment reads
+  are deal-scoped and Technical cannot enumerate a canonical global deal scope.
 - `config/lifecycle.ts` maps every status enum to a colour as
   `Record<Status, Tone>`, so a new backend status is a compile error rather
   than a silently grey pill.
 
 ### Due Diligence
 
-- `DD API.md` (repo root, `D:\Project`) is the DD contract: **five operations
-  over four paths**, nothing else. `docs/DD_API_CONFORMANCE.md` is the frontend
-  audit against it — read that first.
-- **The backend gateway does not exist yet.** No `ddGateway.ts`, no DD paths, no
-  DD routes. Every DD call through the HTTP adapter 404s; use the mock adapter.
-  Do not stub around this.
-- `updateResponse` is keyed by `templateItemId`, not response id (upsert).
-  `expectedRevision: 0` means "unanswered". 409 on a stale revision **or** on a
-  completed/cancelled assessment.
-- Never add a complete/cancel method — `DD API.md` forbids it explicitly.
-- Evidence upload, eligible-deals and the workspace overview have **no
-  operation**. They live under a "NOT ON THE WIRE" banner in
-  `models/dueDiligence.ts`. The `/technical` overview page has no data source.
+- `docs/TECHNICAL_DD_SECURE_DOCUMENTS_INTEGRATION_HANDOFF.md` records the
+  current frontend gateway integration: assessment list/create/detail/progress,
+  OCC response updates, item-scoped evidence list/attach/detach, and secure
+  document upload/finalize/download sessions.
+- The backend creates a response row for every template item. Client updates
+  use the returned positive response revision and reload after 409; they never
+  retry a stale write blindly.
+- Browser file bytes use a server-issued private signed URL. The frontend never
+  sends/receives a bucket, object path, storage credential, or durable signed
+  URL. A failed finalize retries only the finalize operation for the same
+  document id.
+- Attachment remains blocked until backend malware status is `clean`; the
+  current malware-provider/state-transition design is still open. DD global
+  discovery, lifecycle completion/cancellation and unlinked-document discovery
+  are also open and must not be invented.
 
 ### Sales pipeline
 
@@ -364,6 +359,7 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `2b7c3116319d5aa341e0ca731e0c12eeafc315ac9f095cbce3ab91144069a645` | 7247 | `2026-08-18T10:00:00Z` |
 | `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `9e538b7f3ba5d7cee60bad4e2ef585cd5cf3f61636b4ad65b2883e233a7d1a5d` | 1666 | `2026-08-18T09:12:36Z` |
 | `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-18T02:45:00Z` |
+| `docs/TECHNICAL_DD_SECURE_DOCUMENTS_INTEGRATION_HANDOFF.md` | `289cf5c18b90fc34c87a1f06765158d3059d8ad143b1115da6322c68b6d5e364` | 6292 | `2026-08-18T11:10:31Z` |
 | `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-18T02:45:00Z` |
 | `docs/WORKSPACES_DESIGN.md` | `d81c8f893f1ada95c4e65b88f1a42ce9f1d74529840e2f7e05e35f957d70edef` | 8881 | `2026-08-18T02:45:00Z` |
 | `README.md` | `f02cd82446bdac2837ea0617f3e2c4e4c2e094e2039d3de410b3e7de868de96f` | 4683 | `2026-08-18T02:45:00Z` |
