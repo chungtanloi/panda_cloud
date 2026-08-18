@@ -41,6 +41,9 @@ import type {
   SalesCardListQuery,
   SalesCardMoveRequest,
   SalesCardUpdateRequest,
+  DealChangeRequest,
+  DealChangeRequestCreate,
+  DealChangeRequestDecision,
 } from "@/models";
 import { kycUpdateProblems } from "@/models";
 import type { SalesLeadQualifyRequest } from "@/models/salesWorkspace";
@@ -101,6 +104,82 @@ function reference(prefix: string): string {
  * and a fresh array each time would undo the user's last action.
  */
 let salesCards: SalesCardDetailDto[] = [...mockDealCards];
+let dealChangeRequests: DealChangeRequest[] = [];
+
+function createMockDealRequest(
+  dealId: string,
+  body: DealChangeRequestCreate,
+): DealChangeRequest {
+  const card = salesCards.find((deal) => deal.dealId === dealId);
+  if (!card) throw new ApiError({ code: "NOT_FOUND", message: "Deal not found.", status: 404 });
+  if (body.expectedDealRevision !== card.revision) {
+    throw new ApiError({ code: "CONFLICT", message: "The deal has changed. Reload and try again.", status: 409 });
+  }
+  const duplicate = dealChangeRequests.find(
+    (item) => item.dealId === dealId && item.requestType === body.requestType && item.status === "pending",
+  );
+  if (duplicate) return duplicate;
+  const now = new Date().toISOString();
+  const item: DealChangeRequest = {
+    requestId: `request_${Date.now()}`,
+    dealId,
+    dealTitle: card.title,
+    organizationName: card.organizationName,
+    ownerName: card.ownerName,
+    currentStage: mockSalesColumns.find((column) => column.columnId === card.columnId)?.name ?? null,
+    requestedBy: { userId: mockUser.id, fullName: mockUser.fullName },
+    reviewedBy: null,
+    requestType: body.requestType,
+    status: "pending",
+    reason: body.reason,
+    expectedDealRevision: card.revision,
+    currentDealRevision: card.revision,
+    decisionComment: null,
+    reviewedAt: null,
+    createdAt: now,
+    updatedAt: now,
+    revision: 1,
+  };
+  dealChangeRequests = [item, ...dealChangeRequests];
+  return item;
+}
+
+function decideMockDealRequest(
+  requestId: string,
+  body: DealChangeRequestDecision,
+): DealChangeRequest {
+  const index = dealChangeRequests.findIndex((item) => item.requestId === requestId);
+  if (index < 0) throw new ApiError({ code: "NOT_FOUND", message: "Request not found.", status: 404 });
+  const request = dealChangeRequests[index]!;
+  if (request.revision !== body.expectedRequestRevision) {
+    throw new ApiError({ code: "CONFLICT", message: "This request has changed. Reloading is required.", status: 409 });
+  }
+  const now = new Date().toISOString();
+  if (body.decision === "approve") {
+    const cardIndex = salesCards.findIndex((deal) => deal.dealId === request.dealId);
+    const card = salesCards[cardIndex];
+    if (!card || card.revision !== request.expectedDealRevision) {
+      throw new ApiError({ code: "CONFLICT", message: "The deal changed after this request was submitted.", status: 409 });
+    }
+    if (request.requestType === "mark_won") {
+      const won = mockSalesColumns.find((column) => column.code === "won")!;
+      salesCards[cardIndex] = { ...card, columnId: won.columnId, status: "won", wonAt: now, updatedAt: now, revision: card.revision + 1 };
+    } else {
+      salesCards[cardIndex] = { ...card, status: "archived", archivedAt: now, updatedAt: now, revision: card.revision + 1 };
+    }
+  }
+  const next: DealChangeRequest = {
+    ...request,
+    status: body.decision === "approve" ? "approved" : "rejected",
+    reviewedBy: { userId: "mock_manager", fullName: "Mock Manager" },
+    decisionComment: body.comment ?? null,
+    reviewedAt: now,
+    updatedAt: now,
+    revision: request.revision + 1,
+  };
+  dealChangeRequests[index] = next;
+  return next;
+}
 
 /**
  * Mock authorization so every role is reachable without a backend.
@@ -1217,6 +1296,27 @@ export const mockApi: ApiClient = {
     convertDealToProject: async (dealId: string) => ({ dealId, projectId: "mock-project-" + dealId, created: true }),
   },
 
+  dealRequests: {
+    create: (dealId: string, body: DealChangeRequestCreate) =>
+      delay(createMockDealRequest(dealId, body)),
+    listForDeal: (dealId: string) =>
+      delay(dealChangeRequests.filter((item) => item.dealId === dealId)),
+    listQueue: async (query = {}) => {
+      const items = dealChangeRequests.filter((item) =>
+        (!query.status || item.status === query.status) &&
+        (!query.requestType || item.requestType === query.requestType),
+      );
+      return delay({ items, nextCursor: null, isDone: true });
+    },
+    decide: (requestId: string, body: DealChangeRequestDecision) =>
+      delay(decideMockDealRequest(requestId, body)),
+  },
+
+  documents: {
+    createUploadSession: async () => ({ documentId: "mock-document", uploadUrl: "https://example.invalid/upload", expiresAt: new Date(Date.now() + 300000).toISOString(), replayed: false }),
+    uploadToSignedUrl: async () => undefined,
+    finalize: async (documentId: string) => ({ documentId, finalized: true, checksumVerified: false, malwareScanStatus: "pending" as const, encryptionStatus: "pending" as const }),
+  },
   admin: {
     overview: async () => ({}),
     users: async () => ({ items: [], continueCursor: null, isDone: true }),

@@ -20,6 +20,7 @@ import {
 } from "@/models";
 import type { NormalizedError } from "@/models/common";
 import { api, normalizeError } from "@/services/api";
+import { SecureDocumentUpload } from "@/components/documents/SecureDocumentUpload";
 
 function dateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -301,18 +302,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
             )}
           </section>
 
-          {canManage ? (
-            <form onSubmit={attachDocument} className="rounded-[24px] border border-line bg-surface p-6">
-              <h2 className="text-sm font-semibold text-ink">Attach a document version</h2>
-              <p className="mt-1 text-[11px] leading-4 text-ink-faint">Register the document through the approved document flow first. This form only attaches an existing, malware-clean document id.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_180px_auto] sm:items-end">
-                <Input label="Document id *" value={documentId} onChange={(event) => setDocumentId(event.target.value)} placeholder="doc_01" />
-                <Select label="Document role" value={documentRole} onChange={(event) => setDocumentRole(event.target.value as typeof documentRole)} options={(["draft", "redline", "signed", "countersigned"] as const).map((value) => ({ value, label: NCNDA_DOCUMENT_ROLE_LABELS[value] }))} />
-                <button type="submit" disabled={documentSaving} className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg disabled:opacity-50">{documentSaving ? "Attaching…" : "Attach"}</button>
-              </div>
-              {documentMessage ? <p role="alert" className="mt-3 text-xs text-ink-dim">{documentMessage}</p> : null}
-            </form>
-          ) : null}
+          {canManage ? (<div className="grid gap-4"><div className="max-w-xs"><Select label="Document role" value={documentRole} onChange={(event) => setDocumentRole(event.target.value as typeof documentRole)} options={( ["draft", "redline", "signed", "countersigned"] as const).map((value) => ({ value, label: NCNDA_DOCUMENT_ROLE_LABELS[value] }))} /></div><SecureDocumentUpload contextType="ncnda" resourceId={detail.agreementId} retentionClass="legal" onFinalized={(finalized) => { if (finalized.malwareScanStatus === "clean") { void api.legal.attachDocument(detail.agreementId, { documentId: finalized.documentId, documentRole }).then(load).catch((cause) => setDocumentMessage(normalizeError(cause).message)); } else { setDocumentMessage(`Upload complete. Attachment is waiting for malware scan (${finalized.malwareScanStatus}).`); } }} />{documentMessage ? <p role="alert" className="text-xs text-ink-dim">{documentMessage}</p> : null}</div>) : null}
         </div>
       </div>
     </WorkspacePage>

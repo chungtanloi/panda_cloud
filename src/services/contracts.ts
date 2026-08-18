@@ -32,6 +32,9 @@ import type {
   RequestReceipt,
   TokenRate,
   UploadedDocument,
+  DocumentUploadSessionRequest,
+  DocumentUploadSessionResponse,
+  DocumentFinalizeResponse,
   SalesCardCreateRequest,
   SalesCardCreateResponse,
   SalesCardDetailDto,
@@ -71,6 +74,7 @@ import type {
   Submission,
   ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
+  DealChangeRequest, DealChangeRequestCreate, DealChangeRequestDecision, DealChangeRequestPage,
 } from "@/models";
 
 /**
@@ -218,6 +222,19 @@ export interface SalesService {
   moveCard(id: string, body: SalesCardMoveRequest): Promise<SalesCardMoveResponse>;
 }
 
+/** Sales proposes sensitive Deal transitions; Manager/Admin decides them. */
+export interface DealChangeRequestService {
+  create(dealId: string, body: DealChangeRequestCreate): Promise<DealChangeRequest>;
+  listForDeal(dealId: string): Promise<DealChangeRequest[]>;
+  listQueue(query?: {
+    status?: string;
+    requestType?: string;
+    cursor?: string;
+    limit?: number;
+  }): Promise<DealChangeRequestPage>;
+  decide(requestId: string, body: DealChangeRequestDecision): Promise<DealChangeRequest>;
+}
+
 /**
  * Technical Due Diligence — `DD API.md`.
  *
@@ -312,6 +329,11 @@ export interface ComplianceService {
   updateCase(caseId: string, body: KycCaseUpdate): Promise<KycCaseUpdateResponse>;
 }
 
+export interface DocumentsService {
+  createUploadSession(body: DocumentUploadSessionRequest): Promise<DocumentUploadSessionResponse>;
+  uploadToSignedUrl(url: string, file: File, requiredHeaders?: Record<string, string>): Promise<void>;
+  finalize(documentId: string): Promise<DocumentFinalizeResponse>;
+}
 /** The complete surface exposed by `services/api.ts`. */
 export interface ApiClient {
   auth: AuthService;
@@ -323,10 +345,12 @@ export interface ApiClient {
   leads: LeadService;
   submissions: SubmissionService;
   sales: SalesService;
+  dealRequests: DealChangeRequestService;
   salesWorkspace: SalesWorkspaceService;
   dueDiligence: DueDiligenceService;
   legal: LegalService;
   compliance: ComplianceService;
+  documents: DocumentsService;
   workspace: WorkspaceService;
   manager: ManagerService;
   admin: AdminService;

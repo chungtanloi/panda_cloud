@@ -64,6 +64,13 @@ import type {
   RequestReceipt,
   TokenRate,
   UploadedDocument,
+  DocumentUploadSessionRequest,
+  DocumentUploadSessionResponse,
+  DocumentFinalizeResponse,
+  DealChangeRequest,
+  DealChangeRequestCreate,
+  DealChangeRequestDecision,
+  DealChangeRequestPage,
   SalesCardCreateRequest,
   SalesCardCreateResponse,
   SalesCardDetailDto,
@@ -245,6 +252,17 @@ export const httpApi: ApiClient = {
       http.post<SalesCardMoveResponse>(endpoints.sales.moveCard(id), body),
   },
 
+  dealRequests: {
+    create: (dealId: string, body: DealChangeRequestCreate) =>
+      http.post<DealChangeRequest>(endpoints.dealRequests.forDeal(dealId), body),
+    listForDeal: async (dealId: string) =>
+      (await http.get<{ items: DealChangeRequest[] }>(endpoints.dealRequests.forDeal(dealId))).items,
+    listQueue: (query: Record<string, string | number | undefined> = {}) =>
+      http.get<DealChangeRequestPage>(endpoints.dealRequests.queue, { query }),
+    decide: (requestId: string, body: DealChangeRequestDecision) =>
+      http.post<DealChangeRequest>(endpoints.dealRequests.decision(requestId), body),
+  },
+
   salesWorkspace: {
     overview: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesOverview>(endpoints.salesWorkspace.overview, { query }),
     conversionReport: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<SalesConversionReport>(endpoints.salesWorkspace.reports.conversion, { query }),
@@ -384,6 +402,16 @@ export const httpApi: ApiClient = {
       http.delete<{ documentId: string; detached: boolean }>(endpoints.kyc.caseDocument(caseId, documentId)),
   },
 
+  documents: {
+    createUploadSession: (body: DocumentUploadSessionRequest) =>
+      http.post<DocumentUploadSessionResponse>(endpoints.documents.uploadSessions, body),
+    uploadToSignedUrl: async (url: string, file: File, requiredHeaders: Record<string, string> = {}) => {
+      const response = await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream", ...requiredHeaders } });
+      if (!response.ok) throw new Error(`Storage upload failed with status ${response.status}.`);
+    },
+    finalize: (documentId: string) =>
+      http.post<DocumentFinalizeResponse>(endpoints.documents.finalize(documentId), {}),
+  },
   admin: {
     overview: () => http.get<AdminOverview>(endpoints.admin.overview),
     users: (query = {}) => http.get<AdminUserPage>(endpoints.admin.users, { query }),

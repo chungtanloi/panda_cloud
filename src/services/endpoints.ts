@@ -63,6 +63,13 @@ export const endpoints = {
     convert: (id: string) => `/submissions/${id}/convert`,
   },
 
+  dealRequests: {
+    forDeal: (dealId: string) => `/deals/${dealId}/change-requests`,
+    queue: "/manager/deal-change-requests",
+    decision: (requestId: string) =>
+      `/manager/deal-change-requests/${requestId}/decision`,
+  },
+
   /**
    * Sales pipeline — internal, staff only. Paths follow the REST shape the
    * Kanban library's fetch adapter expects, so it can be pointed straight at
@@ -101,6 +108,22 @@ export const endpoints = {
     agreementDocuments: (agreementId: string) => `/ncnda/${agreementId}/documents`,
     agreementDocument: (agreementId: string, documentId: string) =>
       `/ncnda/${agreementId}/documents/${documentId}`,
+
+    /**
+     * ⚠ CR-004 — PROPOSED, NOT IMPLEMENTED BY ANY BACKEND ROUTE.
+     *
+     * Drafted in `PandaCloudBackend/api-contracts/proposals/CR-004/`, which sits
+     * outside `openapi.yaml` on purpose. These three answer 404 today.
+     * `services/legalQueue.ts` treats that specific outcome as "not deployed"
+     * and falls back to the deal-scoped landing, so the Legal workspace ships
+     * now and starts showing the queue the day the backend deploys.
+     *
+     * Delete this note — not the paths — once CR-004 is approved, merged into
+     * the contract and released.
+     */
+    queue: "/ncnda",
+    summary: "/ncnda/summary",
+    transitions: (agreementId: string) => `/ncnda/${agreementId}/transitions`,
   },
   /** KYC gateway operations. */
   kyc: {
@@ -117,7 +140,7 @@ export const endpoints = {
     cardById: (id: string) => `/sales/cards/${id}`,
     moveCard: (id: string) => `/sales/cards/${id}/move`,
   },
+  documents: { uploadSessions: "/document-upload-sessions", finalize: (documentId: string) => `/documents/${documentId}/finalize` },
   admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}` },
   manager: { overview: "/manager/overview", team: "/manager/team", teamMember: (userId: string) => `/manager/team/${userId}`, projects: "/manager/projects", projectById: (projectId: string) => `/manager/projects/${projectId}`, projectReport: "/manager/reports/projects", convertDealToProject: (dealId: string) => `/deals/${dealId}/project` },
 } as const;
-

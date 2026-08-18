@@ -1,1 +1,1 @@
-import { PipelinePage } from "@/components/sales/PipelinePage"; export default function Page() { return <PipelinePage />; }
+import { ManagerPipelinePage } from "@/components/manager/ManagerPipelinePage"; export default function Page() { return <ManagerPipelinePage />; }

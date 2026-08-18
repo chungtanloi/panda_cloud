@@ -11,8 +11,9 @@ import "@kanban/library/styles.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SALES_BOARD, VERTICAL_LABELS } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
+import { DealReadinessProvider } from "@/controllers/ReadinessContext";
 import { api } from "@/services/api";
-import { primaryRole } from "@/models/auth";
+import { hasRole, primaryRole } from "@/models/auth";
 import type { DealVertical, SalesCard, SalesColumnDto } from "@/models/sales";
 import { cn } from "@/lib/cn";
 import { createSalesAdapter } from "./salesAdapter";
@@ -39,8 +40,7 @@ import { ManualDealModal } from "./ManualDealModal";
  * Permissions are passed through to the library rather than enforced by hiding
  * UI: `canEditCard` and `canMoveCard` gate the affordances, and the backend
  * must reject the same operations independently (a UI guard alone is not
- * access control — the backend restricts Won/Lost transitions to manager and
- * admin, which is enforced server-side and surfaced cleanly here).
+ * access control).
  */
 export function SalesBoard() {
   const { profile, user } = useAuth();
@@ -69,6 +69,18 @@ export function SalesBoard() {
 
   const refreshBoard = useCallback(() => setBoardVersion((version) => version + 1), []);
 
+  /**
+   * Terminal columns are Won and Lost — the two the backend restricts to
+   * manager and admin (DEALFLOW § 9.2). `isTerminal` comes from the backend's
+   * own column payload rather than a hard-coded code list, so a stage rename
+   * never silently unlocks a column.
+   */
+  const terminalColumnIds = useMemo(
+    () => new Set(columns.filter((column) => column.isTerminal).map((column) => column.columnId)),
+    [columns],
+  );
+  const canMoveToTerminal = hasRole(profile, "manager") || hasRole(profile, "admin");
+
   // Recreating the adapter would refetch the whole board on every render.
   // boardVersion is deliberately a dependency even though the memo doesn't read
   // it: bumping it recreates the adapter (fresh revision cache + column load)
@@ -86,17 +98,32 @@ export function SalesBoard() {
 
       cardRender: (card: SalesCard) => <DealCardView card={card} />,
 
-      // The library defaults to gray text that blends into Cloud Panda's dark board.
-      columnHeaderRender: (column: { color?: string; title: string }, cards: SalesCard[]) => (
-        <div
-          className="flex items-center justify-between rounded-t-xl bg-white/[0.045] px-3 py-2"
-          style={{ borderTop: `3px solid ${column.color ?? "#22d3ee"}` }}
-        >
-          <h3 className="text-sm font-semibold text-slate-100">{column.title}</h3>
-          <span className="text-xs font-semibold text-slate-200">{cards.length}</span>
-        </div>
-      ),
-detailPanelRender: (card: SalesCard, close: () => void) => (
+      // The library defaults to gray text that blends into Cloud Panda's dark
+      // board. A column a person cannot drop into says so in the header rather
+      // than letting them find out by failing.
+      columnHeaderRender: (column: { id?: string; color?: string; title: string }, cards: SalesCard[]) => {
+        const locked = Boolean(column.id && terminalColumnIds.has(column.id) && !canMoveToTerminal);
+        return (
+          <div
+            className="rounded-t-xl bg-white/[0.045] px-3 py-2"
+            style={{ borderTop: `3px solid ${locked ? "#475569" : (column.color ?? "#22d3ee")}` }}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className={cn("text-sm font-semibold", locked ? "text-slate-400" : "text-slate-100")}>
+                {column.title}
+              </h3>
+              <span className="text-xs font-semibold text-slate-200">{cards.length}</span>
+            </div>
+            {locked ? (
+              <p className="pt-[3px] font-mono text-[9px] uppercase tracking-[0.8px] text-slate-500">
+                Manager / admin only
+              </p>
+            ) : null}
+          </div>
+        );
+      },
+
+      detailPanelRender: (card: SalesCard, close: () => void) => (
         <DealDetail
           card={card}
           close={close}
@@ -111,9 +138,25 @@ detailPanelRender: (card: SalesCard, close: () => void) => (
 
       /** Any signed-in staff member may work a deal. */
       canEditCard: () => Boolean(user),
-      canMoveCard: () => Boolean(user),
+
+      /**
+       * ⚠ WHY THIS IS NOT `() => Boolean(user)` ANY MORE.
+       *
+       * The backend restricts Won/Lost transitions to manager and admin and
+       * answers 403 otherwise. The previous callback allowed every signed-in
+       * user to drag into those columns, so a salesperson learned about the
+       * restriction only after completing a deliberate drag — the failure
+       * arrived after the effort, which is the worst possible ordering.
+       *
+       * The library checks this both to enable dragging and again on drop, so
+       * gating here removes the affordance instead of punishing its use. This
+       * is still not access control: the backend rejects the same move
+       * independently, and must keep doing so.
+       */
+      canMoveCard: (_card: SalesCard, toColumnId: string) =>
+        Boolean(user) && (!terminalColumnIds.has(toColumnId) || canMoveToTerminal),
     }),
-    [adapter, profile, user],
+    [adapter, profile, user, terminalColumnIds, canMoveToTerminal],
   );
 
   return (
@@ -165,7 +208,14 @@ detailPanelRender: (card: SalesCard, close: () => void) => (
         )}
         data-vertical-filter={verticalFilter}
       >
-        <Kanban key={boardVersion} {...config} className="min-h-0 min-w-0" />
+        {/*
+          Readiness is fetched per card, lazily, inside this provider. The
+          provider is keyed to `boardVersion` so a refreshed board re-reads
+          readiness instead of showing a status from before the move.
+        */}
+        <DealReadinessProvider version={boardVersion}>
+          <Kanban key={boardVersion} {...config} className="min-h-0 min-w-0" />
+        </DealReadinessProvider>
       </div>
 
       <ManualDealModal

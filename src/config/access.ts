@@ -125,7 +125,7 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
     { label: "Approvals", href: "/manager/approvals", permission: "approval:view" }, { label: "Reports", href: "/manager/reports", permission: "report:view" },
   ],
   admin: [
-    { label: "Overview", href: "/admin" }, { label: "Users", href: "/admin/users", permission: "user:manage" }, { label: "Roles", href: "/admin/roles", permission: "role:manage" },
+    { label: "Overview", href: "/admin" }, { label: "Approvals", href: "/admin/approvals", permission: "approval:view" }, { label: "Users", href: "/admin/users", permission: "user:manage" }, { label: "Roles", href: "/admin/roles", permission: "role:manage" },
     { label: "Permissions", href: "/admin/permissions", permission: "role:manage" }, { label: "System", href: "/admin/system", permission: "system:view" },
     { label: "Audit Logs", href: "/admin/audit-logs", permission: "audit:view" }, { label: "Settings", href: "/admin/settings", permission: "system:manage" },
   ],

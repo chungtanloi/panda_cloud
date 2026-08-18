@@ -9,6 +9,7 @@ import { useAuth } from "@/controllers/AuthContext";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
 import { DealHandoffPanel } from "./DealHandoffPanel";
+import { DealChangeRequestPanel } from "./DealChangeRequestPanel";
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -135,6 +136,7 @@ export function DealDetail({
       </header>
 
       <DealHandoffPanel card={card} onRefresh={onSaved} />
+      <DealChangeRequestPanel card={card} onChanged={onSaved} />
 
       {/* Deal value — read-only */}
       <div className="rounded-panel border border-accent/30 bg-accent-soft p-[14px]">

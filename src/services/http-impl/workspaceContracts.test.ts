@@ -1,0 +1,88 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { get, post, patch, remove } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), remove: vi.fn() }));
+vi.mock("@/services/http", () => ({ http: { get, post, patch, delete: remove } }));
+
+import { httpApi } from "@/services/http-impl";
+
+describe("workspace HTTP contracts", () => {
+  beforeEach(() => { get.mockReset(); post.mockReset(); patch.mockReset(); remove.mockReset(); });
+
+  it("maps Sales overview and reports to implemented backend paths", async () => {
+    get.mockResolvedValue({});
+    await httpApi.salesWorkspace.overview();
+    await httpApi.salesWorkspace.conversionReport();
+    await httpApi.salesWorkspace.activityReport();
+    await httpApi.salesWorkspace.forecastReport();
+    expect(get.mock.calls.map(([path]) => path)).toEqual(["/sales/overview", "/sales/reports/conversion", "/sales/reports/activity", "/sales/reports/forecast"]);
+  });
+
+  it("creates deal-scoped KYC without sending identity or role fields", async () => {
+    post.mockResolvedValue({ caseId: "case-1", revision: 1 });
+    await httpApi.compliance.createCase("deal-1", { subjectOrganizationId: "org-1" });
+    expect(post).toHaveBeenCalledWith("/deals/deal-1/kyc", { subjectOrganizationId: "org-1" });
+  });
+
+  it("creates NCNDA through the deal-scoped PATCH contract", async () => {
+    patch.mockResolvedValue({ agreementId: "agreement-1", revision: 1, created: true });
+    await httpApi.legal.upsertAgreement({ dealId: "deal-1", counterpartyOrganizationId: "org-1", ownerId: "user-1", status: "drafting" });
+    expect(patch).toHaveBeenCalledWith("/deals/deal-1/ncnda", expect.objectContaining({ counterpartyOrganizationId: "org-1", ownerId: "user-1", status: "drafting" }));
+  });
+
+  it("uses the implemented DD deal list endpoint", async () => {
+    get.mockResolvedValue({ assessments: [] });
+    await httpApi.dueDiligence.listAssessments("deal-1");
+    expect(get).toHaveBeenCalledWith("/deals/deal-1/due-diligence/assessments");
+  });
+
+  it("converts a Deal using OCC and idempotency only", async () => {
+    const body = { expectedRevision: 7, idempotencyKey: "request-1", projectCode: "CP-001", projectName: "Project One" };
+    post.mockResolvedValue({ projectId: "project-1" });
+    await httpApi.manager.convertDealToProject("deal-1", body);
+    expect(post).toHaveBeenCalledWith("/deals/deal-1/project", body);
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("role");
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("ownerId");
+  });
+
+  it("submits sensitive Deal changes for Manager approval", async () => {
+    const body = {
+      requestType: "mark_won" as const,
+      reason: "Commercial terms accepted by the customer.",
+      expectedDealRevision: 7,
+      idempotencyKey: "request-won-1",
+    };
+    post.mockResolvedValue({ requestId: "change-1", status: "pending" });
+    await httpApi.dealRequests.create("deal-1", body);
+    expect(post).toHaveBeenCalledWith("/deals/deal-1/change-requests", body);
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("role");
+    expect(post.mock.calls[0]![1]).not.toHaveProperty("ownerId");
+  });
+
+  it("uses the Manager queue and OCC decision endpoint", async () => {
+    get.mockResolvedValue({ items: [], nextCursor: null, isDone: true });
+    post.mockResolvedValue({ requestId: "change-1", status: "approved" });
+    await httpApi.dealRequests.listQueue({ status: "pending", limit: 25 });
+    await httpApi.dealRequests.decide("change-1", {
+      decision: "approve",
+      expectedRequestRevision: 2,
+      comment: "Reviewed",
+    });
+    expect(get).toHaveBeenCalledWith("/manager/deal-change-requests", {
+      query: { status: "pending", limit: 25 },
+    });
+    expect(post).toHaveBeenCalledWith("/manager/deal-change-requests/change-1/decision", {
+      decision: "approve",
+      expectedRequestRevision: 2,
+      comment: "Reviewed",
+    });
+  });
+
+  it("creates and finalizes a secure document upload session", async () => {
+    const body = { context: { type: "kyc" as const, resourceId: "case-1" }, originalFilename: "passport.pdf", mimeType: "application/pdf", sizeBytes: 12, sha256Checksum: "a".repeat(64), retentionClass: "kyc" as const, idempotencyKey: "upload-1" };
+    post.mockResolvedValueOnce({ documentId: "doc-1", uploadUrl: "https://storage.example/upload", expiresAt: "2026-08-18T00:00:00Z", replayed: false }).mockResolvedValueOnce({ documentId: "doc-1", finalized: true, checksumVerified: false, malwareScanStatus: "pending", encryptionStatus: "pending" });
+    await httpApi.documents.createUploadSession(body);
+    await httpApi.documents.finalize("doc-1");
+    expect(post).toHaveBeenNthCalledWith(1, "/document-upload-sessions", body);
+    expect(post).toHaveBeenNthCalledWith(2, "/documents/doc-1/finalize", {});
+  });
+});

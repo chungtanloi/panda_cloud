@@ -16,4 +16,7 @@ export * from "./submission";
 
 export * from "./salesWorkspace";
 export * from "./manager";
+export * from "./dealChangeRequests";
 export * from "./admin";
+
+export * from "./documents";

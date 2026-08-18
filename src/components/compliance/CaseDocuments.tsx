@@ -9,6 +9,7 @@ import { hasPermission } from "@/config/access";
 import { KYC_DOCUMENT_ROLE_LABELS, KYC_DOCUMENT_ROLES, type KycDocument, type KycDocumentRole } from "@/models";
 import type { NormalizedError } from "@/models/common";
 import { api, normalizeError } from "@/services/api";
+import { SecureDocumentUpload } from "@/components/documents/SecureDocumentUpload";
 
 export function CaseDocuments({ caseId, backHref }: { caseId: string; backHref?: string }) {
   const { profile } = useAuth();
@@ -54,16 +55,7 @@ export function CaseDocuments({ caseId, backHref }: { caseId: string; backHref?:
 
   return <WorkspacePage eyebrow="Compliance / Documents" title="KYC case documents" description="Attach registered, malware-clean documents to this case. Binary upload and document registration are separate backend operations.">
     <div className="mb-6"><a href={backHref ?? "/compliance/cases/" + caseId} className="text-xs font-bold uppercase tracking-wider text-accent hover:underline">← Back to case</a></div>
-    {canManage ? <form onSubmit={attach} className="mb-6 rounded-[24px] border border-line bg-surface p-6">
-      <h2 className="text-sm font-semibold text-ink">Attach a registered document</h2>
-      <p className="mt-1 text-xs leading-5 text-ink-dim">Register the file through the approved document flow first. This screen only attaches an existing document id.</p>
-      <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_220px_auto] sm:items-end">
-        <Input label="Document id *" value={documentId} onChange={(event) => setDocumentId(event.target.value)} placeholder="doc_01" />
-        <Select label="Document role" value={role} onChange={(event) => setRole(event.target.value as KycDocumentRole)} options={KYC_DOCUMENT_ROLES.map((value) => ({ value, label: KYC_DOCUMENT_ROLE_LABELS[value] }))} />
-        <button type="submit" disabled={saving} className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg disabled:opacity-50">{saving ? "Attaching…" : "Attach"}</button>
-      </div>
-      {message ? <p role="alert" className="mt-4 text-xs text-ink-dim">{message}</p> : null}
-    </form> : null}
+    {canManage ? <div className="mb-6 grid gap-4"><div className="max-w-xs"><Select label="Evidence category" value={role} onChange={(event) => setRole(event.target.value as KycDocumentRole)} options={KYC_DOCUMENT_ROLES.map((value) => ({ value, label: KYC_DOCUMENT_ROLE_LABELS[value] }))} /></div><SecureDocumentUpload contextType="kyc" resourceId={caseId} retentionClass="kyc" onFinalized={(finalized) => { if (finalized.malwareScanStatus === "clean") { void api.compliance.attachDocument(caseId, { documentId: finalized.documentId, documentRole: role }).then(load).catch((cause) => setMessage(normalizeError(cause).message)); } else { setMessage(`Upload complete. Attachment is waiting for malware scan (${finalized.malwareScanStatus}).`); } }} />{message ? <p role="alert" className="text-xs text-ink-dim">{message}</p> : null}</div> : null}
     {loading ? <LoadingState label="Loading documents" /> : null}
     {!loading && error ? <ErrorState error={error} onRetry={() => void load()} /> : null}
     {!loading && !error && documents?.length === 0 ? <EmptyState title="No documents attached" message="Attach a registered document after its malware scan is clean." /> : null}

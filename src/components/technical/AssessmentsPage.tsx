@@ -84,24 +84,7 @@ export function AssessmentsPage() {
       title="Due Diligence assessments"
       description="Technical Due Diligence for one deal — UC-010 initialize, UC-011 respond and review. The published template carries 68 requirements: 56 IDC and 12 DL."
     >
-      <form onSubmit={submit} className="mb-6 flex flex-wrap items-end gap-3">
-        <div className="min-w-[280px] flex-1">
-          <Input
-            label="Deal id"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="deal_01"
-            hint="Assessments are listed per deal — see the note below."
-          />
-        </div>
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg"
-        >
-          Open
-        </button>
-      </form>
-
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-line bg-surface-alt p-4"><p className="text-sm text-ink-dim">Open Due Diligence from a Deal or Manager handoff. The deal context is carried by the route; no internal ID needs to be typed.</p><Link href="/manager/pipeline" className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent">Open pipeline</Link></div>
       {loading ? <LoadingState label="Loading assessments" /> : null}
 
       {!loading && error ? (

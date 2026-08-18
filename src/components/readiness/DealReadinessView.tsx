@@ -2,229 +2,398 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { StatusPill } from "@/components/workspace/StatusPill";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
-import { Input } from "@/components/ui/Field";
 import { CreateAgreementForm } from "@/components/legal/CreateAgreementForm";
-import { CreateCaseForm } from "@/components/compliance/CasesPage";
+import { CreateCaseForm } from "@/components/compliance/CreateCaseForm";
 import { useAuth } from "@/controllers/AuthContext";
 import { hasPermission } from "@/config/access";
-import { NCNDA_STATUS_TONES, KYC_STATUS_TONES } from "@/config/lifecycle";
 import {
+  LANE_LABELS,
+  LANE_OWNERS,
+  LANE_STATE_LABELS,
+  LANE_STATE_TONES,
+  READINESS_LANES,
+  evaluateReadiness,
+  laneNextAction,
+  lanePercent,
+  type LaneId,
+  type LaneState,
+  type ReadinessResult,
+} from "@/lib/readiness";
+import {
+  DD_ASSESSMENT_STATUS_LABELS,
   KYC_STATUS_LABELS,
   NCNDA_STATUS_LABELS,
+  type DdAssessmentSummary,
   type KycCase,
   type NcndaAgreement,
 } from "@/models";
+import { formatMinorUnits } from "@/models/common";
 import type { NormalizedError } from "@/models/common";
+import type { SalesCardDetailDto } from "@/models/sales";
 import { api, normalizeError } from "@/services/api";
 
-type LaneState = "ready" | "attention" | "blocked" | "missing";
-type TimelineEntry = { id: string; at: string; lane: "NCNDA" | "KYC"; label: string };
+type TimelineEntry = { id: string; at: string; lane: string; label: string };
 
-function ncndaState(item: NcndaAgreement | null): LaneState {
-  if (!item) return "missing";
-  if (item.status === "active") return "ready";
-  if (["rejected", "expired", "cancelled"].includes(item.status)) return "blocked";
-  return "attention";
-}
-
-function kycState(item: KycCase | null): LaneState {
-  if (!item) return "missing";
-  if (["rejected", "expired", "cancelled", "provider_error"].includes(item.status)) return "blocked";
-  if (item.riskLevel === "prohibited") return "blocked";
-  if (item.status === "approved" && item.verifiedAt && (!item.expiresAt || new Date(item.expiresAt).getTime() > Date.now())) return "ready";
-  return "attention";
-}
-
-const laneLabels: Record<LaneState, string> = {
-  ready: "Ready",
-  attention: "Needs attention",
-  blocked: "Blocked",
-  missing: "Not started",
-};
-
-const laneTone: Record<LaneState, "good" | "waiting" | "bad" | "neutral"> = {
-  ready: "good",
-  attention: "waiting",
-  blocked: "bad",
-  missing: "neutral",
-};
-
-function newest<T extends { updatedAt: string }>(items: readonly T[]): T | null {
-  return [...items].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
-}
-
-function nextNcnda(item: NcndaAgreement | null): string {
-  if (!item) return "Create a drafting matter and identify the counterparty.";
-  const actions: Record<NcndaAgreement["status"], string> = {
-    not_requested: "Start drafting the agreement.",
-    drafting: "Attach the current draft and complete internal review.",
-    sent: "Record the counterparty response or redline.",
-    received: "Review the returned agreement.",
-    under_review: "Resolve redlines and prepare signature.",
-    signed: "Record the countersigned document.",
-    countersigned: "Set an effective date and activate the agreement.",
-    active: "Monitor expiry and retain the current executed version.",
-    rejected: "Review the rejection; create a new matter only if authorized.",
-    expired: "Review renewal requirements.",
-    cancelled: "No action unless a new matter is approved.",
-  };
-  return actions[item.status];
-}
-
-function nextKyc(item: KycCase | null): string {
-  if (!item) return "Create a case for exactly one organization or contact.";
-  const actions: Record<KycCase["status"], string> = {
-    not_started: "Request KYC from the subject.",
-    requested: "Confirm which evidence has been requested.",
-    pending_documents: "Collect and attach registered evidence.",
-    submitted: "Start the compliance review.",
-    under_review: "Set risk and approve, reject, or request more evidence.",
-    approved: "Monitor verification expiry.",
-    rejected: "Review the rejection reason before any new case.",
-    expired: "Re-verification is required; no case is created automatically.",
-    cancelled: "No action unless a new review is authorized.",
-    provider_error: "Resolve the provider issue or continue manual review.",
-  };
-  return actions[item.status];
-}
-
+/**
+ * `/deal-readiness/[dealId]` — the canonical place NCNDA, KYC and Due Diligence
+ * are read together for one deal.
+ *
+ * ⚠ WHY THIS IS THE ONLY URL FOR THESE OBJECTS.
+ *
+ * `/legal/agreements?dealId=` and `/compliance/cases?dealId=` used to render a
+ * second, differently-shaped view of the same records. Two layouts over one
+ * dataset meant two places to fix a bug and two chances to disagree; both now
+ * redirect here.
+ *
+ * All lane evaluation comes from `lib/readiness.ts`. This component decides
+ * nothing about status on its own.
+ */
 export function DealReadinessView({ dealId }: { dealId: string }) {
-  const router = useRouter();
   const { profile } = useAuth();
   const canManageNcnda = hasPermission(profile, "ncnda:manage");
   const canManageKyc = hasPermission(profile, "kyc:manage");
-  const [agreements, setAgreements] = useState<readonly NcndaAgreement[] | null>(null);
-  const [cases, setCases] = useState<readonly KycCase[] | null>(null);
-  const [legalError, setLegalError] = useState<NormalizedError | null>(null);
-  const [kycError, setKycError] = useState<NormalizedError | null>(null);
+
+  const [agreements, setAgreements] = useState<readonly NcndaAgreement[]>([]);
+  const [cases, setCases] = useState<readonly KycCase[]>([]);
+  const [assessments, setAssessments] = useState<readonly DdAssessmentSummary[]>([]);
+  const [deal, setDeal] = useState<SalesCardDetailDto | null>(null);
+
+  const [laneErrors, setLaneErrors] = useState<Record<LaneId, NormalizedError | null>>({
+    ncnda: null,
+    kyc: null,
+    dd: null,
+  });
+  const [dealError, setDealError] = useState<NormalizedError | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [dealInput, setDealInput] = useState(dealId);
   const [createLane, setCreateLane] = useState<"ncnda" | "kyc" | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [legalResult, kycResult] = await Promise.allSettled([
+    const [legalResult, kycResult, ddResult, dealResult] = await Promise.allSettled([
       api.legal.listAgreements(dealId),
       api.compliance.listCases(dealId),
+      api.dueDiligence.listAssessments(dealId),
+      api.sales.getCard(dealId),
     ]);
-    if (legalResult.status === "fulfilled") {
-      setAgreements(legalResult.value.items);
-      setLegalError(null);
-    } else {
-      setAgreements(null);
-      setLegalError(normalizeError(legalResult.reason));
-    }
-    if (kycResult.status === "fulfilled") {
-      setCases(kycResult.value.items);
-      setKycError(null);
-    } else {
-      setCases(null);
-      setKycError(normalizeError(kycResult.reason));
-    }
+
+    setAgreements(legalResult.status === "fulfilled" ? legalResult.value.items : []);
+    setCases(kycResult.status === "fulfilled" ? kycResult.value.items : []);
+    setAssessments(ddResult.status === "fulfilled" ? ddResult.value.items : []);
+    setDeal(dealResult.status === "fulfilled" ? dealResult.value : null);
+
+    setLaneErrors({
+      ncnda: legalResult.status === "rejected" ? normalizeError(legalResult.reason) : null,
+      kyc: kycResult.status === "rejected" ? normalizeError(kycResult.reason) : null,
+      dd: ddResult.status === "rejected" ? normalizeError(ddResult.reason) : null,
+    });
+    setDealError(dealResult.status === "rejected" ? normalizeError(dealResult.reason) : null);
     setLoading(false);
   }, [dealId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const agreement = useMemo(() => newest(agreements ?? []), [agreements]);
-  const kycCase = useMemo(() => newest(cases ?? []), [cases]);
-  const ncndaReadiness = ncndaState(agreement);
-  const kycReadiness = kycState(kycCase);
-  const overall: LaneState = ncndaReadiness === "blocked" || kycReadiness === "blocked"
-    ? "blocked"
-    : ncndaReadiness === "ready" && kycReadiness === "ready"
-      ? "ready"
-      : "attention";
+  const readiness = useMemo(
+    () => evaluateReadiness({ agreements, cases, assessments }),
+    [agreements, cases, assessments],
+  );
 
   const timeline = useMemo<TimelineEntry[]>(() => {
-    const entries: TimelineEntry[] = [];
-    for (const item of agreements ?? []) {
-      entries.push({ id: `n-${item.agreementId}`, at: item.updatedAt, lane: "NCNDA", label: `Agreement ${NCNDA_STATUS_LABELS[item.status].toLowerCase()}` });
-      if (item.sentAt) entries.push({ id: `n-sent-${item.agreementId}`, at: item.sentAt, lane: "NCNDA", label: "Agreement sent" });
-      if (item.signedAt) entries.push({ id: `n-signed-${item.agreementId}`, at: item.signedAt, lane: "NCNDA", label: "Signature recorded" });
-      if (item.countersignedAt) entries.push({ id: `n-counter-${item.agreementId}`, at: item.countersignedAt, lane: "NCNDA", label: "Countersignature recorded" });
-    }
-    for (const item of cases ?? []) {
-      entries.push({ id: `k-${item.caseId}`, at: item.updatedAt, lane: "KYC", label: `Case ${KYC_STATUS_LABELS[item.status].toLowerCase()}` });
-      if (item.submittedAt) entries.push({ id: `k-submitted-${item.caseId}`, at: item.submittedAt, lane: "KYC", label: "Evidence submitted" });
-      if (item.verifiedAt) entries.push({ id: `k-verified-${item.caseId}`, at: item.verifiedAt, lane: "KYC", label: "Verification recorded" });
-    }
-    return entries.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
-  }, [agreements, cases]);
+    const rows: TimelineEntry[] = [];
+    agreements.forEach((item) =>
+      rows.push({
+        id: `n-${item.agreementId}`,
+        at: item.updatedAt,
+        lane: LANE_LABELS.ncnda,
+        label: NCNDA_STATUS_LABELS[item.status],
+      }),
+    );
+    cases.forEach((item) =>
+      rows.push({
+        id: `k-${item.caseId}`,
+        at: item.updatedAt,
+        lane: LANE_LABELS.kyc,
+        label: KYC_STATUS_LABELS[item.status],
+      }),
+    );
+    assessments.forEach((item) =>
+      rows.push({
+        id: `d-${item.id}`,
+        at: item.updatedAt,
+        lane: LANE_LABELS.dd,
+        label: DD_ASSESSMENT_STATUS_LABELS[item.status],
+      }),
+    );
+    return rows.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 8);
+  }, [agreements, cases, assessments]);
+
+  const laneHref: Record<LaneId, string | undefined> = {
+    ncnda: readiness.current.ncnda
+      ? `/deal-readiness/${encodeURIComponent(dealId)}/ncnda/${readiness.current.ncnda.agreementId}`
+      : undefined,
+    kyc: readiness.current.kyc
+      ? `/deal-readiness/${encodeURIComponent(dealId)}/kyc/${readiness.current.kyc.caseId}`
+      : undefined,
+    dd: readiness.current.dd ? `/technical/assessments/${readiness.current.dd.id}` : undefined,
+  };
+
+  const laneAction: Record<LaneId, string> = {
+    ncnda: "Open legal file",
+    kyc: "Open KYC case",
+    dd: "Open assessment",
+  };
+
+  const laneCreate: Record<LaneId, (() => void) | undefined> = {
+    ncnda: canManageNcnda && !readiness.current.ncnda && deal ? () => setCreateLane("ncnda") : undefined,
+    kyc: canManageKyc && !readiness.current.kyc && deal ? () => setCreateLane("kyc") : undefined,
+    dd: undefined,
+  };
+
+  const steps: readonly [string, string, string, boolean][] = [
+    ["1", "Deal qualified", deal?.status === "won" ? "Won" : "Commercial", deal?.status === "won"],
+    [
+      "2",
+      "NCNDA + KYC",
+      readiness.lanes.ncnda === "ready" && readiness.lanes.kyc === "ready" ? "Reviewed" : "In progress",
+      readiness.lanes.ncnda === "ready" && readiness.lanes.kyc === "ready",
+    ],
+    ["3", "Technical DD", readiness.lanes.dd === "ready" ? "Complete" : "Pending", readiness.lanes.dd === "ready"],
+    [
+      "4",
+      "Project conversion",
+      deal?.projectId ? "Created" : "Manager review",
+      Boolean(deal?.projectId),
+    ],
+  ];
 
   return (
     <WorkspacePage
-      eyebrow="Dealflow / Readiness"
-      title={`Deal readiness · ${dealId}`}
-      description="NCNDA and KYC progress run in parallel. This summary guides staff workflow; it does not authorize a Won transition."
+      eyebrow="Dealflow / Handoff"
+      title={deal?.title ?? "Deal readiness"}
+      description="A single handoff record for Sales, Legal, Compliance, Technical and Manager."
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-line bg-surface-alt p-4">
-        <div className="flex items-center gap-3">
-          <StatusPill label={laneLabels[overall]} tone={laneTone[overall]} />
-          <p className="text-xs text-ink-dim">Overall readiness is presentation-only.</p>
+      <section className="mb-6 overflow-hidden rounded-[28px] border border-accent/25 bg-[linear-gradient(135deg,rgba(0,217,230,0.09),rgba(17,24,39,0.82)_55%)] p-6">
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill
+                label={LANE_STATE_LABELS[readiness.overall]}
+                tone={LANE_STATE_TONES[readiness.overall]}
+              />
+              <span className="text-xs text-ink-dim">{readiness.readyCount}/3 workstreams ready</span>
+            </div>
+            <h1 className="mt-4 text-2xl font-semibold text-ink">
+              {deal?.organizationName ?? "Loading deal context…"}
+            </h1>
+            <p className="mt-1 text-sm text-ink-dim">
+              {deal?.ownerName
+                ? `Sales owner: ${deal.ownerName}`
+                : "The responsible owner is resolved from the deal record."}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-wider text-ink-mute">Commercial value</p>
+            <p className="mt-1 text-xl font-semibold text-accent">
+              {deal ? formatMinorUnits(deal.estimatedValueMinor, deal.currency) : "—"}
+            </p>
+            <Link
+              href="/sales/pipeline"
+              className="mt-4 inline-block text-xs font-bold uppercase tracking-wider text-accent hover:underline"
+            >
+              ← Back to pipeline
+            </Link>
+          </div>
         </div>
-        <button type="button" onClick={() => setPickerOpen(true)} className="rounded-full border border-accent px-4 py-2 text-xs font-bold uppercase tracking-wider text-accent">Open another deal</button>
-      </div>
 
-      {loading ? <LoadingState label="Loading legal and compliance readiness" /> : null}
+        {dealError ? (
+          <div className="mt-4">
+            <ErrorState error={dealError} onRetry={() => void load()} />
+          </div>
+        ) : null}
+
+        <div className="mt-6 grid gap-2 md:grid-cols-4">
+          {steps.map(([step, label, status, done]) => (
+            <div
+              key={step}
+              className={`rounded-xl border bg-black/15 p-3 ${done ? "border-emerald-400/30" : "border-white/10"}`}
+            >
+              <p className={`text-[10px] font-bold ${done ? "text-emerald-300" : "text-accent"}`}>
+                STEP {step}
+              </p>
+              <p className="mt-1 text-sm font-medium text-ink">{label}</p>
+              <p className="mt-1 text-xs text-ink-dim">{status}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-line bg-surface-alt p-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
+            Recommended next action
+          </p>
+          <p className="mt-1 text-sm text-ink">{readiness.nextAction}</p>
+        </div>
+        <span className="text-xs text-ink-dim">
+          Readiness is guidance; backend authorization remains authoritative.
+        </span>
+      </section>
+
+      {loading ? (
+        <LoadingState label="Loading deal handoff" />
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-3">
+          {READINESS_LANES.map((lane) => (
+            <ReadinessLane
+              key={lane}
+              lane={lane}
+              readiness={readiness}
+              error={laneErrors[lane]}
+              href={laneHref[lane]}
+              actionLabel={laneAction[lane]}
+              onCreate={laneCreate[lane]}
+            />
+          ))}
+        </div>
+      )}
+
+      {createLane === "ncnda" ? (
+        <div className="mt-6">
+          <CreateAgreementForm
+            dealId={dealId}
+            context={deal}
+            onDone={() => {
+              setCreateLane(null);
+              void load();
+            }}
+          />
+        </div>
+      ) : null}
+      {createLane === "kyc" ? (
+        <div className="mt-6">
+          <CreateCaseForm
+            dealId={dealId}
+            context={deal}
+            onDone={() => {
+              setCreateLane(null);
+              void load();
+            }}
+          />
+        </div>
+      ) : null}
 
       {!loading ? (
-        <div className="grid gap-6 xl:grid-cols-2">
-          <ReadinessLane
-            title="NCNDA"
-            owner="Legal"
-            state={ncndaReadiness}
-            status={agreement ? NCNDA_STATUS_LABELS[agreement.status] : "No agreement"}
-            nextAction={nextNcnda(agreement)}
-            error={legalError}
-            href={agreement ? `/deal-readiness/${encodeURIComponent(dealId)}/ncnda/${agreement.agreementId}` : undefined}
-            actionLabel="Open NCNDA file"
-            onCreate={canManageNcnda && !agreement ? () => setCreateLane("ncnda") : undefined}
-          />
-          <ReadinessLane
-            title="KYC"
-            owner="Compliance"
-            state={kycReadiness}
-            status={kycCase ? KYC_STATUS_LABELS[kycCase.status] : "No case"}
-            nextAction={nextKyc(kycCase)}
-            error={kycError}
-            href={kycCase ? `/deal-readiness/${encodeURIComponent(dealId)}/kyc/${kycCase.caseId}` : undefined}
-            actionLabel="Open KYC case"
-            onCreate={canManageKyc && !kycCase ? () => setCreateLane("kyc") : undefined}
-          />
-        </div>
-      ) : null}
-
-      {createLane === "ncnda" ? <div className="mt-6"><CreateAgreementForm dealId={dealId} onDone={() => { setCreateLane(null); void load(); }} /></div> : null}
-      {createLane === "kyc" ? <div className="mt-6"><CreateCaseForm dealId={dealId} onDone={() => { setCreateLane(null); void load(); }} /></div> : null}
-
-      {!loading && !legalError && !kycError ? (
         <section className="mt-6 rounded-[24px] border border-line bg-surface p-6">
-          <h2 className="text-sm font-semibold text-ink">Readiness timeline</h2>
-          {timeline.length ? <ol className="mt-5 space-y-4">{timeline.map((entry) => <li key={entry.id} className="flex gap-4"><span className="mt-1.5 size-2 shrink-0 rounded-full bg-accent" /><div><p className="text-sm text-ink">{entry.label}</p><p className="mt-1 text-xs text-ink-dim">{entry.lane} · {new Date(entry.at).toLocaleString()}</p></div></li>)}</ol> : <EmptyState title="No readiness activity" message="Create an NCNDA matter or KYC case to begin." />}
+          <h2 className="text-sm font-semibold text-ink">Handoff activity</h2>
+          {timeline.length ? (
+            <ol className="mt-5 grid gap-4 md:grid-cols-2">
+              {timeline.map((entry) => (
+                <li key={entry.id} className="flex gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                  <span className="mt-1 size-2 shrink-0 rounded-full bg-accent" />
+                  <div>
+                    <p className="text-sm text-ink">{entry.label}</p>
+                    <p className="mt-1 text-xs text-ink-dim">
+                      {entry.lane} · {new Date(entry.at).toLocaleString()}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <EmptyState
+              title="No readiness activity"
+              message="Start NCNDA, KYC or Technical Due Diligence from this deal."
+            />
+          )}
         </section>
-      ) : null}
-
-      {pickerOpen ? (
-        <div className="fixed inset-0 z-[70] flex justify-end bg-black/60" role="dialog" aria-modal="true" aria-label="Open deal">
-          <button className="flex-1" aria-label="Close deal picker" onClick={() => setPickerOpen(false)} />
-          <form className="h-full w-full max-w-md border-l border-line bg-surface p-6 pt-20" onSubmit={(event) => { event.preventDefault(); const next = dealInput.trim(); if (next) router.push(`/deal-readiness/${encodeURIComponent(next)}`); }}>
-            <h2 className="text-xl font-semibold text-ink">Open deal</h2>
-            <p className="mt-2 text-sm leading-6 text-ink-dim">Deal lookup is not available in the backend yet. Use the opaque deal id as a temporary fallback.</p>
-            <div className="mt-6"><Input label="Deal id *" value={dealInput} onChange={(event) => setDealInput(event.target.value)} /></div>
-            <button type="submit" className="mt-5 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg">Open readiness</button>
-          </form>
-        </div>
       ) : null}
     </WorkspacePage>
   );
 }
 
-function ReadinessLane({ title, owner, state, status, nextAction, error, href, actionLabel, onCreate }: { title: string; owner: string; state: LaneState; status: string; nextAction: string; error: NormalizedError | null; href?: string; actionLabel: string; onCreate?: () => void }) {
-  return <section className="rounded-[24px] border border-line bg-surface p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">{owner}</p><h2 className="mt-2 text-2xl font-semibold text-ink">{title}</h2></div><StatusPill label={laneLabels[state]} tone={laneTone[state]} /></div>{error ? <div className="mt-5"><ErrorState error={error} /></div> : <><div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`h-full rounded-full ${state === "ready" ? "w-full bg-emerald-400" : state === "blocked" ? "w-full bg-red-400" : state === "missing" ? "w-0" : "w-2/3 bg-amber-300"}`} /></div><dl className="mt-5 grid gap-4"><div><dt className="text-[10px] uppercase tracking-wider text-ink-mute">Current status</dt><dd className="mt-1 text-sm text-ink">{status}</dd></div><div><dt className="text-[10px] uppercase tracking-wider text-ink-mute">Next action</dt><dd className="mt-1 text-sm leading-6 text-ink-dim">{nextAction}</dd></div></dl><div className="mt-6 flex flex-wrap gap-3">{href ? <Link href={href} className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg">{actionLabel}</Link> : null}{onCreate ? <button type="button" onClick={onCreate} className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent">Start {title}</button> : null}</div></>}</section>;
+const BAR_COLOURS: Record<LaneState, string> = {
+  ready: "bg-emerald-400",
+  attention: "bg-amber-300",
+  blocked: "bg-red-400",
+  missing: "bg-transparent",
+};
+
+function ReadinessLane({
+  lane,
+  readiness,
+  error,
+  href,
+  actionLabel,
+  onCreate,
+}: {
+  lane: LaneId;
+  readiness: ReadinessResult;
+  error: NormalizedError | null;
+  href?: string;
+  actionLabel: string;
+  onCreate?: () => void;
+}) {
+  const state = readiness.lanes[lane];
+  const percent = lanePercent(lane, readiness);
+
+  return (
+    <section className="flex min-h-[300px] flex-col rounded-[24px] border border-line bg-surface p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">
+            {LANE_OWNERS[lane]}
+          </p>
+          <h2 className="mt-2 text-xl font-semibold text-ink">{LANE_LABELS[lane]}</h2>
+        </div>
+        <StatusPill label={LANE_STATE_LABELS[state]} tone={LANE_STATE_TONES[state]} />
+      </div>
+
+      {error ? (
+        <div className="mt-5">
+          <ErrorState error={error} />
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className={`h-full rounded-full ${BAR_COLOURS[state]}`} style={{ width: `${percent}%` }} />
+          </div>
+          <dl className="mt-5 space-y-4">
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider text-ink-mute">Current status</dt>
+              <dd className="mt-1 text-sm text-ink">{readiness.statusLabels[lane]}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider text-ink-mute">Next action</dt>
+              <dd className="mt-1 text-sm leading-6 text-ink-dim">
+                {laneNextAction(lane, readiness.current)}
+              </dd>
+            </div>
+          </dl>
+          <div className="mt-auto flex flex-wrap gap-2 pt-6">
+            {href ? (
+              <Link
+                href={href}
+                className="rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg"
+              >
+                {actionLabel}
+              </Link>
+            ) : null}
+            {onCreate ? (
+              <button
+                type="button"
+                onClick={onCreate}
+                className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent"
+              >
+                Start {LANE_LABELS[lane]}
+              </button>
+            ) : null}
+          </div>
+        </>
+      )}
+    </section>
+  );
 }

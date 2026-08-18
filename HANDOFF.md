@@ -1294,3 +1294,346 @@ Added the shared `DealHandoffPanel` to Sales deal detail. It loads deal-scoped a
 Added Manager conversion service support for `POST /api/v1/deals/{dealId}/project` with the exact request `{ expectedRevision, idempotencyKey, projectCode, projectName? }`. The idempotency key is generated per submit, stale revisions surface a conflict and trigger refresh, and only Manager/Admin UI roles see the conversion action. Sales cannot convert projects. The Manager Sales Performance page now consumes Sales overview/conversion/activity/forecast reports instead of hard-coded figures.
 
 Backend remains the source of truth for authorization, won status, OCC, idempotency, readiness policy and audit logging. Quotes, approval gates, notifications and project status mutation remain unimplemented/blocked where the backend contract does not provide them.
+
+### 2026-08-18 — Deal Readiness workflow and UI redesign
+
+Replaced the ID-first readiness experience with a Deal-context handoff. Staff now enter from Sales Pipeline/Deal Detail; the selected Deal supplies organization, owner, primary contact, commercial value and revision data. The readiness view combines NCNDA, KYC and Due Diligence as three parallel workstreams, adds a four-step Sales-to-Project handoff rail, a recommended-next-action panel and a combined activity timeline.
+
+NCNDA and KYC creation no longer expose organization/contact/user IDs. NCNDA resolves counterparty and responsible owner from the Deal. KYC presents organization and primary-contact subject cards and sends the selected backend identifier invisibly while preserving the XOR contract. Legal and Compliance deal-context forms were replaced with handoff navigation. Technical assessment entry no longer asks for a Deal ID.
+
+The backend still lacks staff-wide Deal lookup and global Legal/Compliance/Technical queue endpoints. The frontend does not fabricate those queues; work enters through the existing Deal card and deal-scoped APIs.
+
+### 2026-08-18 — One readiness rule, readiness on the board, and a manager conversion queue
+
+Frontend only. No backend file, route, schema, authorization rule or OpenAPI
+document was changed, and no new endpoint is required: everything below runs on
+operations that already exist.
+
+**Three defects fixed first.** The Legal and Compliance list pages were left in
+a non-building state by the previous pass:
+
+| # | Defect | Effect |
+|---|---|---|
+| 1 | `compliance/CasesPage.tsx` called `useRouter()` without importing it | `npm run typecheck` and `npm run build` both fail |
+| 2 | `dealContext` was declared in `CasesPage` and `AgreementsPage` but `setDealContext` was never called | `context` was always `null`, so both KYC subject buttons and the submit button were permanently disabled — **creating a KYC case from `/compliance/cases` was impossible**, and `CreateAgreementForm` could not pass step 1 |
+| 3 | A `dealInput` state pair nothing read, plus an unused `Input` import | lint failure |
+
+These are gone because both list pages were replaced rather than patched — see
+"one canonical URL" below.
+
+**One readiness rule (`src/lib/readiness.ts`, new).** The same question — is this
+deal clear to hand over — was previously answered in three places with three
+implementations. `DealReadinessView` selected the newest record by `updatedAt`;
+`DealHandoffPanel` selected `items[0]`, i.e. whatever order the backend happened
+to return; the two list pages sorted by a hand-written urgency array and never
+evaluated readiness at all. `newest()` and `items[0]` are not guaranteed to be
+the same record, so one deal could read **Ready** in the handoff panel and
+**Needs attention** one click away.
+
+`evaluateReadiness()` is now the only implementation. It is pure — no React, no
+I/O, no environment access — and fixes the record-selection rule at *newest by
+`updatedAt`*, because the list endpoints do not promise an ordering and reading
+`items[0]` is reading an implementation detail. It also owns the lane labels,
+tones, blocker sentence and next-action text, so those stop drifting between
+screens. `DealReadinessView`, `DealHandoffPanel`, the pipeline card and the new
+manager queue all call it.
+
+Two rules worth stating because they are easy to get wrong:
+
+- **KYC needs more than `approved`.** The backend requires `verifiedAt` on
+  approval, and an expired verification is not a current one, so an approved but
+  lapsed case reads *attention*, never *ready*.
+- **A critical failure blocks regardless of completion.** An assessment can be
+  68/68 reviewed and still contain a critical non-compliance.
+
+`missing` is kept distinct from `attention` throughout: "nobody has started
+this" and "someone is working on it" call for different next actions.
+
+**Readiness on the pipeline card.** `DealCardView` now carries an `N · K · D`
+strip (NCNDA, KYC, Due diligence), a coloured left edge, and one sentence naming
+what is holding the deal up. Finding stalled deals previously meant opening every
+card in turn and reading the handoff panel — thirty cards, thirty panels, ninety
+requests. The information was always available; it was never where the question
+gets asked.
+
+⚠ **This is a fan-out, and it is a stopgap.** There is no aggregate readiness
+endpoint and no `readiness` field on `SalesCard`, so three deal-scoped calls per
+deal is the only way to put this on a card today.
+`controllers/ReadinessContext.tsx` (new) keeps the cost contained: each card
+registers its own id so only rendered deals are fetched, each id is fetched at
+most once per board version, at most four deals are in flight at a time, and the
+board never awaits any of it. A card with no result yet renders a neutral
+placeholder — it never guesses *ready*. A failed lane degrades to an empty list
+rather than an error, because a card that cannot say "blocked" must not say
+"ready" either. **Backend gap: `GET /deals/{dealId}/readiness`, or a
+materialized `readiness` field on the card payload, removes this entirely.**
+
+**Won and Lost are locked for non-managers.** `canMoveCard` was
+`() => Boolean(user)`, so any signed-in staff member could drag into a terminal
+column and learn about the restriction only from the 403 that followed — the
+failure arrived after the effort. It is now
+`Boolean(user) && (!terminalColumnIds.has(toColumnId) || manager || admin)`, and
+the column header says "Manager / admin only". `isTerminal` comes from the
+backend's own column payload, not a hard-coded code list, so a stage rename never
+silently unlocks a column. This is **not** access control: the backend rejects
+the same move independently and must keep doing so.
+
+**One canonical URL for NCNDA and KYC.** `/legal/agreements?dealId=` and
+`/compliance/cases?dealId=` rendered a second, differently-shaped view of records
+that `/deal-readiness/[dealId]` already showed — two layouts over one dataset,
+two places to fix each bug. Both now redirect to `/deal-readiness/[dealId]`.
+
+Without a `dealId` they render `DealScopedLanding` (new) instead of the old
+`"Deal context required"` empty state. That empty state was what a Legal reviewer
+saw every time they opened their own workspace from the sidebar: a blank screen
+with no route to any work. The cause is a real backend constraint, so the page
+now states it rather than hiding it behind an empty table:
+
+- NCNDA and KYC are exposed only as `GET /deals/{dealId}/ncnda` and
+  `GET /deals/{dealId}/kyc`; there is no cross-deal list operation.
+- Legal and Compliance identities cannot enumerate deals either —
+  `resolveKanbanScope` fails closed for those roles, so the sales board answers
+  `REQUIRES_RESOURCE_SCOPE` → 403.
+
+**⚠ Legal and Compliance still have no queue of their own, and cannot until the
+backend provides one.** Needed: a cross-deal read such as
+`GET /ncnda?ownerId=&status=` and `GET /kyc?assignedTo=&status=`, or a
+deal-enumeration scope for those roles. Until then both workspaces depend on
+Sales or Manager sending a deal link. The frontend does not fabricate the queue.
+
+`CreateCaseForm` moved to its own module, `components/compliance/CreateCaseForm.tsx`.
+It is re-exported from `CasesPage` so any existing import path keeps resolving.
+`CreateAgreementForm` is unchanged; both are mounted from `DealReadinessView`,
+which resolves the deal before rendering them — which is what fixes defect 2.
+
+**Manager conversion queue (`/manager/pipeline`).** The route rendered the sales
+board verbatim, giving a manager the same screen as a salesperson and no answer
+to the question the role actually asks. Converting a won deal was four levels
+deep: pipeline → click card → detail panel → scroll past the readiness lanes to a
+form that only appears when the deal is won and unconverted.
+
+The route now defaults to a conversion queue and keeps the full board behind a
+tab, so both audiences keep what they need without a new route or a navigation
+change. The queue needs no new endpoint: manager and admin resolve to the whole
+board, so `GET /sales/columns` → the terminal won column →
+`GET /sales/cards?columnId=` → `GET /sales/cards/{dealId}` for `projectId` (the
+list payload omits it) → readiness. Rows are ordered ready-first and filterable.
+
+**Readiness is never a gate.** Converting is offered on a deal that is not ready
+too, labelled "Convert anyway" and preceded by a note explaining what is
+outstanding. The backend owns authorization, won status, optimistic concurrency,
+idempotency, the readiness policy and the audit trail. A fresh `idempotencyKey`
+is generated per submit — a retry of a failed submit must not be deduplicated
+into silence, and a double-click must not create two projects. A 409 surfaces as
+a conflict message and reloads the queue.
+
+**Deferred deliberately.** A readiness filter on the Kanban board itself was not
+added: the board's card markup belongs to `@kanban/library` and the existing
+vertical filter works through CSS classes in `globals.css`, so filtering by
+readiness needs a matching stylesheet change that should be made and verified
+together. The card strip, the coloured edge and the blocker sentence deliver the
+scanning value in the meantime; the queue filter exists where the markup is ours.
+
+**Files**
+
+| Path | Change |
+|---|---|
+| `src/lib/readiness.ts` | **new** — the only readiness implementation |
+| `src/controllers/ReadinessContext.tsx` | **new** — lazy, bounded, per-card fan-out |
+| `src/components/workspace/DealScopedLanding.tsx` | **new** — honest landing + redirect for deal-scoped workspaces |
+| `src/components/compliance/CreateCaseForm.tsx` | **new** — extracted from `CasesPage`, unchanged behaviour |
+| `src/components/manager/ConversionQueue.tsx` | **new** — won deals awaiting project conversion |
+| `src/components/manager/ManagerPipelinePage.tsx` | **new** — queue / board tabs |
+| `src/components/sales/DealCardView.tsx` | readiness strip, coloured edge, blocker line |
+| `src/components/sales/SalesBoard.tsx` | readiness provider, terminal-column gating, locked header |
+| `src/components/sales/DealHandoffPanel.tsx` | now calls `evaluateReadiness` |
+| `src/components/readiness/DealReadinessView.tsx` | now calls `evaluateReadiness`; lanes rendered from `READINESS_LANES` |
+| `src/components/compliance/CasesPage.tsx` | replaced by landing + redirect; re-exports `CreateCaseForm` |
+| `src/components/legal/AgreementsPage.tsx` | replaced by landing + redirect |
+| `src/app/manager/pipeline/page.tsx` | renders `ManagerPipelinePage` |
+
+**⚠ Validation status: NOT RUN.** The Linux workspace on the authoring machine
+failed to start, so `npm run typecheck`, `npm run lint`, `npm test` and
+`npm run build` could not be executed against these changes. Every claim above
+is from reading the code and the contract, not from a passing run. **Run
+`npm run typecheck && npm run lint && npm test && npm run build` before
+committing**, and record the result in section 13. The pre-existing suite
+(21 tests) touches `salesAdapter` and `SalesBoard` chrome; `SalesBoard.test.tsx`
+stubs `@kanban/library`, so the readiness provider mounts with no cards and
+issues no requests.
+
+**Backend gaps this pass records, none of them resolved here**
+
+1. `GET /deals/{dealId}/readiness`, or a `readiness` field on `SalesCard` —
+   removes the 3N fan-out.
+2. Cross-deal NCNDA and KYC reads, or a deal-enumeration scope for the legal and
+   compliance roles — the only thing that gives those workspaces a real queue.
+3. Deal, organization, contact and owner lookup endpoints — still the reason a
+   bookmarked deal id must be pasted by hand anywhere.
+
+### 2026-08-18 — Legal workspace: CR-004 queue contract and the UI built on it
+
+Two repositories, but **no backend behaviour changed and no existing contract
+file was touched**. What landed is a proposal plus the frontend that runs on it.
+
+**The problem.** NCNDA is readable only in deal scope, and the `legal` role
+cannot enumerate deals (`resolveKanbanScope` fails closed → 403 on the sales
+board). A legal reviewer signing in has no route from "I am here" to "here is my
+work". Every existing NCNDA operation requires an identifier the caller must
+already have been given.
+
+Second, quieter problem: `PATCH /deals/{dealId}/ncnda` is the only way to change
+status and it is a full upsert. Recording "this was sent today" means resending
+`counterpartyOrganizationId`, `ownerId` and `status`, so a client bug in that
+payload can silently reassign the counterparty of a live agreement. The backend
+enforces no state machine at all (NCNDA handoff § 7.3), leaving UI code as the
+only thing preventing `active → drafting`.
+
+**CR-004 — `PandaCloudBackend/docs/collaboration/CR-004-NCNDA-LEGAL-QUEUE.md`.**
+Three proposed operations:
+
+| Operation | Purpose |
+|---|---|
+| `GET /api/v1/ncnda` | Cross-deal queue: status, bucket, owner, counterparty, expiry filters; cursor pagination; default sort `stalest` |
+| `GET /api/v1/ncnda/summary` | Counters for the chips and a nav badge, without paging the collection |
+| `POST /api/v1/ncnda/{agreementId}/transitions` | One controlled lifecycle move, against a backend-owned state machine |
+
+The design decision that matters most: each agreement carries
+**`allowedTransitions`**, computed by the backend for its current status. The
+frontend renders one affordance per entry and encodes no transition table. If
+the owners change the graph, add a guard, or make `expired` terminal, no
+frontend file changes.
+
+Queue rows also carry `dealTitle`, `counterpartyName`, `ownerName` (resolved
+server-side — the UI must never print an id), `statusChangedAt`, `daysInStatus`
+and `hasCurrentDocument`. `daysInStatus` is the column a legal queue is
+actually for; sorting by `updatedAt` produces a changelog, not a queue.
+
+⚠ **`statusChangedAt` needs a new optional field and a backfill.** Rows written
+before CR-004 report `daysInStatus: null` and the UI renders an em dash rather
+than `0`, which would read as a real measurement. Same expand/backfill/contract
+pattern as `organizations.normalizedName`. **Do not substitute `updatedAt`** —
+it moves on any edit, so it would under-report exactly the oldest stalls.
+
+⚠ **Three decisions the owners must make, listed in the CR:** whether display
+names are resolved on the queue only or on every NCNDA response; whether 422
+`TRANSITION_NOT_ALLOWED` is acceptable given workflow § 7.2 does not list it;
+and whether `expired` reopens as `drafting` or is terminal.
+
+⚠ **One proposed change is breaking and is isolated in CR-004 § 6:** requiring a
+current `countersigned` document before an agreement may go `active`. The
+recommendation there is *not* to enforce it yet, but to expose the gap so the
+queue can show how many existing agreements would have failed.
+
+⚠ **Read scope is deliberately narrower than the existing NCNDA matrix.** Every
+staff role may read `GET /deals/{dealId}/ncnda` today — but only after obtaining
+a `dealId`, and `sales` can only obtain ids for deals it owns. An unscoped
+cross-deal list would hand every staff role an enumeration of every counterparty
+under confidential discussion. Aggregation is not the same privilege as
+per-record read. The unscoped queue is legal/manager/admin; supplying `dealId`
+reduces it to the existing operation and keeps the wider matrix.
+
+**Why the draft is not in `openapi.yaml`.** An agent may draft, lint, bundle and
+diff a contract; it may not add an endpoint or approve one (workflow § 8, § 15).
+The fragment lives in `api-contracts/proposals/CR-004/`, `$ref`s the real
+`components.yaml`, and is referenced from nothing. Linting and diffing the
+current contract does not see it. Merging is the BE owner's action after
+approval — `git mv` plus six lines, spelled out in that directory's README,
+including the ⚠ that `/api/v1/ncnda/summary` needs a literal App Router segment
+or it will be matched as an `{agreementId}`.
+
+**Frontend, shipped and working on the mock adapter.**
+
+| Path | Role |
+|---|---|
+| `src/models/legalQueue.ts` | **new** — wire types for the three proposed operations |
+| `src/services/legalQueue.ts` | **new** — port + HTTP adapter + mock adapter |
+| `src/components/legal/LegalQueuePage.tsx` | **new** — the queue |
+| `src/components/legal/LifecycleActions.tsx` | **new** — buttons rendered from `allowedTransitions` |
+| `src/components/legal/AgreementsPage.tsx` | queue, falling back to the landing on 404 |
+| `src/services/endpoints.ts` | three paths added, flagged as proposed |
+
+⚠ **The fallback is what makes this shippable today.** `GET /ncnda` answers 404
+on the HTTP adapter because no route serves it. `isQueueNotDeployed()` treats
+404/405/501 as "not deployed" and renders the existing honest landing page
+instead of an error the user can do nothing about. No feature flag, no second
+release: the day the backend deploys CR-004, the same build shows the queue.
+
+**Why `legalQueue` is not in `ApiClient`.** `services/contracts.ts` is the file
+the team reads to learn what the backend can do. Adding three unimplemented
+operations to it would make that file lie. Fold it in and delete
+`services/legalQueue.ts` once CR-004 is released.
+
+The transition state machine appears once in the frontend tree, inside the
+**mock adapter** — which is a local stand-in for the server, not a client, and
+has to answer the same question the server will. No component, controller or
+view reads it; they read `item.allowedTransitions`.
+
+**⚠ Validation status: NOT RUN.** The Linux workspace on the authoring machine
+still fails to start, so `npm run typecheck`, `npm run lint`, `npm test`,
+`npm run build` and `npm run openapi:lint` were not executed. Run them before
+committing and record the result in section 13. `openapi:lint` should be
+unaffected — the fragment is referenced from nothing.
+
+**Still blocking the Legal workspace, unchanged by this pass**
+
+1. Organization lookup — `counterpartyOrganizationId` is still typed by hand on
+   create. The queue surfaces the consequence but cannot fix it.
+2. Document upload — attach links an already-registered document; the
+   browser-facing upload-session/finalize flow has no frontend surface.
+3. E-signature — `signedAt` / `countersignedAt` stay manual, outside MVP.
+
+#### ⚠ Correction to the entry above — the 404 fallback did not fire
+
+Found on first run at `localhost:3000/legal/agreements`: instead of the landing
+page, the queue showed **"Could not reach the server."**
+
+The fallback was written as `error.status === 404`, which is only correct
+same-origin. Across origins a missing route fails earlier and differently:
+
+1. `GET /api/v1/ncnda` matches no App Router segment, so Next.js serves its own
+   404 page.
+2. That page never runs `src/http/cors.ts` — CORS headers are added by the route
+   handlers, and there is no handler.
+3. The browser blocks the response for want of `Access-Control-Allow-Origin`,
+   and `fetch` rejects with a TypeError before any JavaScript sees the status.
+4. `services/http.ts` maps that to `NETWORK_ERROR` with **no** `status`.
+
+So at the point of failure, "this endpoint does not exist yet" is
+indistinguishable from "the server is unreachable". Guessing either way is
+wrong: treating every network error as *not deployed* would hide a real outage
+behind a tidy landing page, and treating it as an outage shows an error the user
+can do nothing about.
+
+`isQueueNotDeployed` is replaced by `async isQueueUnavailable`, which resolves
+the ambiguity by asking a route that definitely exists. If `/auth/me` produces
+any HTTP response at all — **including a 401** — the gateway is up and the only
+explanation left is that CR-004 has not shipped. If that fails at the transport
+level too, the backend really is down and the error belongs on screen. One extra
+request, only on failure, only once per load.
+
+Changed: `src/services/legalQueue.ts`, `src/components/legal/LegalQueuePage.tsx`.
+
+**Backend recommendation, not implemented here.** A gateway-level
+`middleware.ts` that attaches the CORS headers to *every* `/api/v1/*` response,
+including 404s, would let the browser surface the real status and make this
+probe unnecessary. It would also fix the same class of confusion for every
+future unimplemented route, not just this one. That is a backend behaviour
+change and needs the BE owner.
+
+### 2026-08-18 — Frontend checklist completion pass
+
+Audited the owner checklist in `docs/FRONTEND_CHECKLIST_AUDIT.md`. Frontend typecheck and lint are clean, Technical DD is wired to the HTTP gateway, raw identity inputs are removed from Deal Readiness, and secure document transfer now implements upload-session, signed storage PUT and finalize through the API abstraction. KYC/NCNDA document screens use the shared upload UI and wait for backend malware status before attachment.
+
+Added six adapter contract tests covering Sales overview/reports, KYC, NCNDA, DD, Manager project conversion and document transfer. All six assertions pass. Vitest still reports an environment EPERM after execution when writing `node_modules/.vite/vitest/results.json`; this does not change the assertion results but prevents claiming a fully clean test command. Real Clerk/storage E2E, OpenAPI freeze, lifecycle policy, report formulas, global staff queues and Quotes scope remain external blockers documented in the audit.
+# 2026-08-18 — Sales Deal change request workflow
+
+Sales can no longer be expected to execute `Won` or card removal directly. The frontend now exposes request actions in Deal detail, while Manager and Admin receive a real approval queue at `/manager/approvals` and `/admin/approvals`.
+
+The new frontend service is `api.dealRequests`, backed by `POST|GET /deals/{dealId}/change-requests`, `GET /manager/deal-change-requests`, and `POST /manager/deal-change-requests/{requestId}/decision`. Every write uses optimistic concurrency; creation also uses an idempotency key. Frontend identity/role/ownership fields are never sent.
+
+Removal means backend soft archive, not hard delete. Pending requests and recent decisions are visible on Sales Deal detail. Manager/Admin sees the rationale, requester, owner, stage, current revision, Deal Readiness link, and approve/reject actions. Rejection requires a comment; stale requests cannot be approved.
+
+Detailed mapping: `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md`. Backend handoff: `PandaCloudBackend/docs/collaboration/DEAL_CHANGE_REQUESTS_API_HANDOFF.md`.
+
+Validation: frontend typecheck PASS, lint PASS, tests 29/29 PASS, build PASS. Backend typecheck PASS, lint PASS with 8 pre-existing warnings, tests 207/207 PASS, build PASS. OpenAPI is valid with 2 pre-existing Sales card schema warnings. The Convex schema/functions still need the normal deployment step (`npx convex dev` for development or the approved production deployment workflow) before the new routes can operate against a deployment.
