@@ -15,7 +15,6 @@ export * from "./platform";
 export * from "./submission";
 
 export * from "./salesWorkspace";
-export * from "./lookups";
 export * from "./manager";
 export * from "./dealChangeRequests";
 export * from "./admin";

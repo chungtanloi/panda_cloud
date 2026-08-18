@@ -82,7 +82,6 @@ import type {
   SalesCardUpdateRequest,
   SalesCardUpdateResponse,
   SalesColumnListResponse, SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
-  LookupPage, DealLookupItem, OrganizationLookupItem, ContactLookupItem, OwnerLookupItem, DealLookupQuery, LookupQuery, ContactLookupQuery,
 } from "@/models";
 import { normalizeMembershipRole } from "@/models";
 import type { ApiClient } from "../contracts";
@@ -265,17 +264,6 @@ export const httpApi: ApiClient = {
       http.get<DealChangeRequestPage>(endpoints.dealRequests.queue, { query }),
     decide: (requestId: string, body: DealChangeRequestDecision) =>
       http.post<DealChangeRequest>(endpoints.dealRequests.decision(requestId), body),
-  },
-
-  lookup: {
-    deals: (query: DealLookupQuery) =>
-      http.get<LookupPage<DealLookupItem>>(endpoints.lookups.deals, { query: { ...query } }),
-    organizations: (query: LookupQuery) =>
-      http.get<LookupPage<OrganizationLookupItem>>(endpoints.lookups.organizations, { query: { ...query } }),
-    contacts: (query: ContactLookupQuery) =>
-      http.get<LookupPage<ContactLookupItem>>(endpoints.lookups.contacts, { query: { ...query } }),
-    owners: (query: LookupQuery) =>
-      http.get<LookupPage<OwnerLookupItem>>(endpoints.lookups.owners, { query: { ...query } }),
   },
 
   salesWorkspace: {
@@ -515,4 +503,3 @@ function normalizeAuthProfile(profile: AuthProfile): AuthProfile {
   }
   return { ...profile, authorization: { ...profile.authorization, memberships } };
 }
-

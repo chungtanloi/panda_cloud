@@ -10,7 +10,7 @@ function ok(body: unknown) {
 }
 
 describe("authenticated Sales HTTP client", () => {
-  afterEach(() => { vi.unstubAllGlobals(); });
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.resetModules(); });
 
   it("attaches the current Clerk session token for a Sales request without persisting it", async () => {
     const unregister = sessionBridge.registerTokenProvider(vi.fn().mockResolvedValue("clerk-session-jwt"));
@@ -38,13 +38,23 @@ describe("authenticated Sales HTTP client", () => {
   });
 
   it("forwards bounded lookup queries through the typed lookup operation", async () => {
-    const unregister = sessionBridge.registerTokenProvider(vi.fn().mockResolvedValue("clerk-session-jwt"));
+    // `lookup` selects an adapter when its module loads. Re-import it after
+    // choosing HTTP so this verifies the shared lookup service's real gateway
+    // path rather than its local visual-development fixture.
+    vi.stubEnv("NEXT_PUBLIC_API_ADAPTER", "http");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://gateway.example/api/v1");
+    vi.resetModules();
+    const { lookup } = await import("@/services/lookup");
+    const { sessionBridge: httpSessionBridge } = await import("@/services/session");
+    const unregister = httpSessionBridge.registerTokenProvider(vi.fn().mockResolvedValue("clerk-session-jwt"));
     const fetchMock = vi.fn().mockResolvedValue(ok({ items: [], nextCursor: null, isDone: true }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await httpApi.lookup.deals({ q: "Panda", vertical: "gpu", limit: 10 });
+    await lookup.deals({ q: "Panda", vertical: "gpu", limit: 10 });
 
-    expect(fetchMock.mock.calls[0]?.[0]).toContain("/lookups/deals?q=Panda&vertical=gpu&limit=10");
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(url.pathname).toBe("/api/v1/lookups/deals");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({ q: "Panda", vertical: "gpu", limit: "10" });
     unregister();
   });
 });

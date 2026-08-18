@@ -10,9 +10,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/services/api", () => ({
-  api: { salesWorkspace: mocks.salesWorkspace, lookup: mocks.lookup },
+  api: { salesWorkspace: mocks.salesWorkspace },
   normalizeError: (cause: unknown) => cause,
 }));
+
+vi.mock("@/services/lookup", () => ({ lookup: mocks.lookup }));
 
 import { SalesCustomersPage } from "./SalesCustomersPage";
 import { SalesCustomerDetail } from "./SalesCustomerDetail";

@@ -5,8 +5,9 @@ import { Input, Select } from "@/components/ui/Field";
 import { PRIORITY_LABELS, VERTICAL_LABELS } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
 import { hasRole } from "@/models/auth";
-import type { ContactLookupItem, OrganizationLookupItem, OwnerLookupItem } from "@/models/lookups";
+import type { ContactLookupItem, OrganizationLookupItem, OwnerLookupItem } from "@/models/lookup";
 import { api, normalizeError } from "@/services/api";
+import { lookup } from "@/services/lookup";
 import type {
   DealPriority,
   DealVertical,
@@ -145,9 +146,9 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const [organizationMatches, setOrganizationMatches] = useState<OrganizationLookupItem[]>([]);
-  const [contactMatches, setContactMatches] = useState<ContactLookupItem[]>([]);
-  const [ownerMatches, setOwnerMatches] = useState<OwnerLookupItem[]>([]);
+  const [organizationMatches, setOrganizationMatches] = useState<readonly OrganizationLookupItem[]>([]);
+  const [contactMatches, setContactMatches] = useState<readonly ContactLookupItem[]>([]);
+  const [ownerMatches, setOwnerMatches] = useState<readonly OwnerLookupItem[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<OrganizationLookupItem | null>(null);
   const [selectedContact, setSelectedContact] = useState<ContactLookupItem | null>(null);
   const [ownerQuery, setOwnerQuery] = useState("");
@@ -168,7 +169,7 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!canSelectExisting || form.organizationName.trim().length < 2 || selectedOrganization) { setOrganizationMatches([]); return; }
     let active = true;
-    api.lookup.organizations({ q: form.organizationName.trim(), limit: 8 })
+    lookup.organizations({ q: form.organizationName.trim(), limit: 8 })
       .then((page) => active && setOrganizationMatches(page.items))
       .catch(() => active && setOrganizationMatches([]));
     return () => { active = false; };
@@ -177,7 +178,7 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!selectedOrganization || form.contactName.trim().length < 2 || selectedContact) { setContactMatches([]); return; }
     let active = true;
-    api.lookup.contacts({ organizationId: selectedOrganization.organizationId, q: form.contactName.trim(), limit: 8 })
+    lookup.contacts({ organizationId: selectedOrganization.organizationId, q: form.contactName.trim(), limit: 8 })
       .then((page) => active && setContactMatches(page.items))
       .catch(() => active && setContactMatches([]));
     return () => { active = false; };
@@ -186,7 +187,7 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
   useEffect(() => {
     if (!canSelectExisting || ownerQuery.trim().length < 2 || selectedOwner) { setOwnerMatches([]); return; }
     let active = true;
-    api.lookup.owners({ q: ownerQuery.trim(), limit: 8 })
+    lookup.owners({ q: ownerQuery.trim(), limit: 8 })
       .then((page) => active && setOwnerMatches(page.items))
       .catch(() => active && setOwnerMatches([]));
     return () => { active = false; };

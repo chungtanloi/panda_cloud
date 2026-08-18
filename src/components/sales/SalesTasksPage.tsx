@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import type { NormalizedError } from "@/models/common";
 import type { ActivitySummary } from "@/models/salesWorkspace";
-import type { DealLookupItem } from "@/models/lookups";
+import type { DealLookupItem } from "@/models/lookup";
 import { api, normalizeError } from "@/services/api";
+import { lookup } from "@/services/lookup";
 
 function dueLabel(value: string | null): string { if (!value) return "No follow-up date"; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString(); }
 
@@ -18,7 +19,7 @@ export function SalesTasksPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState<NormalizedError | null>(null);
   const [dealQuery, setDealQuery] = useState("");
-  const [dealMatches, setDealMatches] = useState<DealLookupItem[]>([]);
+  const [dealMatches, setDealMatches] = useState<readonly DealLookupItem[]>([]);
   const [selectedDeal, setSelectedDeal] = useState<DealLookupItem | null>(null);
 
   const load = useCallback(async (nextCursor?: string, append = false) => {
@@ -34,7 +35,7 @@ export function SalesTasksPage() {
   useEffect(() => {
     if (dealQuery.trim().length < 2) { setDealMatches([]); return; }
     let active = true;
-    api.lookup.deals({ q: dealQuery.trim(), limit: 10 })
+    lookup.deals({ q: dealQuery.trim(), limit: 10 })
       .then((page) => active && setDealMatches(page.items))
       .catch(() => active && setDealMatches([]));
     return () => { active = false; };

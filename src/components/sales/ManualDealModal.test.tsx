@@ -23,9 +23,12 @@ vi.mock("@/controllers/AuthContext", () => ({
 vi.mock("@/services/api", () => ({
   api: {
     sales: { createCard: mocks.createCard },
-    lookup: { organizations: mocks.organizations, contacts: mocks.contacts, owners: mocks.owners },
   },
   normalizeError: (cause: unknown) => cause,
+}));
+
+vi.mock("@/services/lookup", () => ({
+  lookup: { organizations: mocks.organizations, contacts: mocks.contacts, owners: mocks.owners },
 }));
 
 import { ManualDealModal } from "./ManualDealModal";

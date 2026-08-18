@@ -5,11 +5,11 @@
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
 - `branch_at_refresh`: `feat/integration-candidate-v1-sales`
-- `head_at_refresh`: `8115eb4` (diagnostic only)
-- `source_file_count`: `21`
-- `source_fingerprint`: `8da1a73adb9b0e8e5081cfef3523c502d818315e09f99a4012ffa4b0b6917d51`
+- `head_at_refresh`: `248e3c3` (diagnostic only)
+- `source_file_count`: `23`
+- `source_fingerprint`: `287b1258b5710be65a8b8987fa4b14358e8969914b3789434c957fe440c6f6b1`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-18T09:42:00Z`
+- `last_context_refresh_at_utc`: `2026-08-18T10:00:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -44,6 +44,14 @@ authority.
 > direct Won/Lost drag, while Manager/Admin retain that UI path; the proposed
 > Deal Change Requests and NCNDA CR-004 contracts remain unconsumed. The suite
 > records 36 passing tests.
+
+> 2026-08-18 incremental refresh: the Sales candidate branch was rebased onto
+> frontend main `3ebe7ae`. The changed Sales handoff and the three new
+> main-line conformance/policy documents were read and incorporated. Main-line
+> Deal Readiness, transition preflight/review, Deal Change Requests and
+> approvals, shared lookups, documents, and Legal/Compliance work were
+> retained; Sales screens use the shared lookup service rather than a parallel
+> port. The merged suite records 93 passing tests.
 
 ## Product purpose
 
@@ -339,18 +347,21 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
 | `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
 | `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
+| `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md` | `5611f634eac70a578a8a32c722f35c891e32683666908feffd6085617b493188` | 2645 | `2026-08-18T10:00:00Z` |
 | `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `abb6b6de198e17f0ddcda33de4907d8ace9c234a83a9245912a8002f04a72647` | 2793 | `2026-08-18T09:12:36Z` |
 | `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-18T02:45:00Z` |
 | `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-18T02:45:00Z` |
+| `docs/FRONTEND_CHECKLIST_AUDIT.md` | `fceb7794faf53722b220edff18557f0206c85bc4b2894faf787aee29df3ded1f` | 4063 | `2026-08-18T10:00:00Z` |
 | `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-18T02:45:00Z` |
 | `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-18T02:45:00Z` |
 | `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-18T02:45:00Z` |
 | `docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md` | `6d0f275b40f523aa58a497dea33f4a96835bc02f68f410fd7be743c85bb6e8c4` | 3422 | `2026-08-18T02:45:00Z` |
 | `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-18T02:45:00Z` |
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |
+| `docs/PIPELINE_TRANSITION_POLICY_HANDOFF.md` | `aec86874e4488e1b79e27dd9449f9505cb5f19d3b633bf78b19f49115f89807d` | 3357 | `2026-08-18T10:00:00Z` |
 | `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-18T02:45:00Z` |
 | `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-18T02:45:00Z` |
-| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `be934619d16a81ebaee9b419dc8bedaf9fc8a2b08a7eab5ceb9fee57f927daab` | 6466 | `2026-08-18T09:42:00Z` |
+| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `2b7c3116319d5aa341e0ca731e0c12eeafc315ac9f095cbce3ab91144069a645` | 7247 | `2026-08-18T10:00:00Z` |
 | `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `9e538b7f3ba5d7cee60bad4e2ef585cd5cf3f61636b4ad65b2883e233a7d1a5d` | 1666 | `2026-08-18T09:12:36Z` |
 | `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-18T02:45:00Z` |
 | `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-18T02:45:00Z` |

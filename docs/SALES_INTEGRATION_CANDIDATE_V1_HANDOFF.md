@@ -7,13 +7,23 @@ This frontend implementation consumes the backend's Integration Candidate v1
 through the public `/api/v1` gateway only. The candidate is authoritative for
 this integration work, but is not an owner-approved released contract tag.
 
+## Rebased onto frontend main
+
+This branch was rebased onto frontend main `3ebe7ae` on 2026-08-18. The
+teammate-owned readiness evaluation, pipeline transition preflight/review,
+Deal Change Request and approval flows, shared lookup UX, secure-document work,
+and Legal/Compliance navigation remain intact. Sales Integration Candidate v1
+operations below remain live through the same authenticated HTTP client; no
+screen regressed to a runtime mock fallback and backend authorization remains
+the source of truth.
+
 ## Sales route status
 
 | Frontend route | Status | Backend operations |
 |---|---|---|
 | `/sales` | LIVE_BACKEND | `GET /sales/overview` |
 | `/sales/leads`, `/sales/leads/{id}` | LIVE_BACKEND | list/detail/qualify Sales lead operations |
-| `/sales/pipeline` | LIVE_BACKEND | columns, cursor-paginated cards, detail, PATCH, and move; Won/Lost targets are Manager/Admin-only in the UI and gateway |
+| `/sales/pipeline` | LIVE_BACKEND | columns, cursor-paginated cards, detail, PATCH, transition preflight/review, and move; Won/Lost are approval-request-only targets |
 | `/sales/tasks` | LIVE_BACKEND | cursor-paginated Sales tasks and task PATCH; deal lookup selector |
 | `/sales/customers`, `/sales/customers/{id}` | LIVE_BACKEND | cursor-paginated customer 360 list/detail |
 | `/sales/reports` | LIVE_BACKEND / policy caveat | conversion, activity, and forecast reports |
@@ -39,7 +49,7 @@ renders provider stacks.
 
 ## Selectors and identifiers
 
-Typed `lookup` client methods are available for all frozen operations:
+The shared typed `services/lookup.ts` client supports all frozen operations:
 
 - `GET /lookups/deals`
 - `GET /lookups/organizations`
@@ -81,15 +91,17 @@ Lead ownership or assignment UI.
   policy.
 - No direct browser-to-Convex request, no password endpoint, and no custom
   PandaCloud token lifecycle were added.
-- **Deal Change Requests:** not consumed. The cited post-freeze candidate must
-  be owner-approved and released before this branch adds a request/decision UX.
-  The existing frozen contract already reserves Won/Lost moves to Manager/Admin,
-  so Sales is now prevented from starting those direct drag transitions.
+- **Deal Change Requests:** the teammate-owned forward integration from main is
+  preserved. Sales submits sensitive Won/Lost/archive requests; Manager/Admin
+  decide them through the existing approval queue. This rebase did not alter
+  those request/decision contracts.
 - **NCNDA CR-004 draft:** ignored until approved and frozen.
 
 ## Automated evidence
 
-`npm test` currently passes **36 tests in 7 files**.
+`npm test` currently passes **93 tests in 12 files** after the main-line
+readiness, transition-policy, lookup, Deal Change Request, and Legal queue
+coverage was retained.
 
 - `src/services/http-impl/authenticatedSalesClient.test.ts`: Clerk bearer
   attachment, no-session behavior, and typed lookup query forwarding.
@@ -104,6 +116,9 @@ Lead ownership or assignment UI.
 - `src/components/sales/ManualDealModal.test.tsx`: Manager/Admin authorized
   Organization, Contact, and Owner selector choices are forwarded only as
   opaque identifiers on manual card creation.
+- Main-line suites retain transition-policy/preflight, readiness, shared lookup,
+  Deal Change Request, Manager approval, secure-workspace contract, and Legal
+  queue coverage.
 
 ## Real Clerk E2E status
 
