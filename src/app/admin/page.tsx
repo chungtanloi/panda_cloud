@@ -1,2 +1,1 @@
-import { DashboardView } from "@/components/workspace/DashboardView";
-export default function Page() { return <DashboardView role="ADMIN" />; }
+import { AdminApiView } from "@/components/workspace/AdminApiView"; export default function Page() { return <AdminApiView kind="overview" />; }

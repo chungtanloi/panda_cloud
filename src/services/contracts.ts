@@ -69,6 +69,7 @@ import type {
   SubmissionConvertRequest,
   SubmissionConvertResponse,
   Submission,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
 } from "@/models";
 
@@ -168,6 +169,26 @@ export interface SubmissionService {
 
 export interface WorkspaceService {
   getResource(kind: WorkspaceResourceKind): Promise<ResourceTable>;
+}
+
+export interface AdminService {
+  overview(): Promise<AdminOverview>;
+  users(query?: Record<string, string | number | undefined>): Promise<AdminUserPage>;
+  user(userId: string): Promise<Record<string, unknown>>;
+  roles(): Promise<AdminRoles>;
+  health(): Promise<AdminHealth>;
+  auditLogs(query?: Record<string, string | number | undefined>): Promise<AdminAuditPage>;
+  auditLog(auditId: string): Promise<Record<string, unknown>>;
+}
+
+export interface ManagerService {
+  overview(): Promise<ManagerOverview>;
+  team(query?: { from?: string; to?: string }): Promise<ManagerTeamResponse>;
+  teamMember(userId: string, query?: { from?: string; to?: string }): Promise<ManagerTeamMember | null>;
+  projects(query?: Record<string, string | number | undefined>): Promise<ManagerProjectListResponse>;
+  project(projectId: string): Promise<Record<string, unknown>>;
+  projectReport(query?: { from?: string; to?: string }): Promise<ManagerProjectReport>;
+  convertDealToProject(dealId: string, body: import('@/models/manager').ManagerProjectConversionRequest): Promise<import('@/models/manager').ManagerProjectConversionResponse>;
 }
 
 /**
@@ -307,5 +328,7 @@ export interface ApiClient {
   legal: LegalService;
   compliance: ComplianceService;
   workspace: WorkspaceService;
+  manager: ManagerService;
+  admin: AdminService;
 }
 

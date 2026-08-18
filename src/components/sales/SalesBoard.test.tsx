@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 // The Kanban component needs real dnd-kit/IndexedDB — replace it with a stub
 // so the board's chrome (filters, absence of add/delete) can be asserted.
@@ -12,6 +12,8 @@ vi.mock("@/controllers/AuthContext", () => ({
 }));
 
 import { SalesBoard } from "./SalesBoard";
+
+afterEach(cleanup);
 
 describe("SalesBoard chrome", () => {
   it("renders the vertical filters", () => {
@@ -26,10 +28,10 @@ describe("SalesBoard chrome", () => {
     }
   });
 
-  it("exposes no add/delete affordance (the contract has no create/delete)", () => {
+  it("exposes manual create but no delete affordance", () => {
     render(<SalesBoard />);
 
-    expect(screen.queryByRole("button", { name: /add card/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /add card/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /new deal/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /delete/i })).toBeNull();
   });

@@ -4,14 +4,21 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import type { WorkspaceId } from "@/config/access";
-import { hasPermission, navigationByWorkspace } from "@/config/access";
+import { hasPermission, navigationByWorkspace, workspaceForRole } from "@/config/access";
 import { primaryRole } from "@/models/auth";
 import { useAuth } from "@/controllers/AuthContext";
 import { cn } from "@/lib/cn";
 import { RoleGuard } from "./RoleGuard";
+import { StaffGuard } from "./StaffGuard";
 
 export function WorkspaceShell({ workspace, children }: { workspace: WorkspaceId; children: React.ReactNode }) {
   return <RoleGuard workspace={workspace}><Shell workspace={workspace}>{children}</Shell></RoleGuard>;
+}
+
+export function StaffWorkspaceShell({ children }: { children: React.ReactNode }) {
+  const { profile } = useAuth();
+  const workspace = workspaceForRole(primaryRole(profile) ?? "sales") ?? "sales";
+  return <StaffGuard><Shell workspace={workspace}>{children}</Shell></StaffGuard>;
 }
 
 function Shell({ workspace, children }: { workspace: WorkspaceId; children: React.ReactNode }) {

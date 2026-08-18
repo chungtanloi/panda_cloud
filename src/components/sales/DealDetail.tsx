@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PRIORITY_LABELS, STATUS_LABELS, VERTICAL_LABELS, VERTICAL_STYLES } from "@/config/sales";
 import { contactChannels, type SalesCard, type SalesCardUpdateRequest } from "@/models/sales";
 import { formatMinorUnits } from "@/models/common";
 import { useAuth } from "@/controllers/AuthContext";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
+import { DealHandoffPanel } from "./DealHandoffPanel";
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -131,6 +133,8 @@ export function DealDetail({
           {card.title}
         </h2>
       </header>
+
+      <DealHandoffPanel card={card} onRefresh={onSaved} />
 
       {/* Deal value — read-only */}
       <div className="rounded-panel border border-accent/30 bg-accent-soft p-[14px]">

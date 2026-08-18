@@ -1,2 +1,1 @@
-import { DashboardView } from "@/components/workspace/DashboardView";
-export default function Page() { return <DashboardView role="MANAGER" />; }
+import { ManagerOverviewView } from "@/components/workspace/ManagerViews"; export default function Page() { return <ManagerOverviewView />; }

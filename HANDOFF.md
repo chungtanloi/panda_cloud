@@ -1258,3 +1258,39 @@ Validation:
 
 Replaced Sales placeholder/submission screens with backend-owned CRM screens and adapters. Added src/models/salesWorkspace.ts, SalesWorkspaceService, HTTP/mock implementations, and live-backed Overview, Leads, Lead Detail/Qualification, Tasks, Customers and Reports pages. Endpoint mappings and open backend gaps are recorded in docs/SALES_WORKSPACE_API_CONFORMANCE.md. No backend files were modified. 
 
+
+### 2026-08-18 Deal Readiness frontend redesign
+
+Implemented a staff-only, cross-workspace Deal Readiness flow that composes the existing deal-scoped NCNDA and KYC APIs. NCNDA and KYC run as parallel lanes with presentation-only Ready/Needs Attention/Blocked states, next actions and a combined timeline. Sales Deal Detail and Sales/Legal/Compliance navigation now provide entry points.
+
+NCNDA creation is drafting-first and document-oriented; lifecycle actions, immutable versions, OCC and activation guidance remain aligned to the backend contract. KYC is subject-first and evidence-oriented with canonical document categories, guided review decisions, approval/rejection validation and OCC conflict handling.
+
+No backend files, routes, schema or authorization rules were changed. See `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` for contract mapping and retained backend gaps.
+
+Validation for the Deal Readiness pass:
+
+- npm run typecheck: PASS.
+- npm run lint: PASS, zero warnings/errors.
+- npm test: PASS, 21/21 tests.
+- npm run build: PASS, 74 routes generated.
+
+### 2026-08-18 — Manager workspace backend alignment
+
+The backend now exposes the Manager Phase 1 read APIs. The frontend now consumes them through `ApiClient.manager` rather than hard-coded dashboard values:
+
+- `GET /api/v1/manager/overview`
+- `GET /api/v1/manager/team`
+- `GET /api/v1/manager/team/{userId}`
+- `GET /api/v1/manager/projects`
+- `GET /api/v1/manager/projects/{projectId}`
+- `GET /api/v1/manager/reports/projects`
+
+Overview, Team and Reports now render loading, error and empty states from backend responses. Pipeline continues to reuse the Sales Kanban API. Operations and Approvals remain explanatory because the backend handoff marks those data sources blocked/partial; the frontend does not fabricate those records.
+
+### 2026-08-18 — Sales → Manager Deal Handoff
+
+Added the shared `DealHandoffPanel` to Sales deal detail. It loads deal-scoped activities/tasks plus NCNDA, KYC and Due Diligence summaries through the existing service adapters and presents the backend-owned handoff states: Sales Active, Needs Readiness Attention, Ready for Project Conversion and Project Created. Readiness remains a UX summary; no client-side conversion gate was invented.
+
+Added Manager conversion service support for `POST /api/v1/deals/{dealId}/project` with the exact request `{ expectedRevision, idempotencyKey, projectCode, projectName? }`. The idempotency key is generated per submit, stale revisions surface a conflict and trigger refresh, and only Manager/Admin UI roles see the conversion action. Sales cannot convert projects. The Manager Sales Performance page now consumes Sales overview/conversion/activity/forecast reports instead of hard-coded figures.
+
+Backend remains the source of truth for authorization, won status, OCC, idempotency, readiness policy and audit logging. Quotes, approval gates, notifications and project status mutation remain unimplemented/blocked where the backend contract does not provide them.

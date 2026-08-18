@@ -1,1 +1,1 @@
-import { ResourcePage } from "@/components/workspace/ResourcePage"; export default function Page() { return <ResourcePage kind="users" />; }
+import { AdminApiView } from "@/components/workspace/AdminApiView"; export default function Page() { return <AdminApiView kind="users" />; }

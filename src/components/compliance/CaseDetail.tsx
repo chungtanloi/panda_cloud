@@ -12,6 +12,8 @@ import { hasPermission } from "@/config/access";
 import { KYC_RISK_TONES, KYC_STATUS_TONES } from "@/config/lifecycle";
 import {
   KYC_RISK_LABELS,
+  KYC_DOCUMENT_ROLES,
+  KYC_DOCUMENT_ROLE_LABELS,
   KYC_RISK_LEVELS,
   KYC_STATUSES,
   KYC_STATUS_LABELS,
@@ -54,7 +56,7 @@ function toDateInput(iso: string | null): string {
  * written as undefined. So the form loads the current values and sends them all
  * back — omitting one would silently clear it.
  */
-export function CaseDetail({ caseId }: { caseId: string }) {
+export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHref }: { caseId: string; backHref?: string; documentsHref?: string }) {
   const { profile } = useAuth();
   const canManage = hasPermission(profile, "kyc:manage");
 
@@ -104,7 +106,7 @@ export function CaseDetail({ caseId }: { caseId: string }) {
       ...(risk ? { riskLevel: risk } : {}),
       ...(detail.assignedToId ? { assignedTo: detail.assignedToId } : {}),
       ...(reason.trim() ? { rejectionReason: reason.trim() } : {}),
-      ...(detail.submittedAt ? { submittedAt: detail.submittedAt } : {}),
+      ...(detail.submittedAt ? { submittedAt: detail.submittedAt } : status === "submitted" ? { submittedAt: new Date().toISOString() } : {}),
       ...(verifiedOn ? { verifiedAt: new Date(`${verifiedOn}T00:00:00Z`).toISOString() } : {}),
       ...(expiresOn ? { expiresAt: new Date(`${expiresOn}T00:00:00Z`).toISOString() } : {}),
     };
@@ -144,13 +146,13 @@ export function CaseDetail({ caseId }: { caseId: string }) {
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
-          href="/compliance/cases"
+          href={backHref}
           className="text-xs font-bold uppercase tracking-wider text-accent hover:underline"
         >
           ← All cases
         </Link>
         <Link
-          href={`/compliance/cases/${detail.caseId}/documents`}
+          href={documentsHref ?? `/compliance/cases/${detail.caseId}/documents`}
           className="rounded-full border border-line px-4 py-2 text-xs font-bold uppercase tracking-wider text-ink-dim hover:border-accent/40 hover:text-ink"
         >
           Documents
@@ -173,6 +175,11 @@ export function CaseDetail({ caseId }: { caseId: string }) {
         </div>
       ) : null}
 
+      <section className="mb-6 rounded-[24px] border border-line bg-surface p-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Evidence-first workflow</p>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">{["Subject", "Request", "Evidence", "Review", "Decision"].map((label, index) => <div key={label} className="rounded-xl border border-line bg-white/[0.02] p-3"><span className="text-[10px] text-ink-mute">0{index + 1}</span><p className="mt-1 text-xs font-semibold text-ink">{label}</p></div>)}</div>
+      </section>
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="rounded-[24px] border border-line bg-surface p-6">
           <div className="flex items-center justify-between gap-3">
@@ -184,6 +191,12 @@ export function CaseDetail({ caseId }: { caseId: string }) {
           </div>
 
           <form onSubmit={save} className="mt-5 grid gap-4">
+            {canManage ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button type="button" onClick={() => setStatus("pending_documents")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50">Request KYC</button>
+              <button type="button" onClick={() => setStatus("under_review")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50">Start review</button>
+              <button type="button" onClick={() => setStatus("approved")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50">Approve</button>
+              <button type="button" onClick={() => setStatus("rejected")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-red-400/50">Reject</button>
+            </div> : null}
             <Select
               label="Status *"
               value={status}
@@ -288,6 +301,12 @@ export function CaseDetail({ caseId }: { caseId: string }) {
               <Row label="Expires" value={dateTime(detail.expiresAt)} />
               <Row label="Updated" value={dateTime(detail.updatedAt)} />
             </dl>
+          </section>
+
+          <section className="rounded-[24px] border border-line bg-surface p-6">
+            <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-semibold text-ink">Evidence inventory</h2><Link href={documentsHref ?? `/compliance/cases/${detail.caseId}/documents`} className="text-[10px] font-bold uppercase tracking-wider text-accent">Manage</Link></div>
+            <p className="mt-2 text-[11px] leading-4 text-ink-faint">Categories show what is attached; the backend does not define which categories are mandatory.</p>
+            <ul className="mt-4 grid gap-2">{KYC_DOCUMENT_ROLES.map((role) => { const count = detail.documents?.filter((document) => document.documentRole === role).length ?? 0; return <li key={role} className="flex items-center justify-between rounded-xl border border-line-soft px-3 py-2 text-xs"><span className="text-ink-dim">{KYC_DOCUMENT_ROLE_LABELS[role]}</span><StatusPill label={count ? `${count} attached` : "None"} tone={count ? "good" : "neutral"} /></li>; })}</ul>
           </section>
 
           <GapNotice

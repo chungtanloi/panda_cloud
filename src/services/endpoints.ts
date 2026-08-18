@@ -117,4 +117,7 @@ export const endpoints = {
     cardById: (id: string) => `/sales/cards/${id}`,
     moveCard: (id: string) => `/sales/cards/${id}/move`,
   },
+  admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}` },
+  manager: { overview: "/manager/overview", team: "/manager/team", teamMember: (userId: string) => `/manager/team/${userId}`, projects: "/manager/projects", projectById: (projectId: string) => `/manager/projects/${projectId}`, projectReport: "/manager/reports/projects", convertDealToProject: (dealId: string) => `/deals/${dealId}/project` },
 } as const;
+

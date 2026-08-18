@@ -34,6 +34,7 @@ const isProtectedRoute = createRouteMatcher([
   "/legal(.*)",
   "/compliance(.*)",
   "/requests(.*)",
+  "/deal-readiness(.*)",
 ]);
 
 const withClerk = clerkMiddleware(async (auth, request) => {

@@ -14,6 +14,7 @@ import {
   NCNDA_STATUSES,
   NCNDA_STATUS_LABELS,
   requiresEffectiveDate,
+  currentVersion,
   type NcndaAgreementDetail as Detail,
   type NcndaStatus,
 } from "@/models";
@@ -42,7 +43,7 @@ function dateTime(iso: string | null): string {
  * version immutable with at most one current. There is no upload control
  * because no upload operation exists.
  */
-export function AgreementDetail({ agreementId }: { agreementId: string }) {
+export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }: { agreementId: string; backHref?: string }) {
   const { profile } = useAuth();
   const canManage = hasPermission(profile, "ncnda:manage");
 
@@ -146,6 +147,9 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
   if (error) return <ErrorState error={error} onRetry={() => void load()} />;
   if (!detail) return null;
 
+  const currentDocument = currentVersion(detail);
+  const activationDocumentWarning = status === "active" && (!currentDocument || !["signed", "countersigned"].includes(currentDocument.documentRole));
+
   return (
     <WorkspacePage
       eyebrow="Legal / Agreement"
@@ -154,7 +158,7 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
     >
       <div className="mb-6">
         <Link
-          href="/legal/agreements"
+          href={backHref}
           className="text-xs font-bold uppercase tracking-wider text-accent hover:underline"
         >
           ← All agreements
@@ -172,6 +176,13 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
           </div>
 
           <form onSubmit={save} className="mt-5 grid gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {(["sent", "under_review", "signed", "countersigned", "active"] as const).map((next) => (
+                <button key={next} type="button" disabled={!canManage || saving} onClick={() => setStatus(next)} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50 hover:text-ink disabled:opacity-50">
+                  {NCNDA_STATUS_LABELS[next]}
+                </button>
+              ))}
+            </div>
             <Select
               label="Status"
               value={status}
@@ -209,6 +220,10 @@ export function AgreementDetail({ agreementId }: { agreementId: string }) {
                 className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent focus:outline-none disabled:opacity-60"
               />
             </label>
+
+            {activationDocumentWarning ? (
+              <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs leading-5 text-amber-200">A current signed or countersigned document is recommended before activation. The backend currently enforces only the effective date.</p>
+            ) : null}
 
             {writeError ? (
               <p role="alert" className="text-xs leading-5 text-red-400">

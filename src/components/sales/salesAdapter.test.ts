@@ -38,6 +38,7 @@ function makeService(overrides: Partial<SalesService> = {}) {
       if (!card) throw new ApiError({ code: "NOT_FOUND", message: "missing", status: 404 });
       return card;
     }),
+    createCard: vi.fn(async (): Promise<{ dealId: string; revision: number }> => ({ dealId: "deal_new", revision: 1 })),
     updateCard: vi.fn(async (): Promise<{ dealId: string; revision: number }> => ({ dealId: "deal_05", revision: 2 })),
     moveCard: vi.fn(async (): Promise<{ dealId: string; status: "won"; revision: number }> => ({ dealId: "deal_05", status: "won", revision: 2 })),
     ...overrides,

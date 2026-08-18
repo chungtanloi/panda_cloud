@@ -1,0 +1,9 @@
+export type ManagerMoneyBucket = { currency: string; amountMinor: string };
+export type ManagerOverview = { commercial: { dealCounts: Record<string, number>; pipelineValueByCurrency: ManagerMoneyBucket[]; wonDealCount: number }; team: { activeSalesMemberCount: number }; projects: { countsByStatus: Record<string, number>; countsByVertical: Record<string, number>; wonDealsPendingProject: number } };
+export type ManagerTeamMember = { userId: string; fullName: string; email: string; userStatus: string; dealCounts: Record<string, number>; pipelineValue: ManagerMoneyBucket[]; recentActivityCount?: number; lastActivityAt: string | null };
+export type ManagerTeamResponse = { items: ManagerTeamMember[] };
+export type ManagerProjectReport = { countsByStatus: Record<string, number>; countsByVertical: Record<string, number>; startedProjects: number; completedProjects: number; wonDealsPendingProject: number };
+export type ManagerProject = Record<string, unknown> & { projectId: string };
+export type ManagerProjectListResponse = { items: ManagerProject[]; continueCursor?: string | null; isDone?: boolean };
+export type ManagerProjectConversionRequest = { expectedRevision: number; idempotencyKey: string; projectCode: string; projectName?: string };
+export type ManagerProjectConversionResponse = { projectId?: string; dealId?: string; created?: boolean } & Record<string, unknown>;

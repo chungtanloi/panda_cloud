@@ -1206,6 +1206,26 @@ export const mockApi: ApiClient = {
         createdAt: new Date().toISOString(),
       }),
   },
+
+  manager: {
+    overview: async () => ({ commercial: { dealCounts: {}, pipelineValueByCurrency: [], wonDealCount: 0 }, team: { activeSalesMemberCount: 0 }, projects: { countsByStatus: {}, countsByVertical: {}, wonDealsPendingProject: 0 } }),
+    team: async () => ({ items: [] }),
+    teamMember: async () => null,
+    projects: async () => ({ items: [], continueCursor: null, isDone: true }),
+    project: async (projectId: string) => ({ projectId }),
+    projectReport: async () => ({ countsByStatus: {}, countsByVertical: {}, startedProjects: 0, completedProjects: 0, wonDealsPendingProject: 0 }),
+    convertDealToProject: async (dealId: string) => ({ dealId, projectId: "mock-project-" + dealId, created: true }),
+  },
+
+  admin: {
+    overview: async () => ({}),
+    users: async () => ({ items: [], continueCursor: null, isDone: true }),
+    user: async (id: string) => ({ userId: id }),
+    roles: async () => ({ roles: [] }),
+    health: async () => ({ status: 'unknown' }),
+    auditLogs: async () => ({ items: [], continueCursor: null, isDone: true }),
+    auditLog: async (id: string) => ({ auditId: id }),
+  },
 };
 
 

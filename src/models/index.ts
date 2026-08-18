@@ -15,3 +15,5 @@ export * from "./platform";
 export * from "./submission";
 
 export * from "./salesWorkspace";
+export * from "./manager";
+export * from "./admin";

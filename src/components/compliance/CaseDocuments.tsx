@@ -10,7 +10,7 @@ import { KYC_DOCUMENT_ROLE_LABELS, KYC_DOCUMENT_ROLES, type KycDocument, type Ky
 import type { NormalizedError } from "@/models/common";
 import { api, normalizeError } from "@/services/api";
 
-export function CaseDocuments({ caseId }: { caseId: string }) {
+export function CaseDocuments({ caseId, backHref }: { caseId: string; backHref?: string }) {
   const { profile } = useAuth();
   const canManage = hasPermission(profile, "kyc:manage");
   const [documents, setDocuments] = useState<readonly KycDocument[] | null>(null);
@@ -53,7 +53,7 @@ export function CaseDocuments({ caseId }: { caseId: string }) {
   }
 
   return <WorkspacePage eyebrow="Compliance / Documents" title="KYC case documents" description="Attach registered, malware-clean documents to this case. Binary upload and document registration are separate backend operations.">
-    <div className="mb-6"><a href={"/compliance/cases/" + caseId} className="text-xs font-bold uppercase tracking-wider text-accent hover:underline">← Back to case</a></div>
+    <div className="mb-6"><a href={backHref ?? "/compliance/cases/" + caseId} className="text-xs font-bold uppercase tracking-wider text-accent hover:underline">← Back to case</a></div>
     {canManage ? <form onSubmit={attach} className="mb-6 rounded-[24px] border border-line bg-surface p-6">
       <h2 className="text-sm font-semibold text-ink">Attach a registered document</h2>
       <p className="mt-1 text-xs leading-5 text-ink-dim">Register the file through the approved document flow first. This screen only attaches an existing document id.</p>

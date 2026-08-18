@@ -1,1 +1,1 @@
-import { ResourcePage } from "@/components/workspace/ResourcePage"; export default function Page() { return <ResourcePage kind="team" />; }
+import { ManagerTeamView } from "@/components/workspace/ManagerViews"; export default function Page() { return <ManagerTeamView />; }

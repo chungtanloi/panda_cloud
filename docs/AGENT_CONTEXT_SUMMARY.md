@@ -7,10 +7,10 @@
 - `branch_at_refresh`: `main`
 - `head_at_refresh`: `3c127eb239f33f09d3d48bb5bd68c159166a8c44` (diagnostic only; the
   working tree carries uncommitted Clerk-migration and Sales-pipeline changes)
-- `source_file_count`: `16`
-- `source_fingerprint`: `83bf504acf9bd293738648e55962a92a5815c7e7d61bea5924b4c064df17e5c5`
+- `source_file_count`: `20`
+- `source_fingerprint`: `bf6b7651511c44702df0c1d95908e247c83613835c7dab4586b3e30f40216ae8`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-17T06:30:00Z`
+- `last_context_refresh_at_utc`: `2026-08-18T02:45:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -318,22 +318,26 @@ frontend fingerprint does not imply a valid backend fingerprint.
 
 | Path | SHA-256 | Bytes | Incorporated UTC |
 |---|---|---:|---|
-| `README.md` | `15b1bef0151fb25b9bbf7c065ff15dfc63e0c6f0a700f5c367263295f2c49dd3` | 4683 | `2026-08-14T01:20:00Z` |
-| `docs/API_CONTRACT.md` | `7c26ff7652057ac77bc601c9e7b6222b05093328fca6136274130ed455ee0220` | 26848 | `2026-08-14T01:20:00Z` |
-| `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-14T02:35:00Z` |
-| `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-14T01:20:00Z` |
-| `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-14T01:20:00Z` |
-| `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-14T01:20:00Z` |
-| `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-15T09:15:00Z` |
-| `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-14T01:20:00Z` |
-| `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-14T01:20:00Z` |
-| `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-14T01:20:00Z` |
-| `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-14T01:20:00Z` |
-| `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-15T10:40:00Z` |
-| `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-14T01:20:00Z` |
-| `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-17T06:30:00Z` |
-| `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-17T06:30:00Z` |
-| `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-17T06:30:00Z` |
+| `docs/API_CONTRACT.md` | `2edf5bad1a8b6fda7bd1aaf3ce0c7f245af0133de916a080a44d3ee5ff5746bb` | 26848 | `2026-08-18T02:45:00Z` |
+| `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
+| `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
+| `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
+| `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `b5b47e52724dbe70ebeec804c279dcbf4bccfac3ce6cdf039268d0d359b8f01d` | 2794 | `2026-08-18T02:45:00Z` |
+| `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-18T02:45:00Z` |
+| `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-18T02:45:00Z` |
+| `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-18T02:45:00Z` |
+| `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-18T02:45:00Z` |
+| `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-18T02:45:00Z` |
+| `docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md` | `6d0f275b40f523aa58a497dea33f4a96835bc02f68f410fd7be743c85bb6e8c4` | 3422 | `2026-08-18T02:45:00Z` |
+| `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-18T02:45:00Z` |
+| `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |
+| `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-18T02:45:00Z` |
+| `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-18T02:45:00Z` |
+| `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `17adad37712eb66bf7d49183dcdcb1cf3e9256e465da2f48e2fbe56c292b6d12` | 1667 | `2026-08-18T02:45:00Z` |
+| `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-18T02:45:00Z` |
+| `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-18T02:45:00Z` |
+| `docs/WORKSPACES_DESIGN.md` | `d81c8f893f1ada95c4e65b88f1a42ce9f1d74529840e2f7e05e35f957d70edef` | 8881 | `2026-08-18T02:45:00Z` |
+| `README.md` | `f02cd82446bdac2837ea0617f3e2c4e4c2e094e2039d3de410b3e7de868de96f` | 4683 | `2026-08-18T02:45:00Z` |
 
 ## 2026-08-17 frontend API migration
 
@@ -355,3 +359,5 @@ reports pre-existing optional `createCard` fixture errors in
 
 > 2026-08-17 Sales Workspace Phase 2 frontend alignment: Sales overview, CRM leads/qualification, activity-backed tasks, customer read model and conversion/activity/forecast reports now use the implemented /api/v1/sales/* and /api/v1/deals/*/activities gateways. See docs/SALES_WORKSPACE_API_CONFORMANCE.md. Quotes, assignment, notifications, audit query and report formula decisions remain backend gaps.
 
+
+> 2026-08-18 Deal Readiness frontend update: a staff-only shared route now composes the implemented deal-scoped NCNDA and KYC APIs into parallel readiness lanes. NCNDA is document-first and KYC is evidence-first. The readiness projection is UX-only; backend authorization, OCC and validation remain authoritative. See docs/DEAL_READINESS_FRONTEND_HANDOFF.md.

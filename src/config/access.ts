@@ -24,7 +24,8 @@ export type Permission =
   | "dd:view" | "dd:respond" | "dd:review" | "dd:evidence:upload"
   // ROLE_PERMISSION_MATRIX § 10 "NCNDA" and "KYC" — exactly these four names.
   | "ncnda:view" | "ncnda:manage"
-  | "kyc:view" | "kyc:manage";
+  | "kyc:view" | "kyc:manage"
+  | "readiness:view";
 
 /**
  * Workspaces that exist in this repository today.
@@ -91,19 +92,19 @@ export interface NavigationItem { label: string; href: string; permission?: Perm
 export const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
   customer: ["workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view"],
   // DD read is open to every staff role (DD API.md authorization line).
-  sales: ["lead:view", "lead:update", "quote:view", "quote:create", "task:view", "report:view", "dd:view"],
-  manager: ["lead:view", "lead:update", "lead:assign", "quote:view", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "dd:view", "dd:respond", "dd:review", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
-  admin: ["workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:manage", "role:manage", "system:view", "system:manage", "audit:view", "dd:view", "dd:respond", "dd:review", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
+  sales: ["readiness:view", "lead:view", "lead:update", "quote:view", "quote:create", "task:view", "report:view", "dd:view"],
+  manager: ["readiness:view", "lead:view", "lead:update", "lead:assign", "quote:view", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "dd:view", "dd:respond", "dd:review", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
+  admin: ["readiness:view", "workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:manage", "role:manage", "system:view", "system:manage", "audit:view", "dd:view", "dd:respond", "dd:review", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
   // ROLE_PERMISSION_MATRIX § 10 "Technical DD" — exactly these four names,
   // no more. dd:review is kept separate from dd:respond even though today's
   // UI does not yet distinguish "responder" from "reviewer" identities
   // (§ 5.3 lists both as steps one Technical identity can perform).
-  technical: ["dd:view", "dd:respond", "dd:review", "dd:evidence:upload"],
+  technical: ["readiness:view", "dd:view", "dd:respond", "dd:review", "dd:evidence:upload"],
   // ROLE_PERMISSION_MATRIX § 10 gives Legal the two ncnda:* names and
   // Compliance the two kyc:* names. `dd:view` is the cross-role read from
   // DD API.md — see the discrepancy note above.
-  legal: ["dd:view", "ncnda:view", "ncnda:manage"],
-  compliance: ["dd:view", "kyc:view", "kyc:manage"],
+  legal: ["readiness:view", "dd:view", "ncnda:view", "ncnda:manage"],
+  compliance: ["readiness:view", "dd:view", "kyc:view", "kyc:manage"],
 };
 
 export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[]> = {
@@ -114,7 +115,7 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
     { label: "New Instance", href: "/booking", externalFlow: true }, { label: "Profile", href: "/dashboard/profile" }, { label: "Settings", href: "/dashboard/settings" },
   ],
   sales: [
-    { label: "Overview", href: "/sales" }, { label: "Leads", href: "/sales/leads", permission: "lead:view" }, { label: "Pipeline", href: "/sales/pipeline", permission: "lead:view" },
+    { label: "Overview", href: "/sales" }, { label: "Deal Readiness", href: "/deal-readiness", permission: "readiness:view" }, { label: "Leads", href: "/sales/leads", permission: "lead:view" }, { label: "Pipeline", href: "/sales/pipeline", permission: "lead:view" },
     { label: "Quotes", href: "/sales/quotes", permission: "quote:view" }, { label: "Tasks", href: "/sales/tasks", permission: "task:view" },
     { label: "Customers", href: "/sales/customers", permission: "lead:view" }, { label: "Reports", href: "/sales/reports", permission: "report:view" },
   ],

@@ -168,7 +168,7 @@ export function CasesPage() {
   );
 }
 
-function CreateCaseForm({ dealId, onDone }: { dealId: string; onDone: () => void }) {
+export function CreateCaseForm({ dealId, onDone }: { dealId: string; onDone: () => void }) {
   const [subjectKind, setSubjectKind] = useState<"organization" | "contact">("organization");
   const [subjectId, setSubjectId] = useState("");
   const [provider, setProvider] = useState("");
@@ -218,7 +218,7 @@ function CreateCaseForm({ dealId, onDone }: { dealId: string; onDone: () => void
       onSubmit={submit}
       className="mb-8 rounded-[24px] border border-line bg-surface-alt p-6"
     >
-      <h2 className="text-sm font-semibold text-ink">New KYC case</h2>
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">KYC setup · Subject</p><h2 className="mt-2 text-sm font-semibold text-ink">New KYC case</h2>
       <p className="mt-1 text-xs leading-5 text-ink-dim">
         Exactly one subject. Ids are entered directly — there is no organization or
         contact lookup operation in the contract yet.
@@ -250,20 +250,14 @@ function CreateCaseForm({ dealId, onDone }: { dealId: string; onDone: () => void
           />
         </div>
 
-        <Input
-          label="Provider"
-          value={provider}
-          onChange={(event) => setProvider(event.target.value)}
-          placeholder="sumsub"
-          hint="Optional, but paired with the case id below."
-        />
-
-        <Input
-          label="Provider case id"
-          value={providerCaseId}
-          onChange={(event) => setProviderCaseId(event.target.value)}
-          hint="A duplicate provider case is rejected as a conflict."
-        />
+        <details className="sm:col-span-2 rounded-[16px] border border-line bg-white/[0.02] p-4">
+          <summary className="cursor-pointer text-xs font-bold uppercase tracking-wider text-ink-dim">Advanced provider metadata</summary>
+          <p className="mt-2 text-xs leading-5 text-ink-dim">Optional metadata only. The backend does not call an external KYC provider.</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Input label="Provider" value={provider} onChange={(event) => setProvider(event.target.value)} placeholder="sumsub" hint="Paired with provider case id." />
+            <Input label="Provider case id" value={providerCaseId} onChange={(event) => setProviderCaseId(event.target.value)} hint="Duplicate provider cases are rejected." />
+          </div>
+        </details>
       </div>
 
       {error ? (

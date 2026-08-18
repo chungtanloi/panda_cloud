@@ -19,6 +19,7 @@ import type {
   SubmissionCreateResponse,
   SubmissionConvertRequest,
   SubmissionConvertResponse,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
   DdAssessmentCreate,
   DdAssessmentCreateResponse,
   DdAssessmentDetail,
@@ -352,9 +353,7 @@ export const httpApi: ApiClient = {
 
     detachDocument: async (agreementId: string, documentId: string) => {
       await http.delete<{ documentId: string; detached: boolean }>(
-        endpoints.ncnda.agreementDocument(agreementId, documentId),
-        { documentId },
-      );
+        endpoints.ncnda.agreementDocument(agreementId, documentId));
     },
   },
 
@@ -383,6 +382,26 @@ export const httpApi: ApiClient = {
       http.post<{ linkId: string; documentId: string }>(endpoints.kyc.caseDocuments(caseId), body),
     detachDocument: (caseId: string, documentId: string) =>
       http.delete<{ documentId: string; detached: boolean }>(endpoints.kyc.caseDocument(caseId, documentId)),
+  },
+
+  admin: {
+    overview: () => http.get<AdminOverview>(endpoints.admin.overview),
+    users: (query = {}) => http.get<AdminUserPage>(endpoints.admin.users, { query }),
+    user: (id: string) => http.get<Record<string, unknown>>(endpoints.admin.userById(id)),
+    roles: () => http.get<AdminRoles>(endpoints.admin.roles),
+    health: () => http.get<AdminHealth>(endpoints.admin.health),
+    auditLogs: (query = {}) => http.get<AdminAuditPage>(endpoints.admin.auditLogs, { query }),
+    auditLog: (id: string) => http.get<Record<string, unknown>>(endpoints.admin.auditById(id)),
+  },
+
+  manager: {
+    overview: () => http.get<ManagerOverview>(endpoints.manager.overview),
+    team: (query = {}) => http.get<ManagerTeamResponse>(endpoints.manager.team, { query }),
+    teamMember: (userId: string, query = {}) => http.get<ManagerTeamMember | null>(endpoints.manager.teamMember(userId), { query }),
+    projects: (query = {}) => http.get<ManagerProjectListResponse>(endpoints.manager.projects, { query }),
+    project: (projectId: string) => http.get<Record<string, unknown>>(endpoints.manager.projectById(projectId)),
+    projectReport: (query = {}) => http.get<ManagerProjectReport>(endpoints.manager.projectReport, { query }),
+    convertDealToProject: (dealId, body) => http.post<ManagerProjectConversionResponse>(endpoints.manager.convertDealToProject(dealId), body),
   },
 };
 
@@ -453,4 +472,6 @@ function normalizeAuthProfile(profile: AuthProfile): AuthProfile {
   }
   return { ...profile, authorization: { ...profile.authorization, memberships } };
 }
+
+
 

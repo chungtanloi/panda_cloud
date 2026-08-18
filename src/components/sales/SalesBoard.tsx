@@ -87,7 +87,7 @@ export function SalesBoard() {
       cardRender: (card: SalesCard) => <DealCardView card={card} />,
 
       // The library defaults to gray text that blends into Cloud Panda's dark board.
-      columnHeaderRender: (column, cards) => (
+      columnHeaderRender: (column: { color?: string; title: string }, cards: SalesCard[]) => (
         <div
           className="flex items-center justify-between rounded-t-xl bg-white/[0.045] px-3 py-2"
           style={{ borderTop: `3px solid ${column.color ?? "#22d3ee"}` }}
@@ -203,5 +203,3 @@ function FilterChip({
     </button>
   );
 }
-
-
