@@ -503,6 +503,3 @@ function normalizeAuthProfile(profile: AuthProfile): AuthProfile {
   }
   return { ...profile, authorization: { ...profile.authorization, memberships } };
 }
-
-
-

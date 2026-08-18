@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Input, Select } from "@/components/ui/Field";
 import { PRIORITY_LABELS, VERTICAL_LABELS } from "@/config/sales";
 import { useAuth } from "@/controllers/AuthContext";
+import { hasRole } from "@/models/auth";
+import type { ContactLookupItem, OrganizationLookupItem, OwnerLookupItem } from "@/models/lookup";
 import { api, normalizeError } from "@/services/api";
+import { lookup } from "@/services/lookup";
 import type {
   DealPriority,
   DealVertical,
@@ -24,9 +27,9 @@ import type {
  * `admin` membership and answers 403 otherwise. The button that opens this
  * modal is a convenience guard only.
  *
- * Organization and owner, decided:
+ * Existing-record selectors:
  *
- *   organization — the operator types a company name, exactly as
+ *   organization — a Sales member types a company name, exactly as
  *     `API_CONTRACT.md` § 9.2 describes. The backend matches it
  *     case-insensitively against existing organizations and creates a
  *     `customer`/`prospect` organization when nothing matches, which keeps
@@ -34,15 +37,18 @@ import type {
  *     needing an organization-management screen that does not exist yet.
  *     Because matching is by name, two spellings of the same company produce
  *     two organizations; deduplication is a back-office concern, not this
- *     form's.
+ *     form's. A Manager/Admin also receives only the authorized organization
+ *     lookup results and can select an existing opaque organization id.
  *
- *   owner — omitted, so the backend assigns the deal to the authenticated
- *     caller. There is no `GET /users` operation to populate a picker from,
- *     and a `sales` member only ever sees deals assigned to them, so any
- *     other default would make the card vanish the moment it was created.
- *     Reassignment is a separate operation.
+ *   owner — a Sales member leaves this absent, so the backend assigns the
+ *     authenticated caller. A Manager/Admin can select an authorized active
+ *     owner from the typed lookup. The backend independently validates scope
+ *     and membership on creation.
  *
- *   contact — name plus at least one of email/phone, matching DEALFLOW § 5.1
+ *   contact — a new contact needs a name plus at least one of email/phone,
+ *     matching DEALFLOW § 5.1. With an existing selected organization, the
+ *     operator may instead choose an authorized existing contact by opaque id.
+ *     A new contact needs
  *     ("Contact used for lead/KYC must have at least email or phone"). The
  *     backend finds-or-creates a `contacts` row inside the company. Requiring
  *     a reachable contact is the point: a pipeline card nobody can call is not
@@ -140,6 +146,14 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [organizationMatches, setOrganizationMatches] = useState<readonly OrganizationLookupItem[]>([]);
+  const [contactMatches, setContactMatches] = useState<readonly ContactLookupItem[]>([]);
+  const [ownerMatches, setOwnerMatches] = useState<readonly OwnerLookupItem[]>([]);
+  const [selectedOrganization, setSelectedOrganization] = useState<OrganizationLookupItem | null>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactLookupItem | null>(null);
+  const [ownerQuery, setOwnerQuery] = useState("");
+  const [selectedOwner, setSelectedOwner] = useState<OwnerLookupItem | null>(null);
+  const canSelectExisting = hasRole(profile, "manager") || hasRole(profile, "admin");
 
   // Reset whenever the modal is reopened so a previous failure never leaks in.
   useEffect(() => {
@@ -147,8 +161,37 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
       setForm(EMPTY);
       setError(null);
       setFieldErrors({});
+      setOrganizationMatches([]); setContactMatches([]); setOwnerMatches([]);
+      setSelectedOrganization(null); setSelectedContact(null); setSelectedOwner(null); setOwnerQuery("");
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!canSelectExisting || form.organizationName.trim().length < 2 || selectedOrganization) { setOrganizationMatches([]); return; }
+    let active = true;
+    lookup.organizations({ q: form.organizationName.trim(), limit: 8 })
+      .then((page) => active && setOrganizationMatches(page.items))
+      .catch(() => active && setOrganizationMatches([]));
+    return () => { active = false; };
+  }, [canSelectExisting, form.organizationName, selectedOrganization]);
+
+  useEffect(() => {
+    if (!selectedOrganization || form.contactName.trim().length < 2 || selectedContact) { setContactMatches([]); return; }
+    let active = true;
+    lookup.contacts({ organizationId: selectedOrganization.organizationId, q: form.contactName.trim(), limit: 8 })
+      .then((page) => active && setContactMatches(page.items))
+      .catch(() => active && setContactMatches([]));
+    return () => { active = false; };
+  }, [form.contactName, selectedContact, selectedOrganization]);
+
+  useEffect(() => {
+    if (!canSelectExisting || ownerQuery.trim().length < 2 || selectedOwner) { setOwnerMatches([]); return; }
+    let active = true;
+    lookup.owners({ q: ownerQuery.trim(), limit: 8 })
+      .then((page) => active && setOwnerMatches(page.items))
+      .catch(() => active && setOwnerMatches([]));
+    return () => { active = false; };
+  }, [canSelectExisting, ownerQuery, selectedOwner]);
 
   const stageOptions = useMemo(
     () => [
@@ -163,6 +206,8 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
   function field<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => ({ ...current, [key]: undefined }));
+    if (key === "organizationName") { setSelectedOrganization(null); setSelectedContact(null); }
+    if (key === "contactName") setSelectedContact(null);
   }
 
   function validate(): SalesCardCreateRequest | null {
@@ -173,7 +218,7 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
     else if (title.length > 200) errors.title = "Keep the title under 200 characters.";
 
     const organizationName = form.organizationName.trim();
-    if (!organizationName) errors.organizationName = "A company name is required.";
+    if (!selectedOrganization && !organizationName) errors.organizationName = "A company name is required.";
     else if (organizationName.length > 200) {
       errors.organizationName = "Keep the company name under 200 characters.";
     }
@@ -183,12 +228,12 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
     const contactPhone = form.contactPhone.trim();
     const contactJobTitle = form.contactJobTitle.trim();
 
-    if (!contactName) errors.contactName = "A contact name is required.";
-    else if (contactName.length > 200) errors.contactName = "Keep the name under 200 characters.";
+    if (!selectedContact && !contactName) errors.contactName = "A contact name is required.";
+    else if (!selectedContact && contactName.length > 200) errors.contactName = "Keep the name under 200 characters.";
 
     // DEALFLOW § 5.1. The error is attached to both fields so it is visible
     // wherever the salesperson is looking when they submit.
-    if (!contactEmail && !contactPhone) {
+    if (!selectedContact && !contactEmail && !contactPhone) {
       errors.contactEmail = "Give an email or a phone number so this deal can be worked.";
       errors.contactPhone = "Give an email or a phone number so this deal can be worked.";
     }
@@ -228,13 +273,16 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
     // treats an absent field as "not provided" (workflow § 7).
     return {
       title,
-      // Exactly one organization input may be sent; the UI always sends the
-      // name. `ownerId` is deliberately absent — see the header comment.
-      organizationName,
-      contactName,
-      ...(contactEmail ? { contactEmail } : {}),
-      ...(contactPhone ? { contactPhone } : {}),
-      ...(contactJobTitle ? { contactJobTitle } : {}),
+      // Exactly one organization/contact form is sent. The selected opaque
+      // id is display-only until this submit; authorization stays backend-side.
+      ...(selectedOrganization ? { organizationId: selectedOrganization.organizationId } : { organizationName }),
+      ...(selectedContact ? { primaryContactId: selectedContact.contactId } : {
+        contactName,
+        ...(contactEmail ? { contactEmail } : {}),
+        ...(contactPhone ? { contactPhone } : {}),
+        ...(contactJobTitle ? { contactJobTitle } : {}),
+      }),
+      ...(selectedOwner ? { ownerId: selectedOwner.userId } : {}),
       vertical: form.vertical,
       priority: form.priority,
       ...(form.stageId ? { stageId: form.stageId } : {}),
@@ -318,6 +366,8 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
               placeholder="Acme AI"
               hint="Matched to an existing company, or created if it is new."
             />
+            {selectedOrganization ? <p className="mt-2 text-xs text-ink-dim">Using existing organization <strong className="text-ink">{selectedOrganization.displayName}</strong> <button type="button" className="text-accent underline" onClick={() => setSelectedOrganization(null)}>Use typed name instead</button></p> : null}
+            {organizationMatches.length ? <div className="mt-2 overflow-hidden rounded-lg border border-white/10">{organizationMatches.map((organization) => <button type="button" key={organization.organizationId} onClick={() => { setSelectedOrganization(organization); setForm((current) => ({ ...current, organizationName: organization.displayName })); setOrganizationMatches([]); }} className="block w-full border-b border-white/5 px-3 py-2 text-left text-sm text-ink hover:bg-white/[0.03]">{organization.displayName}<span className="ml-2 text-xs text-ink-dim">{organization.organizationType}</span></button>)}</div> : null}
           </div>
 
           <Input
@@ -327,6 +377,8 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
             error={fieldErrors.contactName}
             placeholder="Dana Okafor"
           />
+
+          {selectedOrganization ? <div className="sm:col-span-2">{selectedContact ? <p className="text-xs text-ink-dim">Using existing contact <strong className="text-ink">{selectedContact.fullName}</strong> <button type="button" className="text-accent underline" onClick={() => setSelectedContact(null)}>Enter a new contact instead</button></p> : null}{contactMatches.length ? <div className="overflow-hidden rounded-lg border border-white/10">{contactMatches.map((contact) => <button type="button" key={contact.contactId} onClick={() => { setSelectedContact(contact); setForm((current) => ({ ...current, contactName: contact.fullName, contactEmail: contact.email ?? "", contactPhone: "", contactJobTitle: contact.jobTitle ?? "" })); setContactMatches([]); }} className="block w-full border-b border-white/5 px-3 py-2 text-left text-sm text-ink hover:bg-white/[0.03]">{contact.fullName}<span className="ml-2 text-xs text-ink-dim">{contact.email ?? contact.jobTitle ?? "Existing contact"}</span></button>)}</div> : null}</div> : null}
 
           <Input
             label="Job title"
@@ -396,6 +448,8 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
             onChange={(event) => field("stageId", event.target.value)}
             options={stageOptions}
           />
+
+          {canSelectExisting ? <div className="sm:col-span-2"><Input label="Owner (optional)" value={ownerQuery} onChange={(event) => { setOwnerQuery(event.target.value); setSelectedOwner(null); }} placeholder="Search active Sales, Manager, or Admin" hint={selectedOwner ? `Selected: ${selectedOwner.fullName} (${selectedOwner.role})` : "Leave empty to assign the current caller."} />{ownerMatches.length ? <div className="mt-2 overflow-hidden rounded-lg border border-white/10">{ownerMatches.map((owner) => <button type="button" key={owner.userId} onClick={() => { setSelectedOwner(owner); setOwnerQuery(owner.fullName); setOwnerMatches([]); }} className="block w-full border-b border-white/5 px-3 py-2 text-left text-sm text-ink hover:bg-white/[0.03]">{owner.fullName}<span className="ml-2 text-xs text-ink-dim">{owner.role}</span></button>)}</div> : null}</div> : null}
 
           <label className="flex w-full flex-col gap-[8px] sm:col-span-2">
             <span className="font-sans text-[12px] font-medium uppercase leading-[12px] tracking-[0.6px] text-ink-dim">

@@ -182,8 +182,9 @@ export interface SalesCardUpdateRequest {
  * what `API_CONTRACT.md` § 9.2 describes while still satisfying UC-004's
  * requirement that a deal reference a real organization row.
  *
- * The UI only ever sends `organizationName`; `organizationId` exists for
- * machine callers and imports.
+ * A Manager/Admin may select an authorized existing organization and send its
+ * opaque `organizationId`; a Sales member may continue with a typed name. The
+ * backend remains the authority for the record and caller scope.
  */
 export interface SalesCardCreateRequest {
   title: string;
@@ -197,11 +198,11 @@ export interface SalesCardCreateRequest {
   contactEmail?: string;
   contactPhone?: string;
   contactJobTitle?: string;
-  /** Mutually exclusive with `organizationName`. Not used by the UI. */
+  /** Mutually exclusive with `organizationName`. */
   organizationId?: string;
   /** Company name. Find-or-create. Mutually exclusive with `organizationId`. */
   organizationName?: string;
-  /** Defaults to the authenticated caller. The UI never sends this. */
+  /** Defaults to the authenticated caller when omitted. */
   ownerId?: string;
   vertical: DealVertical;
   priority?: DealPriority;

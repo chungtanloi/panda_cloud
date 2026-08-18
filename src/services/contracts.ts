@@ -357,4 +357,3 @@ export interface ApiClient {
   manager: ManagerService;
   admin: AdminService;
 }
-
