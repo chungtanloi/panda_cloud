@@ -181,14 +181,25 @@ export function formatMinorUnits(
   if (minorUnits === null || minorUnits === undefined || minorUnits === "" || !currency) {
     return "—";
   }
+  if (!/^\d+$/.test(minorUnits)) return "—";
+
   const digits = currencyFractionDigits(currency);
-  const major = Number(minorUnits) / 10 ** digits;
-  return new Intl.NumberFormat(locale, {
+  const amount = BigInt(minorUnits);
+  const divisor = 10n ** BigInt(digits);
+  const whole = amount / divisor;
+  const fraction = digits > 0 ? (amount % divisor).toString().padStart(digits, "0") : "";
+  const integer = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(whole);
+  const currencyParts = new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: digits,
-  }).format(major);
+    currencyDisplay: "narrowSymbol",
+  }).formatToParts(0);
+  const symbol = currencyParts.find((part) => part.type === "currency")?.value ?? currency;
+  const decimal = currencyParts.find((part) => part.type === "decimal")?.value ?? ".";
+  const currencyBeforeNumber = (currencyParts.findIndex((part) => part.type === "currency") ?? 0) <
+    currencyParts.findIndex((part) => part.type === "integer");
+  const value = `${integer}${digits > 0 ? `${decimal}${fraction}` : ""}`;
+  return currencyBeforeNumber ? `${symbol}${value}` : `${value} ${symbol}`;
 }
 
 /**
@@ -200,17 +211,11 @@ export function formatMinorUnitsCompact(
   currency: string | null | undefined,
   locale = "en-US",
 ): string {
-  if (minorUnits === null || minorUnits === undefined || minorUnits === "" || !currency) {
-    return "—";
-  }
-  const digits = currencyFractionDigits(currency);
-  const major = Number(minorUnits) / 10 ** digits;
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(major);
+  // Compact notation requires converting the amount to a JavaScript number,
+  // which would silently round large contract values. Preserve the exact,
+  // grouped representation until the product approves a string-safe compact
+  // display rule.
+  return formatMinorUnits(minorUnits, currency, locale);
 }
 
 /* --------------------------------- Misc --------------------------------- */

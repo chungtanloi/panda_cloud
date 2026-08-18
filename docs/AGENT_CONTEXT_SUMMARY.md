@@ -4,13 +4,12 @@
 
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
-- `branch_at_refresh`: `main`
-- `head_at_refresh`: `3c127eb239f33f09d3d48bb5bd68c159166a8c44` (diagnostic only; the
-  working tree carries uncommitted Clerk-migration and Sales-pipeline changes)
-- `source_file_count`: `20`
-- `source_fingerprint`: `bf6b7651511c44702df0c1d95908e247c83613835c7dab4586b3e30f40216ae8`
+- `branch_at_refresh`: `feat/integration-candidate-v1-sales`
+- `head_at_refresh`: `8115eb4` (diagnostic only)
+- `source_file_count`: `21`
+- `source_fingerprint`: `a0bd1a0d264ffb1bde301a0f9e00e662186f067f6ab972d8db00539ce5e44966`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-18T02:45:00Z`
+- `last_context_refresh_at_utc`: `2026-08-18T09:21:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -27,6 +26,18 @@ authority.
 > `docs/SALES_BOARD_CONTRACT_GAP.md` (new file, read and incorporated). The
 > Sales pipeline section was corrected again — a create operation now exists,
 > which the 09:15 revision stated it did not.
+
+> 2026-08-18 incremental refresh: Sales Integration Candidate v1 is now
+> consumed by the Sales workspace through the authenticated `/api/v1` gateway.
+> The new handoff supersedes the stale Phase 2 frontend validation counts for
+> this slice; it records 34 passing frontend tests and the explicit Quotes
+> block. Two changed handoffs were reread alongside the new handoff.
+
+> 2026-08-18 incremental refresh: the Sales integration handoff was reread
+> after its final selector evidence update. The frontend now has 35 passing
+> tests: Manager/Admin manual-card selectors forward only authorized opaque
+> Organization, Contact, and Owner identifiers. Sales callers retain the
+> existing free-text find-or-create path and default owner behavior.
 
 ## Product purpose
 
@@ -253,9 +264,9 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 - The backend repository owns the OpenAPI 3.1 source and tagged contract
   releases. The frontend pins and verifies a generated client artifact rather
   than following backend `main` or keeping a copied YAML contract.
-- The backend draft is `0.1.0-draft` and defines exactly one operation,
-  `GET /api/v1/auth/me`. It is not frozen, tagged or released, so nothing can be
-  pinned yet.
+- Backend Integration Candidate v1 at `c546d69` exposes 67 public routes and
+  80 operations with route/OpenAPI parity. It is authoritative for the current
+  Sales integration but is still not an owner-approved release or tag.
 - Open decisions remaining: success-envelope policy (CR-001), minor-unit money
   migration (CR-002), signed direct-to-storage uploads (CR-004), removal of the
   second contract (CR-006), generated-client adoption (CR-007), and replacing
@@ -322,7 +333,7 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
 | `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
 | `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
-| `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `b5b47e52724dbe70ebeec804c279dcbf4bccfac3ce6cdf039268d0d359b8f01d` | 2794 | `2026-08-18T02:45:00Z` |
+| `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `abb6b6de198e17f0ddcda33de4907d8ace9c234a83a9245912a8002f04a72647` | 2793 | `2026-08-18T09:12:36Z` |
 | `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-18T02:45:00Z` |
 | `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-18T02:45:00Z` |
 | `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-18T02:45:00Z` |
@@ -333,7 +344,8 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |
 | `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-18T02:45:00Z` |
 | `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-18T02:45:00Z` |
-| `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `17adad37712eb66bf7d49183dcdcb1cf3e9256e465da2f48e2fbe56c292b6d12` | 1667 | `2026-08-18T02:45:00Z` |
+| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `ebdb4178189aadfe2986c5aa6fafbb50470207cb0a27b19a5735870e9e86e361` | 5977 | `2026-08-18T09:21:00Z` |
+| `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `9e538b7f3ba5d7cee60bad4e2ef585cd5cf3f61636b4ad65b2883e233a7d1a5d` | 1666 | `2026-08-18T09:12:36Z` |
 | `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-18T02:45:00Z` |
 | `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-18T02:45:00Z` |
 | `docs/WORKSPACES_DESIGN.md` | `d81c8f893f1ada95c4e65b88f1a42ce9f1d74529840e2f7e05e35f957d70edef` | 8881 | `2026-08-18T02:45:00Z` |

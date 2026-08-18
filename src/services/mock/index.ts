@@ -1225,6 +1225,15 @@ export const mockApi: ApiClient = {
     getTransitionOptions: (id: string) => delay(mockTransitionOptions(id)),
   },
 
+  // Selector fixtures support local visual development only. The HTTP adapter
+  // is the production path and never falls back to these values on failure.
+  lookup: {
+    deals: async () => ({ items: [], nextCursor: null, isDone: true }),
+    organizations: async () => ({ items: [], nextCursor: null, isDone: true }),
+    contacts: async () => ({ items: [], nextCursor: null, isDone: true }),
+    owners: async () => ({ items: [], nextCursor: null, isDone: true }),
+  },
+
   /**
    * Technical Due Diligence — `DD API.md`, the same five operations the HTTP
    * adapter exposes and no others.
@@ -1349,6 +1358,5 @@ export const mockApi: ApiClient = {
     auditLog: async (id: string) => ({ auditId: id }),
   },
 };
-
 
 
