@@ -361,3 +361,11 @@ reports pre-existing optional `createCard` fixture errors in
 
 
 > 2026-08-18 Deal Readiness frontend update: a staff-only shared route now composes the implemented deal-scoped NCNDA and KYC APIs into parallel readiness lanes. NCNDA is document-first and KYC is evidence-first. The readiness projection is UX-only; backend authorization, OCC and validation remain authoritative. See docs/DEAL_READINESS_FRONTEND_HANDOFF.md.
+
+> 2026-08-18 Pipeline policy update: backend now centrally evaluates adjacent
+> stage transitions, minimum data gates, readiness warnings, OCC and audited
+> Manager/Admin overrides. Frontend consumes
+> `/sales/cards/{dealId}/transition-options`, renders blockers/checklists, and
+> records backend-validated Sales milestones. Won/Lost/Archive use Deal change
+> requests and cannot be reached by direct drag. See
+> `docs/PIPELINE_TRANSITION_POLICY_HANDOFF.md` and root `HANDOFF.md`.

@@ -1,35 +1,49 @@
-# Frontend checklist audit
+# Frontend checklist status report
 
 Date: 2026-08-18
 
-| Checklist item | Frontend status | Evidence / remaining dependency |
+Status meanings: **DONE** = implemented and locally validated; **PARTIAL** =
+frontend implementation exists but live integration evidence or an external
+decision is still missing; **BLOCKED** = cannot be completed by frontend alone.
+
+| Item from the checklist | Status | Short assessment |
 |---|---|---|
-| Synchronize backend `main` | OUT OF FRONTEND SCOPE | Repository operation owned by Backend; no frontend mutation performed. |
-| Fix `createCard` fixture type errors | DONE | `tsc --noEmit --incremental false` passes. Existing Sales adapter tests compile. |
-| Sales Overview/Leads/Tasks/Customers/Reports E2E | PARTIAL | HTTP adapters and six new contract tests cover routes and request mapping. A live Clerk browser session and seeded backend dataset are still required for true E2E evidence. |
-| KYC and NCNDA E2E | PARTIAL | Deal-context UI, create/update/OCC handling and adapter route tests exist. Live creation, 409 conflict, upload scan, attach/detach still require a configured backend, Clerk users and storage/malware state. |
-| Freeze OpenAPI integration candidate | BLOCKED — JOINT DECISION | Product and Backend must publish/version the candidate. Frontend continues through typed service adapters; no generated client is claimed. |
-| Connect Technical DD to live backend | DONE | HTTP adapter uses implemented deal list, detail, progress and response routes. Deal Readiness now loads DD with NCNDA/KYC. No direct Convex or mock-only UI assumption. |
-| Browser signed upload and finalize | FRONTEND DONE / INTEGRATION PARTIAL | Added upload-session → signed PUT → finalize service and reusable UI. Automatic KYC/NCNDA attachment occurs only when backend reports `malwareScanStatus=clean`; pending scan is shown honestly. |
-| Lookup APIs and friendly selectors | FRONTEND MITIGATED / BACKEND BLOCKED | Deal Card supplies organization, owner and primary contact. Raw ID fields were removed. Staff-wide Deal, Legal, Compliance and Technical queue endpoints are still absent. |
-| KYC/NCNDA lifecycle and uniqueness policy | BLOCKED — PRODUCT | Frontend guides documented transitions but does not invent a strict backend state machine or current-case uniqueness rule. |
-| Lead ownership and report formulas | BLOCKED — PRODUCT/BACKEND | Frontend renders backend raw report components and preserves per-currency money. |
-| Full regression and handoff | PARTIAL | Typecheck and lint pass. New contract suite: 6/6 assertions pass; Vitest then reports a local EPERM while writing `node_modules/.vite/vitest/results.json`. Live E2E/build evidence remains outstanding. |
-| Quotes schema and MVP scope | BLOCKED — PRODUCT | Quotes remain an explanatory blocked surface; frontend does not fabricate persistence. |
+| Synchronize Backend `main` with `origin/main` | OUTSIDE FE SCOPE | Backend repository ownership/release task. Preserve its uncommitted documentation before synchronization. |
+| Fix remaining `createCard` fixture type errors | DONE | Sales adapter fixtures compile; frontend typecheck passes. |
+| Sales Overview, Leads, Tasks, Customers and Reports E2E | PARTIAL | Screens and HTTP adapters are connected and contract-tested. A real Clerk session plus seeded backend data is still needed for browser E2E evidence. |
+| KYC and NCNDA end-to-end tests | PARTIAL | Create/update, OCC, document list/attach/detach and secure upload UI exist. Real Clerk, storage, malware-state and deliberate `409` E2E cases remain. |
+| Review and freeze the OpenAPI integration candidate | BLOCKED — JOINT | Current OpenAPI validates and matches runtime routes, but Product/Frontend/Backend have not published a frozen versioned release or generated client. |
+| Connect Technical DD workspace to live backend | DONE | Assessment list/detail, responses, progress and evidence use the API abstraction; no browser-to-Convex call. |
+| Browser signed upload and finalize | FE DONE / LIVE PARTIAL | Frontend implements upload-session → signed storage PUT → finalize and waits for a clean malware status. Live storage verification remains. |
+| Friendly Deal/organization/contact/owner selectors | PARTIAL | Lookup service and reusable Deal picker exist. Backend scope still denies Legal/Compliance/Technical Deal lookup and Legal organization lookup, so those roles retain a safe ID fallback. |
+| Confirm KYC/NCNDA lifecycle and uniqueness | BLOCKED — PRODUCT/BE | Frontend renders backend state and guidance only; it does not invent automatic creation or current-case uniqueness rules. |
+| Confirm lead ownership and reporting formulas | BLOCKED — PRODUCT/BE | Frontend preserves backend scope and per-currency results; unresolved reporting rules remain backend-owned. |
+| Full regression and handoff | AUTOMATION DONE / E2E PARTIAL | Frontend typecheck, lint, 78 tests and production build pass. Backend regression and OpenAPI checks also pass. Real cross-repository browser E2E and a formal integration defect list remain. |
+| Decide Quotes schema and MVP scope | BLOCKED — PRODUCT | Quotes stays an honest blocked surface; frontend does not fabricate persistence or calculations. |
 
-## Frontend changes completed in this pass
+## Additional work completed outside the checklist
 
-- Added typed secure document transfer models and `DocumentsService`.
-- Added HTTP and mock implementations for upload session, signed PUT and finalize.
-- Added reusable `SecureDocumentUpload` with SHA-256 computed in the browser.
-- Integrated upload UI into KYC and NCNDA document screens.
-- Added adapter tests for Sales reports, KYC, NCNDA, DD, Manager conversion and documents.
-- Preserved backend error/OCC/authorization ownership and avoided client-supplied identity or role fields.
+- Added Deal Readiness combining NCNDA, KYC and Technical DD.
+- Added Sales → Manager Deal change requests for **Won**, **Lost** and
+  **Archive**, with Manager/Admin approval instead of direct terminal drag.
+- Added backend-owned Pipeline Transition Policy, preflight blockers/warnings,
+  On Hold inputs, audited Manager override and OCC conflict handling.
+- Added Sales milestone evidence for completed contact, Proposal sent and
+  customer response.
+- Removed primary opaque Deal ID entry where lookup scope permits; added an
+  explicit fallback where backend authorization still blocks lookup.
+- Kept Clerk Bearer authentication, API service boundaries and backend
+  authorization authoritative.
 
-## Required live test prerequisites
+## Current validation snapshot
 
-- Frontend and backend running with the same Clerk instance.
-- Active Sales, Legal, Compliance, Technical, Manager and Admin test memberships.
-- Seeded Deal with organization, primary contact and owner.
-- Configured private Supabase buckets and signed upload credentials.
-- A malware/encryption state transition mechanism if attachment-after-finalize is expected.
+- Frontend: typecheck **PASS**, lint **PASS**, tests **78/78 PASS**, build **PASS**.
+- Backend integration touched by this work: typecheck **PASS**, tests **223/223
+  PASS**, OpenAPI lint **PASS**, route parity **4/4 PASS**, build **PASS**.
+
+## Remaining priorities
+
+1. Run real Clerk E2E for Sales and KYC/NCNDA workflows.
+2. Widen backend lookup scope for Legal, Compliance and Technical if approved.
+3. Freeze and version OpenAPI, then adopt a generated frontend client.
+4. Decide KYC/NCNDA lifecycle rules, reporting formulas and Quotes MVP.

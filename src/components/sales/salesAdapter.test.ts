@@ -8,6 +8,7 @@ import type {
   SalesCardPage,
   SalesCardUpdateRequest,
   SalesColumnListResponse,
+  SalesTransitionOptionsResponse,
 } from "@/models/sales";
 import { mockDealCards, mockSalesColumns } from "@/services/mock/salesFixtures";
 import { createSalesAdapter } from "./salesAdapter";
@@ -41,6 +42,24 @@ function makeService(overrides: Partial<SalesService> = {}) {
     createCard: vi.fn(async (): Promise<{ dealId: string; revision: number }> => ({ dealId: "deal_new", revision: 1 })),
     updateCard: vi.fn(async (): Promise<{ dealId: string; revision: number }> => ({ dealId: "deal_05", revision: 2 })),
     moveCard: vi.fn(async (): Promise<{ dealId: string; status: "won"; revision: number }> => ({ dealId: "deal_05", status: "won", revision: 2 })),
+    getTransitionOptions: vi.fn(async (id: string): Promise<SalesTransitionOptionsResponse> => {
+      const card = mockDealCards.find((deal) => deal.dealId === id) ?? mockDealCards[0]!;
+      return {
+        dealId: id,
+        currentColumnId: card.columnId,
+        dealRevision: card.revision,
+        options: mockSalesColumns.map((column) => ({
+          columnId: column.columnId,
+          code: column.code,
+          name: column.name,
+          allowed: column.columnId !== card.columnId,
+          canOverride: false,
+          blockers: [],
+          warnings: [],
+          requiredFields: [],
+        })),
+      };
+    }),
     ...overrides,
   };
   return service;
@@ -286,6 +305,65 @@ describe("createSalesAdapter — move", () => {
     // The adapter refetched the detail so a later user-initiated retry starts
     // from a current revision.
     expect(service.getCard).toHaveBeenCalledWith("deal_05");
+  });
+
+  it("does not call the mutation when preflight returns a hard blocker", async () => {
+    const service = makeService({
+      getTransitionOptions: vi.fn(async () => ({
+        dealId: "deal_05",
+        currentColumnId: "col_new",
+        dealRevision: 1,
+        options: [{
+          columnId: "col_qualified",
+          code: "qualified",
+          name: "Qualified",
+          allowed: false,
+          canOverride: false,
+          blockers: [{ code: "OWNER_REQUIRED", message: "Assign an owner first." }],
+          warnings: [],
+          requiredFields: ["ownerId"],
+        }],
+      })),
+    });
+    const adapter = createSalesAdapter(service);
+    await adapter.fetchCards();
+
+    await expect(adapter.moveCard("deal_05", "col_qualified")).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(service.moveCard).not.toHaveBeenCalled();
+  });
+
+  it("reviews warnings and forwards confirmed transition fields", async () => {
+    const service = makeService({
+      getTransitionOptions: vi.fn(async () => ({
+        dealId: "deal_05",
+        currentColumnId: "col_new",
+        dealRevision: 1,
+        options: [{
+          columnId: "col_proposal",
+          code: "proposal",
+          name: "Proposal",
+          allowed: true,
+          canOverride: false,
+          blockers: [],
+          warnings: [{ code: "READINESS_INCOMPLETE", message: "Readiness needs attention." }],
+          requiredFields: [],
+        }],
+      })),
+    });
+    const review = vi.fn(async () => ({ reason: "Reviewed readiness warning" }));
+    const adapter = createSalesAdapter(service, review);
+    await adapter.fetchCards();
+
+    await adapter.moveCard("deal_05", "col_proposal");
+
+    expect(review).toHaveBeenCalledOnce();
+    expect(service.moveCard).toHaveBeenCalledWith("deal_05", {
+      toColumnId: "col_proposal",
+      expectedRevision: 1,
+      reason: "Reviewed readiness warning",
+    });
   });
 });
 

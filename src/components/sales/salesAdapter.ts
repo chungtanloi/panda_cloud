@@ -1,5 +1,5 @@
 import type { DataAdapter } from "@kanban/library";
-import type { SalesCard, SalesCardDto, SalesCardDetailDto, SalesCardUpdateRequest } from "@/models/sales";
+import type { SalesCard, SalesCardDto, SalesCardDetailDto, SalesCardMoveRequest, SalesCardUpdateRequest, SalesTransitionOption, SalesTransitionOptionsResponse } from "@/models/sales";
 import type { SalesService } from "@/services/contracts";
 import { api } from "@/services/api";
 import { ApiError } from "@/services/http";
@@ -113,7 +113,20 @@ const UPDATEABLE_FIELDS = [
   "expectedCloseDate",
 ] as const;
 
-export function createSalesAdapter(service: SalesService = api.sales): DataAdapter<SalesCard> {
+export interface SalesBoardAdapter extends DataAdapter<SalesCard> {
+  loadTransitionOptions(id: string): Promise<SalesTransitionOptionsResponse>;
+  cachedTransitionOption(id: string, columnId: string): SalesTransitionOption | null;
+}
+
+export type TransitionReview = (
+  cardId: string,
+  option: SalesTransitionOption,
+) => Promise<Pick<SalesCardMoveRequest, "reason" | "followUpAt" | "override" | "overrideReason"> | null>;
+
+export function createSalesAdapter(
+  service: SalesService = api.sales,
+  reviewTransition?: TransitionReview,
+): SalesBoardAdapter {
   /**
    * Shared in-flight column load. `useKanban.refresh()` calls `fetchColumns()`
    * and `fetchCards()` concurrently, so both must await the same request rather
@@ -122,6 +135,7 @@ export function createSalesAdapter(service: SalesService = api.sales): DataAdapt
    */
   let columnsPromise: Promise<BoardColumn[]> | null = null;
   const cardCache = new Map<string, SalesCardCacheEntry>();
+  const transitionCache = new Map<string, SalesTransitionOptionsResponse>();
 
   function fetchColumnsOnce(): Promise<BoardColumn[]> {
     if (!columnsPromise) {
@@ -159,7 +173,18 @@ export function createSalesAdapter(service: SalesService = api.sales): DataAdapt
     return detail.revision;
   }
 
-  return {
+  const adapter: SalesBoardAdapter = {
+    loadTransitionOptions: async (id: string) => {
+      const existing = transitionCache.get(id);
+      if (existing) return existing;
+      const response = await service.getTransitionOptions(id);
+      transitionCache.set(id, response);
+      return response;
+    },
+
+    cachedTransitionOption: (id: string, columnId: string) =>
+      transitionCache.get(id)?.options.find((option) => option.columnId === columnId) ?? null,
+
     fetchColumns: () => fetchColumnsOnce(),
 
     fetchCards: async () => {
@@ -230,7 +255,18 @@ export function createSalesAdapter(service: SalesService = api.sales): DataAdapt
     moveCard: async (cardId, newColumnId) => {
       const expectedRevision = await loadCardRevision(cardId);
       try {
-        await service.moveCard(cardId, { toColumnId: newColumnId, expectedRevision });
+        const policy = await adapter.loadTransitionOptions(cardId);
+        const option = policy.options.find((item) => item.columnId === newColumnId);
+        if (!option) throw new ApiError({ code: "VALIDATION_ERROR", message: "This target stage is not available.", status: 400 });
+        const resolvable = option.blockers.every((item) => item.code === "HOLD_REASON_REQUIRED" || item.code === "HOLD_FOLLOW_UP_REQUIRED" || item.code === "OVERRIDE_REQUIRED");
+        if (!option.allowed && !resolvable) {
+          throw new ApiError({ code: "VALIDATION_ERROR", message: option.blockers.map((item) => item.message).join(" "), status: 400 });
+        }
+        const needsReview = option.warnings.length > 0 || option.blockers.length > 0 || option.code === "on_hold";
+        const extras = needsReview && reviewTransition ? await reviewTransition(cardId, option) : {};
+        if (needsReview && !extras) throw new ApiError({ code: "CANCELLED", message: "Stage change cancelled.", status: 400 });
+        await service.moveCard(cardId, { toColumnId: newColumnId, expectedRevision, ...(extras ?? {}) });
+        transitionCache.delete(cardId);
       } catch (cause) {
         // A stale revision (409) tells us our state is behind the server. Drop
         // the outdated copy and refresh the revision cache so a subsequent
@@ -250,4 +286,5 @@ export function createSalesAdapter(service: SalesService = api.sales): DataAdapt
       return mapCardDto(fresh, cardCache.get(cardId)?.order ?? 0);
     },
   };
+  return adapter;
 }

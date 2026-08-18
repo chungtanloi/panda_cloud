@@ -10,6 +10,8 @@ import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
 import { DealHandoffPanel } from "./DealHandoffPanel";
 import { DealChangeRequestPanel } from "./DealChangeRequestPanel";
+import { DealMilestoneComposer } from "./DealMilestoneComposer";
+import { TransitionChecklistPanel } from "./TransitionChecklistPanel";
 
 function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -137,6 +139,8 @@ export function DealDetail({
 
       <DealHandoffPanel card={card} onRefresh={onSaved} />
       <DealChangeRequestPanel card={card} onChanged={onSaved} />
+      <TransitionChecklistPanel dealId={card.id} revision={card.revision} />
+      {canEdit ? <DealMilestoneComposer card={card} onSaved={onSaved} /> : null}
 
       {/* Deal value — read-only */}
       <div className="rounded-panel border border-accent/30 bg-accent-soft p-[14px]">

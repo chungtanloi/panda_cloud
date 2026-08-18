@@ -7,6 +7,7 @@ import { api, normalizeError } from "@/services/api";
 
 const TYPE_LABEL = {
   mark_won: "Mark deal Won",
+  mark_lost: "Mark deal Lost",
   archive: "Remove / archive card",
 } as const;
 
@@ -67,7 +68,7 @@ export function DealChangeRequestQueue() {
         <p className="font-mono text-[10px] uppercase tracking-[2px] text-accent">Manager / Approvals</p>
         <h1 className="pt-[7px] text-[32px] font-semibold text-white">Deal change requests</h1>
         <p className="max-w-[760px] pt-[8px] text-[13px] leading-[21px] text-ink-dim">
-          Sales can propose Won or pipeline removal, but cannot execute either action. Review the
+          Sales can propose Won, Lost, or pipeline removal, but cannot execute those actions. Review the
           commercial reason and Deal revision before making an auditable decision.
         </p>
       </header>

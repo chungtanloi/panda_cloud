@@ -41,6 +41,7 @@ import type {
   SalesCardListQuery,
   SalesCardMoveRequest,
   SalesCardMoveResponse,
+  SalesTransitionOptionsResponse,
   SalesCardPage,
   SalesCardUpdateRequest,
   SalesCardUpdateResponse,
@@ -220,6 +221,7 @@ export interface SalesService {
   updateCard(id: string, body: SalesCardUpdateRequest): Promise<SalesCardUpdateResponse>;
   /** Stage transition, guarded by expectedRevision. */
   moveCard(id: string, body: SalesCardMoveRequest): Promise<SalesCardMoveResponse>;
+  getTransitionOptions(id: string): Promise<SalesTransitionOptionsResponse>;
 }
 
 /** Sales proposes sensitive Deal transitions; Manager/Admin decides them. */

@@ -239,6 +239,34 @@ export interface SalesCardMoveRequest {
   toColumnId: string;
   expectedRevision: number;
   reason?: string | null;
+  followUpAt?: number;
+  override?: boolean;
+  overrideReason?: string;
+}
+
+export interface TransitionIssue {
+  code: string;
+  message: string;
+  field?: string;
+  actionHref?: string;
+}
+
+export interface SalesTransitionOption {
+  columnId: string;
+  code: string;
+  name: string;
+  allowed: boolean;
+  canOverride: boolean;
+  blockers: TransitionIssue[];
+  warnings: TransitionIssue[];
+  requiredFields: string[];
+}
+
+export interface SalesTransitionOptionsResponse {
+  dealId: string;
+  currentColumnId: string;
+  dealRevision: number;
+  options: SalesTransitionOption[];
 }
 
 /** `components.yaml#/components/schemas/SalesCardMoveResponse`. */

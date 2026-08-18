@@ -14,12 +14,35 @@ import { useAuth } from "@/controllers/AuthContext";
 import { DealReadinessProvider } from "@/controllers/ReadinessContext";
 import { api } from "@/services/api";
 import { hasRole, primaryRole } from "@/models/auth";
-import type { DealVertical, SalesCard, SalesColumnDto } from "@/models/sales";
+import type {
+  DealVertical,
+  SalesCard,
+  SalesCardMoveRequest,
+  SalesColumnDto,
+  SalesTransitionOption,
+} from "@/models/sales";
 import { cn } from "@/lib/cn";
-import { createSalesAdapter } from "./salesAdapter";
+import { createSalesAdapter, type SalesBoardAdapter } from "./salesAdapter";
 import { DealCardView } from "./DealCardView";
 import { DealDetail } from "./DealDetail";
 import { ManualDealModal } from "./ManualDealModal";
+import { TransitionReviewDialog } from "./TransitionReviewDialog";
+
+type TransitionExtras = Pick<
+  SalesCardMoveRequest,
+  "reason" | "followUpAt" | "override" | "overrideReason"
+>;
+
+type PendingReview = {
+  option: SalesTransitionOption;
+  resolve: (value: TransitionExtras | null) => void;
+};
+
+const RESOLVABLE_BLOCKERS = new Set([
+  "HOLD_REASON_REQUIRED",
+  "HOLD_FOLLOW_UP_REQUIRED",
+  "OVERRIDE_REQUIRED",
+]);
 
 /**
  * The sales pipeline board.
@@ -48,6 +71,8 @@ export function SalesBoard() {
   const [boardVersion, setBoardVersion] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
   const [columns, setColumns] = useState<readonly SalesColumnDto[]>([]);
+  const [pendingReview, setPendingReview] = useState<PendingReview | null>(null);
+  const [policyVersion, setPolicyVersion] = useState(0);
 
   // The create form offers an explicit stage, so it needs the column list the
   // board already loads. Failing to load it is not fatal: the modal falls back
@@ -68,6 +93,10 @@ export function SalesBoard() {
   }, [boardVersion]);
 
   const refreshBoard = useCallback(() => setBoardVersion((version) => version + 1), []);
+  const handlePolicyLoaded = useCallback(
+    () => setPolicyVersion((version) => version + 1),
+    [],
+  );
 
   /**
    * Terminal columns are Won and Lost — the two the backend restricts to
@@ -79,30 +108,61 @@ export function SalesBoard() {
     () => new Set(columns.filter((column) => column.isTerminal).map((column) => column.columnId)),
     [columns],
   );
-  const canMoveToTerminal = hasRole(profile, "manager") || hasRole(profile, "admin");
+  const isManager = hasRole(profile, "manager") || hasRole(profile, "admin");
+
+  const reviewTransition = useCallback(
+    (_cardId: string, option: SalesTransitionOption) =>
+      new Promise<TransitionExtras | null>((resolve) => setPendingReview({ option, resolve })),
+    [],
+  );
+
+  const finishTransitionReview = useCallback(
+    (value: TransitionExtras | null) => {
+      pendingReview?.resolve(value);
+      setPendingReview(null);
+    },
+    [pendingReview],
+  );
 
   // Recreating the adapter would refetch the whole board on every render.
   // boardVersion is deliberately a dependency even though the memo doesn't read
   // it: bumping it recreates the adapter (fresh revision cache + column load)
   // when the board remounts after a save.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const adapter = useMemo(() => createSalesAdapter(), [boardVersion]);
+  const adapter = useMemo(
+    () => createSalesAdapter(api.sales, reviewTransition),
+    // `boardVersion` intentionally creates a fresh revision/policy cache.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [boardVersion, reviewTransition],
+  );
 
   const config = useMemo(
-    () => ({
+    () => {
+      // Policy completion changes the cached answers on the stable adapter;
+      // reading this version makes that external cache update explicit.
+      void policyVersion;
+      return {
       adapter,
       // The library only needs a label; authorization is the backend's.
       // See WORKSPACE_ROLE_PRECEDENCE (U-03) for how one role is chosen when an
       // identity holds several active memberships.
       user: user ? { id: user.id, role: primaryRole(profile) ?? undefined } : undefined,
 
-      cardRender: (card: SalesCard) => <DealCardView card={card} />,
+      cardRender: (card: SalesCard) => (
+        <PolicyAwareCard
+          card={card}
+          adapter={adapter}
+          onPolicyLoaded={handlePolicyLoaded}
+        />
+      ),
 
       // The library defaults to gray text that blends into Cloud Panda's dark
       // board. A column a person cannot drop into says so in the header rather
       // than letting them find out by failing.
       columnHeaderRender: (column: { id?: string; color?: string; title: string }, cards: SalesCard[]) => {
-        const locked = Boolean(column.id && terminalColumnIds.has(column.id) && !canMoveToTerminal);
+        // Won/Lost are request-only for every role. Manager/Admin approve the
+        // request in their queue; nobody bypasses the audited workflow by drag.
+        const locked = Boolean(column.id && terminalColumnIds.has(column.id));
         return (
           <div
             className="rounded-t-xl bg-white/[0.045] px-3 py-2"
@@ -116,7 +176,7 @@ export function SalesBoard() {
             </div>
             {locked ? (
               <p className="pt-[3px] font-mono text-[9px] uppercase tracking-[0.8px] text-slate-500">
-                Manager / admin only
+                Approval request required
               </p>
             ) : null}
           </div>
@@ -153,10 +213,25 @@ export function SalesBoard() {
        * is still not access control: the backend rejects the same move
        * independently, and must keep doing so.
        */
-      canMoveCard: (_card: SalesCard, toColumnId: string) =>
-        Boolean(user) && (!terminalColumnIds.has(toColumnId) || canMoveToTerminal),
-    }),
-    [adapter, profile, user, terminalColumnIds, canMoveToTerminal],
+      canMoveCard: (card: SalesCard, toColumnId: string) => {
+        if (!user) return false;
+        // The Kanban library asks about the current column when deciding
+        // whether a card itself is draggable. It is not a transition.
+        if (toColumnId === card.columnId) return true;
+        if (terminalColumnIds.has(toColumnId)) return false;
+
+        const option = adapter.cachedTransitionOption(card.id, toColumnId);
+        // Policy loads lazily. The adapter always preflights again on drop, so
+        // this temporary true cannot bypass backend policy.
+        if (!option) return true;
+        if (option.allowed) return true;
+        const needsOverride = option.blockers.some((blocker) => blocker.code === "OVERRIDE_REQUIRED");
+        return option.blockers.every((blocker) => RESOLVABLE_BLOCKERS.has(blocker.code)) &&
+          (!needsOverride || (isManager && option.canOverride));
+      },
+      };
+    },
+    [adapter, profile, user, terminalColumnIds, isManager, policyVersion, handlePolicyLoaded],
   );
 
   return (
@@ -224,8 +299,44 @@ export function SalesBoard() {
         onClose={() => setShowCreate(false)}
         onCreated={refreshBoard}
       />
+
+      {pendingReview ? (
+        <TransitionReviewDialog
+          key={`${pendingReview.option.columnId}-${pendingReview.option.blockers.map((item) => item.code).join("-")}`}
+          option={pendingReview.option}
+          onResolve={finishTransitionReview}
+        />
+      ) : null}
     </div>
   );
+}
+
+function PolicyAwareCard({
+  card,
+  adapter,
+  onPolicyLoaded,
+}: {
+  card: SalesCard;
+  adapter: SalesBoardAdapter;
+  onPolicyLoaded: () => void;
+}) {
+  useEffect(() => {
+    let cancelled = false;
+    void adapter
+      .loadTransitionOptions(card.id)
+      .then(() => {
+        if (!cancelled) onPolicyLoaded();
+      })
+      .catch(() => {
+        // The move adapter will surface a typed API error if the user tries to
+        // drag while this best-effort policy hint is unavailable.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adapter, card.id, onPolicyLoaded]);
+
+  return <DealCardView card={card} />;
 }
 
 function FilterChip({

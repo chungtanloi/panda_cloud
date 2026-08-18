@@ -41,6 +41,7 @@ import type {
   SalesCardListQuery,
   SalesCardMoveRequest,
   SalesCardUpdateRequest,
+  SalesTransitionOptionsResponse,
   DealChangeRequest,
   DealChangeRequestCreate,
   DealChangeRequestDecision,
@@ -161,9 +162,10 @@ function decideMockDealRequest(
     if (!card || card.revision !== request.expectedDealRevision) {
       throw new ApiError({ code: "CONFLICT", message: "The deal changed after this request was submitted.", status: 409 });
     }
-    if (request.requestType === "mark_won") {
-      const won = mockSalesColumns.find((column) => column.code === "won")!;
-      salesCards[cardIndex] = { ...card, columnId: won.columnId, status: "won", wonAt: now, updatedAt: now, revision: card.revision + 1 };
+    if (request.requestType === "mark_won" || request.requestType === "mark_lost") {
+      const targetCode = request.requestType === "mark_won" ? "won" : "lost";
+      const target = mockSalesColumns.find((column) => column.code === targetCode)!;
+      salesCards[cardIndex] = { ...card, columnId: target.columnId, status: targetCode, wonAt: targetCode === "won" ? now : null, lostReason: targetCode === "lost" ? request.reason : null, updatedAt: now, revision: card.revision + 1 };
     } else {
       salesCards[cardIndex] = { ...card, status: "archived", archivedAt: now, updatedAt: now, revision: card.revision + 1 };
     }
@@ -651,6 +653,25 @@ function mockMoveSalesCard(id: string, body: SalesCardMoveRequest): { dealId: st
 
   salesCards = salesCards.map((deal, i) => (i === index ? next : deal));
   return { dealId: id, status, revision: next.revision };
+}
+
+function mockTransitionOptions(id: string): SalesTransitionOptionsResponse {
+  const card = salesCards.find((deal) => deal.dealId === id);
+  if (!card) throw new ApiError({ code: "NOT_FOUND", message: `Deal ${id} not found.`, status: 404 });
+  const currentIndex = mockSalesColumns.findIndex((column) => column.columnId === card.columnId);
+  return {
+    dealId: id,
+    currentColumnId: card.columnId,
+    dealRevision: card.revision,
+    options: mockSalesColumns.map((column, index) => {
+      const terminal = column.code === "won" || column.code === "lost";
+      const adjacent = Math.abs(index - currentIndex) === 1 || column.code === "on_hold";
+      const blockers = terminal
+        ? [{ code: "APPROVAL_REQUEST_REQUIRED", message: "Submit an approval request from Deal detail." }]
+        : adjacent ? [] : [{ code: "INVALID_STAGE_TRANSITION", message: "Move through the adjacent stage first." }];
+      return { columnId: column.columnId, code: column.code, name: column.name, allowed: blockers.length === 0, canOverride: false, blockers, warnings: [], requiredFields: [] };
+    }),
+  };
 }
 
 
@@ -1201,6 +1222,7 @@ export const mockApi: ApiClient = {
 
     moveCard: (id: string, body: SalesCardMoveRequest) =>
       delay(mockMoveSalesCard(id, body)),
+    getTransitionOptions: (id: string) => delay(mockTransitionOptions(id)),
   },
 
   /**

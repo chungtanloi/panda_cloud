@@ -1621,6 +1621,34 @@ probe unnecessary. It would also fix the same class of confusion for every
 future unimplemented route, not just this one. That is a backend behaviour
 change and needs the BE owner.
 
+## 2026-08-18 — Central pipeline stage transition policy
+
+Implemented the approved hybrid stage policy across frontend and backend.
+Backend now owns the transition graph, minimum data gates, stable blockers and
+warnings, scoped Deal access, OCC, Manager/Admin override reason, transition
+history, and audit. The advisory endpoint is
+`GET /api/v1/sales/cards/{dealId}/transition-options`; the move mutation repeats
+the same evaluation and cannot be bypassed by stale frontend state.
+
+Sales Board preloads policy hints, disables hard-blocked targets, and opens a
+review dialog for warnings, On Hold inputs, or eligible Manager/Admin override.
+Deal Detail now explains every available/blocked destination and lets Sales
+record completed contact, Proposal sent, and Customer response milestones.
+Won, Lost, and Archive are request-only terminal actions decided by
+Manager/Admin; no role can directly drag into terminal columns.
+
+OpenAPI now documents transition options, extended move fields, activity
+business events, and `mark_lost`. Backend unit tests cover skip prevention,
+override reasons, contact gates, readiness warnings, and terminal approval.
+Detailed frontend mapping: `docs/PIPELINE_TRANSITION_POLICY_HANDOFF.md`.
+
+Validation completed after implementation: frontend typecheck PASS, lint PASS
+with no warnings, tests 78/78 PASS, production build PASS. Backend typecheck
+PASS, lint PASS with 8 pre-existing warnings in `convex/deals.ts`, tests
+223/223 PASS, OpenAPI lint PASS, route/OpenAPI parity 4/4 PASS, and production
+build PASS. The Next 16 build emitted only the existing Turbopack root warning.
+Deploy/synchronize Convex schema and functions before live API testing.
+
 ### 2026-08-18 — Frontend checklist completion pass
 
 Audited the owner checklist in `docs/FRONTEND_CHECKLIST_AUDIT.md`. Frontend typecheck and lint are clean, Technical DD is wired to the HTTP gateway, raw identity inputs are removed from Deal Readiness, and secure document transfer now implements upload-session, signed storage PUT and finalize through the API abstraction. KYC/NCNDA document screens use the shared upload UI and wait for backend malware status before attachment.
@@ -1637,3 +1665,105 @@ Removal means backend soft archive, not hard delete. Pending requests and recent
 Detailed mapping: `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md`. Backend handoff: `PandaCloudBackend/docs/collaboration/DEAL_CHANGE_REQUESTS_API_HANDOFF.md`.
 
 Validation: frontend typecheck PASS, lint PASS, tests 29/29 PASS, build PASS. Backend typecheck PASS, lint PASS with 8 pre-existing warnings, tests 207/207 PASS, build PASS. OpenAPI is valid with 2 pre-existing Sales card schema warnings. The Convex schema/functions still need the normal deployment step (`npx convex dev` for development or the approved production deployment workflow) before the new routes can operate against a deployment.
+
+### 2026-08-18 — Deal lookup wired into the frontend, and the first tests for today's work
+
+Frontend only. No backend file, contract or authorization rule changed.
+
+**The lookup API landed today.** `GET /api/v1/lookups/{deals,organizations,contacts,owners}`
+is in `openapi.yaml`, with `q` ≥ 2 characters, `limit` 1–50 and cursor
+pagination. That closes the gap ranked first in three consecutive handoffs: the
+UI no longer has to ask a human to paste an opaque Convex key.
+
+**⚠ But not for the three roles that needed it most.** Read from
+`convex/lookups.ts`, not from a doc:
+
+| Lookup | Who may call it |
+|---|---|
+| `deals` | sales (own deals), manager, admin — **legal, compliance and technical get 403** |
+| `contacts` | same, and `organizationId` is required |
+| `organizations` | manager, admin only |
+| `owners` | manager, admin only |
+
+`deals` and `contacts` resolve the Kanban scope, which fails closed with
+`REQUIRES_RESOURCE_SCOPE` for legal, compliance and technical. So a deal picker
+in the Legal, Compliance or Technical workspace still cannot work.
+
+There is a second, sharper mismatch: **NCNDA writes are legal/manager/admin, but
+the organization lookup that would populate a counterparty selector is
+manager/admin.** A legal user can create an agreement and cannot choose who it is
+with. Both are recorded in `models/lookup.ts#LOOKUP_ROLE_NOTES` rather than
+worked around, and both need a BE owner decision.
+
+**`DealPicker` (new) handles that honestly.** It searches, debounced at 250 ms,
+starting only at two characters because a shorter `q` is a 400 on the wire —
+firing it anyway would trade a silent failure for a visible one and teach the
+user nothing. Out-of-order responses are dropped with a request ticket. On a 403
+it stops searching, says in one line that the role has no deal scope, and falls
+back to the identifier field those screens had before. When the backend widens
+the scope the fallback disappears on its own and no frontend file changes.
+
+**Wired into the two screens that still asked for a pasted id:**
+
+- `technical/AssessmentsPage.tsx` — ⚠ this page had been left with **no way at
+  all** to enter a deal: the form was removed in an earlier pass but `input`,
+  `setInput`, `submit` and the `Input` import stayed behind, so without a
+  `?dealId=` it was unusable and also failing lint. It now has a picker (which,
+  for the technical role, renders as the id field), and the dead code is gone.
+- `workspace/DealScopedLanding.tsx` — the "paste a bookmarked deal id" drawer is
+  now a search. Legal and compliance reach this page most, and they are exactly
+  the roles the lookup rejects, so in practice they still see an id field —
+  through one code path instead of two.
+
+**Tests — 4 files, first automated coverage of anything shipped today.** No new
+dependency: vitest and testing-library were already installed.
+
+| File | Covers |
+|---|---|
+| `src/lib/readiness.test.ts` | The single readiness rule: record selection, and the three guards stricter than status equality |
+| `src/services/legalQueue.test.ts` | CR-004 mock adapter — buckets, ordering, row shape, transition guards |
+| `src/models/legalQueue.test.ts` | The pure helpers the transition form uses |
+| `src/services/lookup.test.ts` | Query guard, role-rejection detection, mock lookups |
+
+The readiness tests pin what is easy to regress by accident and expensive when
+it is: that the newest record by `updatedAt` decides the verdict (not
+`items[0]`); that an approved KYC with no `verifiedAt`, or a lapsed one, is not
+ready; that a prohibited risk level blocks whatever the status says; and that a
+68/68 assessment with one critical failure blocks.
+
+`legalQueue.test.ts` asserts `ncnda_03` reports `daysInStatus: null` rather than
+`0` — the pre-backfill path. Zero would read as "changed today", which is a
+measurement the backend never made.
+
+⚠ `legalQueue.test.ts` is **order-dependent within the file**: the mock keeps
+rows in module state so a transition is visible on the next read, as a server
+would, and the one successful-transition test is therefore last. Stated at the
+top of the file.
+
+**⚠ Validation status: STILL NOT RUN.** The Linux workspace on the authoring
+machine has not recovered, so these tests have never been executed — they are
+written, not passing. `npm test` is the first thing to run, and the count should
+go from 21 to roughly 60.
+
+**Files**
+
+| Path | Change |
+|---|---|
+| `src/models/lookup.ts` | **new** — wire types + the role notes |
+| `src/services/lookup.ts` | **new** — port + HTTP adapter + mock adapter |
+| `src/components/shared/DealPicker.tsx` | **new** — search, with an honest 403 fallback |
+| `src/lib/readiness.test.ts` | **new** |
+| `src/services/legalQueue.test.ts` | **new** |
+| `src/models/legalQueue.test.ts` | **new** |
+| `src/services/lookup.test.ts` | **new** |
+| `src/services/endpoints.ts` | four lookup paths |
+| `src/components/technical/AssessmentsPage.tsx` | picker replaces the missing id field; dead code removed |
+| `src/components/workspace/DealScopedLanding.tsx` | picker replaces the paste-id drawer |
+
+**Two decisions for the BE owner**
+
+1. Should `lookups/deals` return a defined scope for legal, compliance and
+   technical, rather than failing closed? Without it those workspaces keep the
+   id field.
+2. Should `lookups/organizations` be readable by `legal`, to match who may write
+   an NCNDA?

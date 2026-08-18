@@ -1,4 +1,4 @@
-export type DealChangeRequestType = "mark_won" | "archive";
+export type DealChangeRequestType = "mark_won" | "mark_lost" | "archive";
 export type DealChangeRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export interface DealChangeRequestActor {

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { LoadingState } from "@/components/ui/states";
-import { Input } from "@/components/ui/Field";
+import { DealPicker } from "@/components/shared/DealPicker";
 
 /**
  * Landing for a workspace whose records the backend only exposes per deal.
@@ -56,7 +56,6 @@ export function DealScopedLanding({
   const dealId = params.get("dealId")?.trim() ?? "";
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [manualId, setManualId] = useState("");
 
   useEffect(() => {
     if (dealId) router.replace(`/deal-readiness/${encodeURIComponent(dealId)}`);
@@ -91,7 +90,7 @@ export function DealScopedLanding({
             onClick={() => setDrawerOpen(true)}
             className="rounded-full border border-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-accent"
           >
-            Open a bookmarked deal
+            Find a deal
           </button>
         </div>
       </section>
@@ -112,38 +111,30 @@ export function DealScopedLanding({
           className="fixed inset-0 z-[70] flex justify-end bg-black/60"
           role="dialog"
           aria-modal="true"
-          aria-label="Open deal by id"
+          aria-label="Open a deal"
         >
           <button className="flex-1" aria-label="Close" onClick={() => setDrawerOpen(false)} />
-          <form
-            className="h-full w-full max-w-md border-l border-line bg-surface p-6 pt-20"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const value = manualId.trim();
-              if (value) router.push(`/deal-readiness/${encodeURIComponent(value)}`);
-            }}
-          >
-            <h2 className="text-xl font-semibold text-ink">Open bookmarked deal</h2>
+          <div className="h-full w-full max-w-md border-l border-line bg-surface p-6 pt-20">
+            <h2 className="text-xl font-semibold text-ink">Open a deal</h2>
             <p className="mt-2 text-sm leading-6 text-ink-dim">
-              Paste the opaque deal id only when you already received it from a link, a support
-              ticket or a backend record.
+              Search for the deal this workstream belongs to. Selecting one opens its readiness
+              page, where {workstream.toLowerCase()} sit alongside the other two lanes.
             </p>
             <div className="mt-6">
-              <Input
-                label="Deal ID"
-                value={manualId}
-                onChange={(event) => setManualId(event.target.value)}
-                placeholder="deal_xxx"
+              {/*
+                `DealPicker` calls the deal lookup and falls back to an identifier
+                field on its own for roles the lookup rejects — which includes
+                legal and compliance, the two that reach this page most. One code
+                path covers both cases.
+              */}
+              <DealPicker
+                autoFocus
+                onSelect={(deal) =>
+                  router.push(`/deal-readiness/${encodeURIComponent(deal.dealId)}`)
+                }
               />
             </div>
-            <button
-              type="submit"
-              disabled={!manualId.trim()}
-              className="mt-5 rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-accent-fg disabled:opacity-40"
-            >
-              Open readiness
-            </button>
-          </form>
+          </div>
         </div>
       ) : null}
     </WorkspacePage>

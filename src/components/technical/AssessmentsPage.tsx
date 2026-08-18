@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { GapNotice } from "@/components/workspace/GapNotice";
 import { StatusPill } from "@/components/workspace/StatusPill";
-import { Input } from "@/components/ui/Field";
+import { DealPicker } from "@/components/shared/DealPicker";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { DD_ASSESSMENT_STATUS_TONES } from "@/config/lifecycle";
 import {
@@ -42,7 +42,6 @@ export function AssessmentsPage() {
   const params = useSearchParams();
   const dealIdFromUrl = params.get("dealId") ?? "";
 
-  const [input, setInput] = useState(dealIdFromUrl);
   const [items, setItems] = useState<readonly DdAssessmentSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<NormalizedError | null>(null);
@@ -67,16 +66,19 @@ export function AssessmentsPage() {
   }, []);
 
   useEffect(() => {
-    setInput(dealIdFromUrl);
     void load(dealIdFromUrl);
   }, [dealIdFromUrl, load]);
 
-  function submit(event: React.FormEvent) {
-    event.preventDefault();
-    const next = input.trim();
-    // Keep the deal id in the URL so the view is shareable and survives reload.
-    router.replace(next ? `/technical/assessments?dealId=${encodeURIComponent(next)}` : "/technical/assessments");
-  }
+  // The deal id stays in the URL so the view is shareable and survives reload.
+  const openDeal = useCallback(
+    (dealId: string) =>
+      router.replace(
+        dealId
+          ? `/technical/assessments?dealId=${encodeURIComponent(dealId)}`
+          : "/technical/assessments",
+      ),
+    [router],
+  );
 
   return (
     <WorkspacePage
@@ -84,7 +86,32 @@ export function AssessmentsPage() {
       title="Due Diligence assessments"
       description="Technical Due Diligence for one deal — UC-010 initialize, UC-011 respond and review. The published template carries 68 requirements: 56 IDC and 12 DL."
     >
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-line bg-surface-alt p-4"><p className="text-sm text-ink-dim">Open Due Diligence from a Deal or Manager handoff. The deal context is carried by the route; no internal ID needs to be typed.</p><Link href="/manager/pipeline" className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent">Open pipeline</Link></div>
+      <section className="mb-6 rounded-[20px] border border-line bg-surface-alt p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-ink-dim">
+            Open Due Diligence from a deal or a Manager handoff, or search for one below.
+          </p>
+          <Link
+            href="/manager/pipeline"
+            className="rounded-full border border-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-accent"
+          >
+            Open pipeline
+          </Link>
+        </div>
+
+        {/*
+          Replaces the raw identifier field this page used to carry. The picker
+          degrades to that field on its own for roles the lookup rejects — see
+          `DealPicker`, and the GapNotice at the foot of this page for why the
+          technical role is one of them.
+        */}
+        <div className="mt-4 max-w-xl">
+          <DealPicker
+            label="Find a deal"
+            onSelect={(deal) => openDeal(deal.dealId)}
+          />
+        </div>
+      </section>
       {loading ? <LoadingState label="Loading assessments" /> : null}
 
       {!loading && error ? (
@@ -152,7 +179,13 @@ export function AssessmentsPage() {
           that role, so the sales board answers 403.
         </p>
         <p>
-          Until the backend adds a cross-deal list — or grants Technical a read
+          <code>GET /api/v1/lookups/deals</code> shipped on 2026-08-18 and would solve the
+          entry problem, but it resolves the same Kanban scope, so a Technical
+          identity receives 403 from it too. The picker above therefore falls
+          back to an identifier field for this role.
+        </p>
+        <p>
+          Until the backend adds a cross-deal list — or grants Technical a scope
           that returns the deals they are assigned to — this page needs the deal
           id handed to it. No list was faked to hide that.
         </p>

@@ -101,6 +101,21 @@ export const endpoints = {
       `/due-diligence/assessments/${assessmentId}/responses/${templateItemId}`,
   },
 
+  /**
+   * Typeahead lookups — shipped 2026-08-18 and present in `openapi.yaml`.
+   *
+   * ⚠ The four do not share one authorization rule. `deals` and `contacts`
+   * resolve the Kanban scope, which fails closed for legal, compliance and
+   * technical; `organizations` and `owners` are manager/admin only. See
+   * `models/lookup.ts#LOOKUP_ROLE_NOTES`.
+   */
+  lookups: {
+    deals: "/lookups/deals",
+    organizations: "/lookups/organizations",
+    contacts: "/lookups/contacts",
+    owners: "/lookups/owners",
+  },
+
   /** NCNDA gateway operations (see ncnda api.md). */
   ncnda: {
     agreementsForDeal: (dealId: string) => `/deals/${dealId}/ncnda`,
@@ -139,6 +154,7 @@ export const endpoints = {
     cards: "/sales/cards",
     cardById: (id: string) => `/sales/cards/${id}`,
     moveCard: (id: string) => `/sales/cards/${id}/move`,
+    transitionOptions: (id: string) => `/sales/cards/${id}/transition-options`,
   },
   documents: { uploadSessions: "/document-upload-sessions", finalize: (documentId: string) => `/documents/${documentId}/finalize` },
   admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}` },

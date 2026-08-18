@@ -77,6 +77,7 @@ import type {
   SalesCardListQuery,
   SalesCardMoveRequest,
   SalesCardMoveResponse,
+  SalesTransitionOptionsResponse,
   SalesCardPage,
   SalesCardUpdateRequest,
   SalesCardUpdateResponse,
@@ -250,6 +251,8 @@ export const httpApi: ApiClient = {
 
     moveCard: (id: string, body: SalesCardMoveRequest) =>
       http.post<SalesCardMoveResponse>(endpoints.sales.moveCard(id), body),
+    getTransitionOptions: (id: string) =>
+      http.get<SalesTransitionOptionsResponse>(endpoints.sales.transitionOptions(id)),
   },
 
   dealRequests: {

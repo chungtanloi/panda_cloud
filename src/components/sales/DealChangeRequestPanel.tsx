@@ -9,6 +9,7 @@ import { api, normalizeError } from "@/services/api";
 
 const LABELS: Record<DealChangeRequestType, string> = {
   mark_won: "Mark as Won",
+  mark_lost: "Mark as Lost",
   archive: "Remove from pipeline",
 };
 
@@ -92,7 +93,7 @@ export function DealChangeRequestPanel({
         <h3 className="pt-[3px] text-[14px] font-semibold text-white">Sensitive deal actions</h3>
         <p className="pt-[4px] text-[11px] leading-[17px] text-ink-dim">
           Sales proposes the change. A Manager or Admin reviews it before the backend marks
-          this deal Won or archives it.
+          this deal Won, Lost, or archives it.
         </p>
       </div>
 
@@ -110,8 +111,8 @@ export function DealChangeRequestPanel({
         </div>
       ) : !terminal ? (
         <>
-          <div className="grid grid-cols-2 gap-[8px]">
-            {(["mark_won", "archive"] as const).map((value) => (
+          <div className="grid grid-cols-1 gap-[8px] sm:grid-cols-3">
+            {(["mark_won", "mark_lost", "archive"] as const).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -135,7 +136,7 @@ export function DealChangeRequestPanel({
               value={reason}
               maxLength={1000}
               onChange={(event) => setReason(event.target.value)}
-              placeholder={type === "mark_won" ? "Why is this deal ready to close?" : "Why should this card leave the active pipeline?"}
+              placeholder={type === "mark_won" ? "Why is this deal ready to close?" : type === "mark_lost" ? "Why was this opportunity lost?" : "Why should this card leave the active pipeline?"}
               className="resize-y rounded-field border border-line-strong bg-deep px-[12px] py-[9px] text-[12px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
             />
           </label>
