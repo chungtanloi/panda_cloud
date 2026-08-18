@@ -27,6 +27,7 @@ import {
 } from "@/models";
 import type { NormalizedError } from "@/models/common";
 import { api, normalizeError } from "@/services/api";
+import { notifyDealReadinessChanged } from "@/controllers/ReadinessContext";
 
 function dateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -51,10 +52,9 @@ function toDateInput(iso: string | null): string {
  *   - `rejected` requires a reason;
  *   - `approved` requires a verification date.
  *
- * Note the update is a **full status write**, not a patch: the backend's
- * validator marks `status` non-optional, and any field omitted from the body is
- * written as undefined. So the form loads the current values and sends them all
- * back — omitting one would silently clear it.
+ * This is the backend-supported manual status update, not automated provider
+ * verification. `expectedRevision` prevents a stale client from overwriting a
+ * newer case.
  */
 export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHref }: { caseId: string; backHref?: string; documentsHref?: string }) {
   const { profile } = useAuth();
@@ -120,6 +120,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
     setSaving(true);
     try {
       await api.compliance.updateCase(detail.caseId, body);
+      notifyDealReadinessChanged(detail.dealId);
       await load();
     } catch (cause) {
       const normalized = normalizeError(cause);
@@ -142,7 +143,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
     <WorkspacePage
       eyebrow="Compliance / Case"
       title={subjectLabel(detail.subject)}
-      description={detail.dealTitle ?? detail.dealId}
+      description={detail.dealTitle ?? "Case opened from its deal readiness context."}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -183,7 +184,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="rounded-[24px] border border-line bg-surface p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold text-ink">Manual review</h2>
+            <h2 className="text-sm font-semibold text-ink">Manual status update</h2>
             <StatusPill
               label={KYC_STATUS_LABELS[detail.status]}
               tone={KYC_STATUS_TONES[detail.status]}
@@ -191,12 +192,6 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
           </div>
 
           <form onSubmit={save} className="mt-5 grid gap-4">
-            {canManage ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <button type="button" onClick={() => setStatus("pending_documents")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50">Request KYC</button>
-              <button type="button" onClick={() => setStatus("under_review")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50">Start review</button>
-              <button type="button" onClick={() => setStatus("approved")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-accent/50">Approve</button>
-              <button type="button" onClick={() => setStatus("rejected")} className="rounded-xl border border-line px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-ink-dim hover:border-red-400/50">Reject</button>
-            </div> : null}
             <Select
               label="Status *"
               value={status}

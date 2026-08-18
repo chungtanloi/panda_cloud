@@ -20,7 +20,7 @@ export function CreateAgreementForm({ dealId, context, onDone }: { dealId: strin
     if (!context?.organizationId || !context.ownerId) { setError("Deal context is incomplete; no internal IDs were entered manually."); return; }
     setSaving(true);
     try {
-      await api.legal.upsertAgreement({ dealId, counterpartyOrganizationId: context.organizationId, ownerId: context.ownerId, status: "drafting", ...(effectiveDate ? { effectiveDate } : {}), ...(notes.trim() ? { notes: notes.trim() } : {}) });
+      await api.legal.upsertAgreement({ dealId, counterpartyOrganizationId: context.organizationId, ownerId: context.ownerId, status: "drafting", expectedRevision: 1, ...(effectiveDate ? { effectiveDate } : {}), ...(notes.trim() ? { notes: notes.trim() } : {}) });
       onDone();
     } catch (cause) { const normalized = normalizeError(cause); setError(normalized.correlationId ? `${normalized.message} (correlation ${normalized.correlationId})` : normalized.message); }
     finally { setSaving(false); }

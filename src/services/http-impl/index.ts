@@ -378,8 +378,13 @@ export const httpApi: ApiClient = {
       http.patch<NcndaAgreementUpsertResponse>(
         endpoints.ncnda.agreementsForDeal(body.dealId),
         {
-          ...body,
-          expectedRevision: body.expectedRevision ?? 1,
+          ...(body.agreementId ? { agreementId: body.agreementId } : {}),
+          counterpartyOrganizationId: body.counterpartyOrganizationId,
+          ownerId: body.ownerId,
+          status: body.status,
+          expectedRevision: body.expectedRevision,
+          ...(body.effectiveDate ? { effectiveDate: body.effectiveDate } : {}),
+          ...(body.notes !== undefined ? { notes: body.notes } : {}),
           ...(body.expiresAt ? { expiresAt: isoToMillis(body.expiresAt) } : {}),
           ...(body.sentAt ? { sentAt: isoToMillis(body.sentAt) } : {}),
           ...(body.signedAt ? { signedAt: isoToMillis(body.signedAt) } : {}),

@@ -8,6 +8,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { CreateAgreementForm } from "@/components/legal/CreateAgreementForm";
 import { CreateCaseForm } from "@/components/compliance/CreateCaseForm";
 import { useAuth } from "@/controllers/AuthContext";
+import { notifyDealReadinessChanged } from "@/controllers/ReadinessContext";
 import { hasPermission } from "@/config/access";
 import {
   LANE_LABELS,
@@ -96,6 +97,14 @@ export function DealReadinessView({ dealId }: { dealId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    function refresh(event: Event) {
+      if ((event as CustomEvent<{ dealId?: string }>).detail?.dealId === dealId) void load();
+    }
+    window.addEventListener("panda-cloud:readiness-invalidated", refresh);
+    return () => window.removeEventListener("panda-cloud:readiness-invalidated", refresh);
+  }, [dealId, load]);
 
   const readiness = useMemo(
     () => evaluateReadiness({ agreements, cases, assessments }),
@@ -267,6 +276,7 @@ export function DealReadinessView({ dealId }: { dealId: string }) {
             dealId={dealId}
             context={deal}
             onDone={() => {
+              notifyDealReadinessChanged(dealId);
               setCreateLane(null);
               void load();
             }}
@@ -279,6 +289,7 @@ export function DealReadinessView({ dealId }: { dealId: string }) {
             dealId={dealId}
             context={deal}
             onDone={() => {
+              notifyDealReadinessChanged(dealId);
               setCreateLane(null);
               void load();
             }}
