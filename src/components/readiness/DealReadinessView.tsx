@@ -122,7 +122,7 @@ export function DealReadinessView({ dealId }: { dealId: string }) {
     );
     assessments.forEach((item) =>
       rows.push({
-        id: `d-${item.id}`,
+        id: `d-${item.assessmentId}`,
         at: item.updatedAt,
         lane: LANE_LABELS.dd,
         label: DD_ASSESSMENT_STATUS_LABELS[item.status],
@@ -138,7 +138,7 @@ export function DealReadinessView({ dealId }: { dealId: string }) {
     kyc: readiness.current.kyc
       ? `/deal-readiness/${encodeURIComponent(dealId)}/kyc/${readiness.current.kyc.caseId}`
       : undefined,
-    dd: readiness.current.dd ? `/technical/assessments/${readiness.current.dd.id}` : undefined,
+    dd: readiness.current.dd ? `/technical/assessments/${readiness.current.dd.assessmentId}` : undefined,
   };
 
   const laneAction: Record<LaneId, string> = {

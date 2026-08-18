@@ -1,6 +1,5 @@
 import type {
   DdAssessmentSummary,
-  DdEligibleDeal,
   DdResponse,
   DdTemplateItem,
 } from "@/models/dueDiligence";
@@ -266,17 +265,16 @@ function buildResponses(seed: AssessmentSeed): DdResponse[] {
     }
 
     return {
-      id: `ddr_${seed.id}_${item.id}`,
+      responseId: `ddr_${seed.id}_${item.id}`,
       assessmentId: seed.id,
       templateItemId: item.id,
       status,
-      ...(reviewed || answeredOnly
-        ? { responseValue: sampleValue(item), comments: reviewed ? undefined : "Awaiting operator confirmation." }
-        : {}),
-      ...(reviewed ? { reviewedBy: seed.assignedToName ?? "T. Nguyen", reviewedAt: "2026-08-10T08:00:00Z" } : {}),
+      responseValue: reviewed || answeredOnly ? sampleValue(item) : null,
+      comments: reviewed ? null : answeredOnly ? "Awaiting operator confirmation." : null,
+      reviewedBy: reviewed ? seed.assignedToName ?? "T. Nguyen" : null,
+      reviewedAt: reviewed ? "2026-08-10T08:00:00Z" : null,
       updatedAt: "2026-08-12T06:30:00Z",
       revision: 1,
-      evidence: [],
     } satisfies DdResponse;
   });
 }
@@ -308,15 +306,14 @@ export function buildMockAssessments(): {
   const summaries = ASSESSMENT_SEEDS.map((seed) => {
     responsesByAssessment[seed.id] = buildResponses(seed);
     return {
-      id: seed.id,
+      assessmentId: seed.id,
       dealId: seed.dealId,
-      dealTitle: seed.dealTitle,
-      organizationName: seed.organizationName,
-      templateVersionLabel: MOCK_TEMPLATE_VERSION_LABEL,
+      templateVersionId: MOCK_TEMPLATE_VERSION_LABEL,
       status: seed.status,
-      ...(seed.assignedToName ? { assignedToName: seed.assignedToName } : {}),
-      ...(seed.startedAt ? { startedAt: seed.startedAt } : {}),
-      ...(seed.completedAt ? { completedAt: seed.completedAt } : {}),
+      assignedTo: seed.assignedToName ?? null,
+      createdBy: "mock-technical-user",
+      startedAt: seed.startedAt ?? null,
+      completedAt: seed.completedAt ?? null,
       updatedAt: "2026-08-12T06:30:00Z",
       revision: 1,
       // Placeholder; the mock adapter recomputes this from the responses using
@@ -324,6 +321,9 @@ export function buildMockAssessments(): {
       metrics: {
         totalItems: mockDdTemplateItems.length,
         reviewedItems: 0,
+        applicableReviewedItems: 0,
+        compliantItems: 0,
+        partiallyCompliantItems: 0,
         completionRate: null,
         complianceRate: null,
         criticalFailures: 0,
@@ -333,39 +333,3 @@ export function buildMockAssessments(): {
 
   return { summaries, responsesByAssessment };
 }
-
-/**
- * Deals offered when creating an assessment.
- *
- * ⚠ NOT ON THE WIRE. `DD API.md` defines no eligible-deals operation, so this
- * fixture backs nothing the mock adapter serves — it is kept only so the
- * shape survives until a backend operation exists. Do not build a picker on
- * it: a create screen must take a dealId it already holds.
- *
- * ⚠ TODO: NEEDS CLARIFICATION — see `DdEligibleDeal`. The backend decides what
- * "Won-track" means; this fixture simply shows one `won` deal and two late
- * `open` stages so the ambiguity is visible in the UI instead of hidden.
- */
-export const mockEligibleDeals: readonly DdEligibleDeal[] = [
-  {
-    dealId: "deal_03",
-    title: "Ridgeline Capital — 40MW build-to-suit",
-    organizationName: "Ridgeline Capital",
-    stageCode: "won",
-    stageCategory: "won",
-  },
-  {
-    dealId: "deal_06",
-    title: "Aperture Grid — hyperscale campus",
-    organizationName: "Aperture Grid",
-    stageCode: "due_diligence",
-    stageCategory: "open",
-  },
-  {
-    dealId: "deal_07",
-    title: "Northstar AI — colocation expansion",
-    organizationName: "Northstar AI",
-    stageCode: "negotiation",
-    stageCategory: "open",
-  },
-];

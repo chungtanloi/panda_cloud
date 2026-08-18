@@ -10,6 +10,9 @@ import type {
   DdMetrics,
   DdResponse,
   DdResponsePatch,
+  DdEvidenceAttachRequest,
+  DdEvidenceDocument,
+  DocumentSummary,
   AssessmentDraft,
   AssessmentSubmission,
   AuthProfile,
@@ -679,9 +682,10 @@ function mockTransitionOptions(id: string): SalesTransitionOptionsResponse {
 
 const ddState = buildMockAssessments();
 let ddSequence = 100;
+const ddEvidenceByResponse = new Map<string, DdEvidenceDocument[]>();
 
 function findAssessment(assessmentId: string): DdAssessmentSummary {
-  const found = ddState.summaries.find((row) => row.id === assessmentId);
+  const found = ddState.summaries.find((row) => row.assessmentId === assessmentId);
   if (!found) {
     throw new ApiError({
       code: "NOT_FOUND",
@@ -716,6 +720,9 @@ function computeMetrics(responses: readonly DdResponse[]): DdMetrics {
   return {
     totalItems,
     reviewedItems: answered.length,
+    applicableReviewedItems: applicable.length,
+    compliantItems: compliant,
+    partiallyCompliantItems: partial,
     completionRate: totalItems === 0 ? null : answered.length / totalItems,
     complianceRate: applicable.length === 0 ? null : (compliant + 0.5 * partial) / applicable.length,
     criticalFailures: responses.filter(
@@ -725,7 +732,7 @@ function computeMetrics(responses: readonly DdResponse[]): DdMetrics {
 }
 
 function withMetrics(summary: DdAssessmentSummary): DdAssessmentSummary {
-  return { ...summary, metrics: computeMetrics(ddState.responsesByAssessment[summary.id] ?? []) };
+  return { ...summary, metrics: computeMetrics(ddState.responsesByAssessment[summary.assessmentId] ?? []) };
 }
 
 function mockGetAssessment(assessmentId: string): DdAssessmentDetail {
@@ -738,30 +745,35 @@ function mockGetAssessment(assessmentId: string): DdAssessmentDetail {
 }
 
 function mockCreateAssessment(dealId: string, body: DdAssessmentCreate) {
-  if (body.dealId && body.dealId !== dealId) {
-    throw new ApiError({
-      code: "VALIDATION_ERROR",
-      message: "The body dealId must match the path.",
-      status: 400,
-    });
-  }
   ddSequence += 1;
   const id = `dd_mock_${ddSequence}`;
   const now = new Date().toISOString();
   ddState.summaries.unshift({
-    id,
+    assessmentId: id,
     dealId,
-    dealTitle: `Deal ${dealId}`,
-    organizationName: "—",
-    templateVersionLabel: MOCK_TEMPLATE_VERSION_LABEL,
+    templateVersionId: MOCK_TEMPLATE_VERSION_LABEL,
     status: "not_started",
-    ...(body.assignedToUserId ? { assignedToName: body.assignedToUserId } : {}),
+    assignedTo: body.assignedTo ?? null,
+    createdBy: "mock-technical-user",
+    startedAt: null,
+    completedAt: null,
     updatedAt: now,
     revision: 1,
     metrics: computeMetrics([]),
   });
-  ddState.responsesByAssessment[id] = [];
-  return { assessmentId: id, revision: 1 };
+  ddState.responsesByAssessment[id] = mockDdTemplateItems.map((item) => ({
+    responseId: `ddr_mock_${id}_${item.id}`,
+    assessmentId: id,
+    templateItemId: item.id,
+    status: "not_reviewed",
+    responseValue: null,
+    comments: null,
+    reviewedBy: null,
+    reviewedAt: null,
+    updatedAt: now,
+    revision: 1,
+  }));
+  return { assessmentId: id, responseCount: mockDdTemplateItems.length, revision: 1 };
 }
 
 function mockUpdateResponse(
@@ -791,10 +803,11 @@ function mockUpdateResponse(
 
   const responses = ddState.responsesByAssessment[assessmentId] ?? [];
   const index = responses.findIndex((row) => row.templateItemId === templateItemId);
-  // A requirement nobody has answered yet has no row, so revision 0 is the
-  // caller's way of saying "I believe this is unanswered" — the upsert case.
+  // The backend creates a response row for every published requirement when it
+  // initializes the assessment. Every update is therefore guarded by a
+  // positive response revision.
   const current = index === -1 ? null : responses[index]!;
-  if (body.expectedRevision !== (current?.revision ?? 0)) {
+  if (!current || body.expectedRevision !== current.revision) {
     throw new ApiError({
       code: "CONFLICT",
       message: "This response changed on the server. Reloading the latest version.",
@@ -804,28 +817,16 @@ function mockUpdateResponse(
 
   const now = new Date().toISOString();
   const next: DdResponse = {
-    id: current?.id ?? `ddr_mock_${assessmentId}_${templateItemId}`,
+    responseId: current.responseId,
     assessmentId,
     templateItemId,
-    status: body.status ?? current?.status ?? "not_reviewed",
-    ...(body.responseValue !== undefined
-      ? { responseValue: body.responseValue }
-      : current?.responseValue !== undefined
-        ? { responseValue: current.responseValue }
-        : {}),
-    ...(body.comments !== undefined
-      ? { comments: body.comments }
-      : current?.comments !== undefined
-        ? { comments: current.comments }
-        : {}),
-    ...(body.markReviewed
-      ? { reviewedBy: "Technical reviewer", reviewedAt: now }
-      : current?.reviewedBy
-        ? { reviewedBy: current.reviewedBy, reviewedAt: current.reviewedAt }
-        : {}),
+    status: body.status,
+    responseValue: body.responseValue ?? current.responseValue,
+    comments: body.comments ?? current.comments,
+    reviewedBy: body.status === "not_reviewed" ? null : "Technical reviewer",
+    reviewedAt: body.status === "not_reviewed" ? null : now,
     updatedAt: now,
-    revision: (current?.revision ?? 0) + 1,
-    evidence: current?.evidence ?? [],
+    revision: current.revision + 1,
   };
 
   const updated =
@@ -836,7 +837,7 @@ function mockUpdateResponse(
 
   // DD API.md: response rev+1 -> recompute progress -> assessment snapshot
   // rev+1. The deal DD summary bump has no frontend surface to observe it.
-  const summaryIndex = ddState.summaries.findIndex((row) => row.id === assessmentId);
+  const summaryIndex = ddState.summaries.findIndex((row) => row.assessmentId === assessmentId);
   const progress = computeMetrics(updated);
   const bumped: DdAssessmentSummary = {
     ...summary,
@@ -848,11 +849,29 @@ function mockUpdateResponse(
   ddState.summaries[summaryIndex] = bumped;
 
   return {
-    assessmentId,
-    templateItemId,
-    responseRevision: next.revision,
-    assessmentRevision: bumped.revision,
+    responseId: next.responseId,
+    revision: next.revision,
     progress,
+  };
+}
+
+function evidenceKey(assessmentId: string, templateItemId: string) {
+  return `${assessmentId}:${templateItemId}`;
+}
+
+function mockDocument(documentId: string): DocumentSummary {
+  return {
+    documentId,
+    organizationId: null,
+    originalFilename: "uploaded-document.pdf",
+    mimeType: "application/pdf",
+    sizeBytes: 1,
+    sha256Checksum: "a".repeat(64),
+    encryptionStatus: "pending",
+    malwareScanStatus: documentId === "mock-clean-document" ? "clean" : "pending",
+    retentionClass: "standard",
+    uploadedBy: "mock-user",
+    archivedAt: null,
   };
 }
 
@@ -1262,15 +1281,38 @@ export const mockApi: ApiClient = {
     getProgress: (assessmentId: string) => {
       const summary = withMetrics(findAssessment(assessmentId));
       return delay({
-        assessmentId: summary.id,
-        status: summary.status,
-        revision: summary.revision,
-        ...summary.metrics,
+        materialized: summary.metrics,
+        live: summary.metrics ?? computeMetrics([]),
+        consistent: true,
       });
     },
 
     updateResponse: (assessmentId: string, templateItemId: string, body: DdResponsePatch) =>
       delay(mockUpdateResponse(assessmentId, templateItemId, body)),
+    listEvidence: async (assessmentId: string, templateItemId: string) => ({
+      dealId: findAssessment(assessmentId).dealId,
+      assessmentId,
+      templateItemId,
+      documents: ddEvidenceByResponse.get(evidenceKey(assessmentId, templateItemId)) ?? [],
+    }),
+    attachEvidence: async (assessmentId: string, templateItemId: string, body: DdEvidenceAttachRequest) => {
+      const document = mockDocument(body.documentId);
+      if (document.malwareScanStatus !== "clean") {
+        throw new ApiError({ code: "VALIDATION_ERROR", message: "Evidence requires a clean malware scan.", status: 400 });
+      }
+      const key = evidenceKey(assessmentId, templateItemId);
+      const existing = ddEvidenceByResponse.get(key) ?? [];
+      if (existing.some((item) => item.documentId === body.documentId)) {
+        throw new ApiError({ code: "CONFLICT", message: "Document is already attached.", status: 409 });
+      }
+      ddEvidenceByResponse.set(key, [...existing, { ...document, documentRole: body.documentRole ?? "evidence", attachedBy: "mock-user" }]);
+      return { linkId: `mock-evidence-${body.documentId}`, documentId: body.documentId };
+    },
+    detachEvidence: async (assessmentId: string, templateItemId: string, documentId: string) => {
+      const key = evidenceKey(assessmentId, templateItemId);
+      ddEvidenceByResponse.set(key, (ddEvidenceByResponse.get(key) ?? []).filter((item) => item.documentId !== documentId));
+      return { documentId, detached: true };
+    },
   },
 
   /**
@@ -1338,6 +1380,12 @@ export const mockApi: ApiClient = {
     createUploadSession: async () => ({ documentId: "mock-document", uploadUrl: "https://example.invalid/upload", expiresAt: new Date(Date.now() + 300000).toISOString(), replayed: false }),
     uploadToSignedUrl: async () => undefined,
     finalize: async (documentId: string) => ({ documentId, finalized: true, checksumVerified: false, malwareScanStatus: "pending" as const, encryptionStatus: "pending" as const }),
+    getDocument: async (documentId: string) => mockDocument(documentId),
+    createDownloadSession: async (documentId: string) => ({
+      documentId,
+      downloadUrl: "https://example.invalid/download",
+      expiresAt: new Date(Date.now() + 300000).toISOString(),
+    }),
   },
   admin: {
     overview: async () => ({}),
@@ -1349,4 +1397,3 @@ export const mockApi: ApiClient = {
     auditLog: async (id: string) => ({ auditId: id }),
   },
 };
-

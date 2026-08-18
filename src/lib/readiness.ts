@@ -153,7 +153,7 @@ function kycState(item: KycCase | null): LaneState {
  */
 function ddState(item: DdAssessmentSummary | null): LaneState {
   if (!item) return "missing";
-  if (item.status === "cancelled" || item.metrics.criticalFailures > 0) return "blocked";
+  if (item.status === "cancelled" || (item.metrics?.criticalFailures ?? 0) > 0) return "blocked";
   return item.status === "completed" ? "ready" : "attention";
 }
 
@@ -196,6 +196,7 @@ function kycNext(item: KycCase | null): string {
 
 function ddNext(item: DdAssessmentSummary | null): string {
   if (!item) return "Technical initializes an assessment from the deal context.";
+  if (!item.metrics) return "Assessment progress has not been materialized yet.";
   if (item.metrics.criticalFailures > 0) {
     return `${item.metrics.criticalFailures} critical requirement(s) failed — Technical and Manager must review.`;
   }
@@ -294,7 +295,9 @@ export function lanePercent(lane: LaneId, result: ReadinessResult): number {
   if (state === "ready") return 100;
   if (state === "missing") return 0;
   if (lane === "dd" && result.current.dd) {
-    const { reviewedItems, totalItems } = result.current.dd.metrics;
+    const metrics = result.current.dd.metrics;
+    if (!metrics) return 0;
+    const { reviewedItems, totalItems } = metrics;
     if (totalItems > 0) return Math.round((reviewedItems / totalItems) * 100);
   }
   return 60;

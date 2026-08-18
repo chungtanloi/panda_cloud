@@ -99,6 +99,10 @@ export const endpoints = {
     /** Keyed by template item — a never-answered requirement has no response row. */
     response: (assessmentId: string, templateItemId: string) =>
       `/due-diligence/assessments/${assessmentId}/responses/${templateItemId}`,
+    evidence: (assessmentId: string, templateItemId: string) =>
+      `/due-diligence/assessments/${assessmentId}/responses/${templateItemId}/evidence`,
+    evidenceDocument: (assessmentId: string, templateItemId: string, documentId: string) =>
+      `/due-diligence/assessments/${assessmentId}/responses/${templateItemId}/evidence/${documentId}`,
   },
 
   /**
@@ -156,7 +160,12 @@ export const endpoints = {
     moveCard: (id: string) => `/sales/cards/${id}/move`,
     transitionOptions: (id: string) => `/sales/cards/${id}/transition-options`,
   },
-  documents: { uploadSessions: "/document-upload-sessions", finalize: (documentId: string) => `/documents/${documentId}/finalize` },
+  documents: {
+    uploadSessions: "/document-upload-sessions",
+    byId: (documentId: string) => `/documents/${documentId}`,
+    finalize: (documentId: string) => `/documents/${documentId}/finalize`,
+    downloadSession: (documentId: string) => `/documents/${documentId}/download-session`,
+  },
   admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}` },
   manager: { overview: "/manager/overview", team: "/manager/team", teamMember: (userId: string) => `/manager/team/${userId}`, projects: "/manager/projects", projectById: (projectId: string) => `/manager/projects/${projectId}`, projectReport: "/manager/reports/projects", convertDealToProject: (dealId: string) => `/deals/${dealId}/project` },
 } as const;
