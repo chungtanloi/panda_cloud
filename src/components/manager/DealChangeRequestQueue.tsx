@@ -11,7 +11,7 @@ const TYPE_LABEL = {
   archive: "Remove / archive card",
 } as const;
 
-export function DealChangeRequestQueue() {
+export function DealChangeRequestQueue({ workspace = "Manager" }: { workspace?: "Manager" | "Admin" }) {
   const [status, setStatus] = useState<DealChangeRequestStatus>("pending");
   const [items, setItems] = useState<DealChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +65,7 @@ export function DealChangeRequestQueue() {
   return (
     <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-[22px] px-[28px] py-[36px] lg:px-[48px]">
       <header>
-        <p className="font-mono text-[10px] uppercase tracking-[2px] text-accent">Manager / Approvals</p>
+        <p className="font-mono text-[10px] uppercase tracking-[2px] text-accent">{workspace} / Approvals</p>
         <h1 className="pt-[7px] text-[32px] font-semibold text-white">Deal change requests</h1>
         <p className="max-w-[760px] pt-[8px] text-[13px] leading-[21px] text-ink-dim">
           Sales can propose Won, Lost, or pipeline removal, but cannot execute those actions. Review the

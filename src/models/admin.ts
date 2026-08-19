@@ -1,5 +1,11 @@
-export type AdminOverview = Record<string, unknown>;
-export type AdminUserPage = { items: Array<Record<string, unknown>>; continueCursor?: string | null; isDone?: boolean };
-export type AdminRoles = Record<string, unknown>;
-export type AdminHealth = Record<string, unknown>;
-export type AdminAuditPage = { items: Array<Record<string, unknown>>; continueCursor?: string | null; isDone?: boolean };
+export type AdminCounts = Record<string, number>;
+export type AdminOverview = { users: { countsByStatus: AdminCounts; countsByType: AdminCounts }; memberships: { countsByRole: AdminCounts; countsByStatus: AdminCounts }; governance: { webhookEventCountsByStatus: AdminCounts }; ddConfiguration: { templateCount: number; versionCountsByStatus: AdminCounts } };
+export type AdminMembership = { organizationId: string; role: string; status: string };
+export type AdminUser = { userId: string; email: string; fullName: string; userType: string; status: string; lastLoginAt: string | null; memberships: AdminMembership[] };
+export type AdminUserPage = { items: AdminUser[]; nextCursor?: string | null; isDone?: boolean };
+export type AdminRoles = { roles: string[]; readOnly: boolean };
+export type AdminHealth = { api: { status: string }; convex: { status: string; schemaVersion: number }; serverTime: string };
+export type AdminAuditRecord = { auditId: string; actorUserId: string | null; actorType: string; action: string; resourceType: string; resourceId: string; organizationId: string | null; createdAt: string; beforeData: Record<string, string | number | boolean | null> | null; afterData: Record<string, string | number | boolean | null> | null };
+export type AdminAuditPage = { items: AdminAuditRecord[]; nextCursor?: string | null; isDone?: boolean };
+export type AdminIntegrationEvent = { eventId: string; provider: string; externalEventId: string; eventType: string; status: "received" | "processing" | "processed" | "ignored" | "failed"; attemptCount: number; lastAttemptAt: string | null; nextAttemptAt: string | null; retryExhausted: boolean; receivedAt: string; processedAt: string | null; lastErrorSummary: string | null };
+export type AdminIntegrationEventPage = { items: AdminIntegrationEvent[]; nextCursor?: string | null; isDone?: boolean };

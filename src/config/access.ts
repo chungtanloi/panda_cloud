@@ -128,7 +128,7 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
   admin: [
     { label: "Overview", href: "/admin" }, { label: "Approvals", href: "/admin/approvals", permission: "approval:view" }, { label: "Users", href: "/admin/users", permission: "user:manage" }, { label: "Roles", href: "/admin/roles", permission: "role:manage" },
     { label: "Permissions", href: "/admin/permissions", permission: "role:manage" }, { label: "System", href: "/admin/system", permission: "system:view" },
-    { label: "Audit Logs", href: "/admin/audit-logs", permission: "audit:view" }, { label: "Settings", href: "/admin/settings", permission: "system:manage" },
+    { label: "Audit Logs", href: "/admin/audit-logs", permission: "audit:view" }, { label: "Integration Events", href: "/admin/integrations/events", permission: "audit:view" }, { label: "Settings", href: "/admin/settings", permission: "system:manage" },
   ],
   // ROLE_PERMISSION_MATRIX § 5.2 route table.
   technical: [

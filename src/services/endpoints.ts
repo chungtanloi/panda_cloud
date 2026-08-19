@@ -166,6 +166,6 @@ export const endpoints = {
     finalize: (documentId: string) => `/documents/${documentId}/finalize`,
     downloadSession: (documentId: string) => `/documents/${documentId}/download-session`,
   },
-  admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}` },
+  admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}`, events: "/admin/integrations/events", eventById: (id: string) => `/admin/integrations/events/${id}` },
   manager: { overview: "/manager/overview", team: "/manager/team", teamMember: (userId: string) => `/manager/team/${userId}`, projects: "/manager/projects", projectById: (projectId: string) => `/manager/projects/${projectId}`, projectReport: "/manager/reports/projects", convertDealToProject: (dealId: string) => `/deals/${dealId}/project` },
 } as const;

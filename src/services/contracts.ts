@@ -79,7 +79,7 @@ import type {
   SubmissionConvertRequest,
   SubmissionConvertResponse,
   Submission,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectQuery, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
   DealChangeRequest, DealChangeRequestCreate, DealChangeRequestDecision, DealChangeRequestPage,
 } from "@/models";
@@ -185,19 +185,21 @@ export interface WorkspaceService {
 export interface AdminService {
   overview(): Promise<AdminOverview>;
   users(query?: Record<string, string | number | undefined>): Promise<AdminUserPage>;
-  user(userId: string): Promise<Record<string, unknown>>;
+  user(userId: string): Promise<import('@/models/admin').AdminUser>;
   roles(): Promise<AdminRoles>;
   health(): Promise<AdminHealth>;
   auditLogs(query?: Record<string, string | number | undefined>): Promise<AdminAuditPage>;
-  auditLog(auditId: string): Promise<Record<string, unknown>>;
+  auditLog(auditId: string): Promise<import('@/models/admin').AdminAuditRecord>;
+  events(query?: Record<string, string | number | undefined>): Promise<AdminIntegrationEventPage>;
+  event(eventId: string): Promise<AdminIntegrationEvent>;
 }
 
 export interface ManagerService {
   overview(): Promise<ManagerOverview>;
   team(query?: { from?: string; to?: string }): Promise<ManagerTeamResponse>;
   teamMember(userId: string, query?: { from?: string; to?: string }): Promise<ManagerTeamMember | null>;
-  projects(query?: Record<string, string | number | undefined>): Promise<ManagerProjectListResponse>;
-  project(projectId: string): Promise<Record<string, unknown>>;
+  projects(query?: ManagerProjectQuery): Promise<ManagerProjectListResponse>;
+  project(projectId: string): Promise<import('@/models/manager').ManagerProject>;
   projectReport(query?: { from?: string; to?: string }): Promise<ManagerProjectReport>;
   convertDealToProject(dealId: string, body: import('@/models/manager').ManagerProjectConversionRequest): Promise<import('@/models/manager').ManagerProjectConversionResponse>;
 }

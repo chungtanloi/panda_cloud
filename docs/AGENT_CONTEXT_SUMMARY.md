@@ -4,12 +4,12 @@
 
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
-- `branch_at_refresh`: `feat/integration-v1-kyc-ncnda`
-- `head_at_refresh`: `4dc8e5a` (diagnostic only)
-- `source_file_count`: `26`
-- `source_fingerprint`: `5c74d4320e6b6499239ab237436bca44c63b6c43dbb47da9e705fe7394463413`
+- `branch_at_refresh`: `feat/integration-v1-manager-admin`
+- `head_at_refresh`: `9388cc5` (diagnostic only)
+- `source_file_count`: `27`
+- `source_fingerprint`: `b4add550fa6fd07b303d217bf23e1b2609dafedda3daebc972b26fb11fe28950`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-18T12:36:45Z`
+- `last_context_refresh_at_utc`: `2026-08-19T03:45:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -58,6 +58,15 @@ authority.
 > Legal/Compliance routes retain only approved deal-scoped KYC/NCNDA operations;
 > CR-004 queue and transition proposals remain isolated and unconsumed. The
 > suite records 105 passing tests.
+
+> 2026-08-19 incremental refresh: Manager + Admin Integration Phase 1 was
+> completed on frontend main. Manager overview/team/project/report surfaces now
+> render typed backend DTOs; Operations shows persisted projects plus explicit
+> blocked gaps, and Deal Change Requests remain the only approvals domain.
+> Admin overview/users/roles/system/audit/integration-event surfaces now use
+> typed read-only views; Permissions and Settings are truthful blocked notices.
+> The new handoff records backend `4aa9a6c`, seven focused integration tests,
+> one adapter contract test, and a final frontend suite of 113 passing tests.
 
 ## Product purpose
 

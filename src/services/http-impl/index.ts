@@ -19,7 +19,7 @@ import type {
   SubmissionCreateResponse,
   SubmissionConvertRequest,
   SubmissionConvertResponse,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
   DdAssessmentCreate,
   DdAssessmentCreateResponse,
   DdAssessmentDetail,
@@ -455,11 +455,13 @@ export const httpApi: ApiClient = {
   admin: {
     overview: () => http.get<AdminOverview>(endpoints.admin.overview),
     users: (query = {}) => http.get<AdminUserPage>(endpoints.admin.users, { query }),
-    user: (id: string) => http.get<Record<string, unknown>>(endpoints.admin.userById(id)),
+    user: (id: string) => http.get<import('@/models/admin').AdminUser>(endpoints.admin.userById(id)),
     roles: () => http.get<AdminRoles>(endpoints.admin.roles),
     health: () => http.get<AdminHealth>(endpoints.admin.health),
     auditLogs: (query = {}) => http.get<AdminAuditPage>(endpoints.admin.auditLogs, { query }),
-    auditLog: (id: string) => http.get<Record<string, unknown>>(endpoints.admin.auditById(id)),
+    auditLog: (id: string) => http.get<import('@/models/admin').AdminAuditRecord>(endpoints.admin.auditById(id)),
+    events: (query = {}) => http.get<AdminIntegrationEventPage>(endpoints.admin.events, { query }),
+    event: (id: string) => http.get<AdminIntegrationEvent>(endpoints.admin.eventById(id)),
   },
 
   manager: {
@@ -467,7 +469,7 @@ export const httpApi: ApiClient = {
     team: (query = {}) => http.get<ManagerTeamResponse>(endpoints.manager.team, { query }),
     teamMember: (userId: string, query = {}) => http.get<ManagerTeamMember | null>(endpoints.manager.teamMember(userId), { query }),
     projects: (query = {}) => http.get<ManagerProjectListResponse>(endpoints.manager.projects, { query }),
-    project: (projectId: string) => http.get<Record<string, unknown>>(endpoints.manager.projectById(projectId)),
+    project: (projectId: string) => http.get<import('@/models/manager').ManagerProject>(endpoints.manager.projectById(projectId)),
     projectReport: (query = {}) => http.get<ManagerProjectReport>(endpoints.manager.projectReport, { query }),
     convertDealToProject: (dealId, body) => http.post<ManagerProjectConversionResponse>(endpoints.manager.convertDealToProject(dealId), body),
   },
