@@ -7,3 +7,28 @@ export type ManagerProject = Record<string, unknown> & { projectId: string };
 export type ManagerProjectListResponse = { items: ManagerProject[]; continueCursor?: string | null; isDone?: boolean };
 export type ManagerProjectConversionRequest = { expectedRevision: number; idempotencyKey: string; projectCode: string; projectName?: string };
 export type ManagerProjectConversionResponse = { projectId?: string; dealId?: string; created?: boolean } & Record<string, unknown>;
+export type AssessmentLeadAssignmentStatus = "manager_review" | "assigned";
+export type AssessmentLeadQueueItem = {
+  leadId: string;
+  assessmentSessionId: string | null;
+  paymentId: string | null;
+  dealId: string | null;
+  source: string;
+  vertical: string | null;
+  persona: string | null;
+  status: string;
+  priority: string;
+  summary: string | null;
+  assignmentStatus: AssessmentLeadAssignmentStatus | null;
+  assignedSalesUserId: string | null;
+  assignedAt: number | null;
+  sourcePayload: Record<string, unknown> | null;
+  createdAt: string | null;
+};
+export type AssessmentLeadQueueResponse = { leads: AssessmentLeadQueueItem[] };
+export type AssessmentLeadAssignmentResponse = {
+  leadId: string;
+  assignmentStatus: AssessmentLeadAssignmentStatus;
+  assignedSalesUserId: string;
+  assignedAt: number;
+};

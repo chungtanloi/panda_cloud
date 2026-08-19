@@ -15,6 +15,12 @@ import type {
   DocumentSummary,
   AssessmentDraft,
   AssessmentSubmission,
+  AssessmentMessageResponse,
+  AssessmentSessionDetailResponse,
+  AssessmentSessionResponse,
+  AssessmentSummaryResponse,
+  CreateAssessmentSessionRequest,
+  SubmitAssessmentMessageRequest,
   AuthProfile,
   BookingDraft,
   BookingRequestResult,
@@ -109,6 +115,66 @@ function reference(prefix: string): string {
  */
 let salesCards: SalesCardDetailDto[] = [...mockDealCards];
 let dealChangeRequests: DealChangeRequest[] = [];
+
+type MockAiSession = AssessmentSessionResponse & {
+  context: AssessmentSessionDetailResponse["context"];
+  summary?: AssessmentSummaryResponse["summary"];
+};
+const mockAiSessions = new Map<string, MockAiSession>();
+
+function createMockAiSession(payload: CreateAssessmentSessionRequest): MockAiSession {
+  const now = new Date().toISOString();
+  const session: MockAiSession = {
+    session: {
+      sessionId: reference("ais").toLowerCase(),
+      assessmentType: payload.assessmentType,
+      status: "in_progress",
+      revision: 1,
+      questionCount: 1,
+      createdAt: now,
+      updatedAt: now,
+    },
+    context: {
+      knownFields: { ...payload.landIntakeData },
+        missingFields: Object.entries(payload.landIntakeData).filter(([, value]) => value === null || value === undefined || (typeof value === "string" && value.trim() === "")).map(([field]) => field),
+        currentQuestion: {
+        type: "question",
+        questionId: reference("q").toLowerCase(),
+          targetField: Object.entries(payload.landIntakeData).find(([, value]) => value === null || value === undefined || (typeof value === "string" && value.trim() === ""))?.[0] ?? "assessmentContext",
+          question: "Please provide the missing assessment information.",
+          evidenceRequired: false,
+      },
+    },
+    initialQuestion: undefined,
+  };
+  mockAiSessions.set(session.session.sessionId, session);
+  return session;
+}
+
+function getMockAiSession(sessionId: string): MockAiSession {
+  const session = mockAiSessions.get(sessionId);
+  if (!session) throw new ApiError({ code: "NOT_FOUND", message: "Assessment session not found.", status: 404 });
+  return session;
+}
+
+function submitMockAiMessage(sessionId: string, payload: SubmitAssessmentMessageRequest): AssessmentMessageResponse {
+  const stored = getMockAiSession(sessionId);
+  if (payload.expectedSessionRevision !== stored.session.revision) {
+    throw new ApiError({ code: "CONFLICT", message: "The assessment session has changed. Reload and try again.", status: 409 });
+  }
+  stored.session = { ...stored.session, revision: stored.session.revision + 1, questionCount: stored.session.questionCount + 1, updatedAt: new Date().toISOString() };
+  stored.context = { ...stored.context, missingFields: stored.context.missingFields.slice(1) };
+  const completed = stored.context.missingFields.length === 0;
+  const result = completed
+    ? { type: "completed" as const, overallRecommendation: "needs_verification" as const, informationCoveragePercent: 100, criticalGaps: [], missingEvidence: ["connection evidence"], recommendations: ["Request utility connection evidence."], needsHumanReview: true }
+    : { type: "question" as const, questionId: reference("q").toLowerCase(), targetField: stored.context.missingFields[0] ?? "assessmentContext", question: `Please provide the current status of ${stored.context.missingFields[0] ?? "the assessment item"}.`, evidenceRequired: false };
+  if (completed) stored.session = { ...stored.session, status: "ready_for_review" };
+  stored.context = {
+    ...stored.context,
+    currentQuestion: result.type === "question" ? result : undefined,
+  };
+  return { session: stored.session, result };
+}
 
 function createMockDealRequest(
   dealId: string,
@@ -1132,6 +1198,26 @@ export const mockApi: ApiClient = {
     },
 
     getResult: (id: string) => delay({ ...mockAssessmentResult, id }),
+    createSession: (payload: CreateAssessmentSessionRequest) => delay(createMockAiSession(payload)),
+    getSession: (sessionId: string) => delay(getMockAiSession(sessionId)),
+    submitMessage: (sessionId: string, payload: SubmitAssessmentMessageRequest) =>
+      delay(submitMockAiMessage(sessionId, payload)),
+    getSummary: (sessionId: string) => {
+      const stored = getMockAiSession(sessionId);
+      const summary = stored.summary ?? {
+        type: "completed" as const,
+        overallRecommendation: "needs_verification" as const,
+        informationCoveragePercent: 100,
+        criticalGaps: [],
+        missingEvidence: ["connection evidence"],
+        recommendations: ["Request utility connection evidence."],
+        needsHumanReview: true,
+      };
+      return delay({ session: stored.session, summary });
+    },
+    createCheckout: (sessionId: string) => delay({ checkoutUrl: `/assessment/ai?sessionId=${encodeURIComponent(sessionId)}&payment=success`, checkoutSessionId: `mock-checkout-${sessionId}`, amountMinor: 9900, currency: "usd", status: "pending" as const }),
+    getEntitlement: (sessionId: string) => delay({ accessTier: "free" as const, assessmentStage: "free_completed", entitlement: null }),
+    startAdvanced: (sessionId: string) => delay({ sessionId, assessmentStage: "advanced_in_progress" }),
   },
 
   booking: {
@@ -1358,6 +1444,8 @@ export const mockApi: ApiClient = {
     project: async (projectId: string) => ({ projectId }),
     projectReport: async () => ({ countsByStatus: {}, countsByVertical: {}, startedProjects: 0, completedProjects: 0, wonDealsPendingProject: 0 }),
     convertDealToProject: async (dealId: string) => ({ dealId, projectId: "mock-project-" + dealId, created: true }),
+    assessmentLeadQueue: async () => ({ leads: [] }),
+    assignAssessmentLead: async (leadId: string, salesUserId: string) => ({ leadId, assignmentStatus: "assigned" as const, assignedSalesUserId: salesUserId, assignedAt: Date.now() }),
   },
 
   dealRequests: {

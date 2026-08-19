@@ -10,12 +10,14 @@ import {
 } from "@/components/assessment/AssessmentChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { useAssessment } from "@/controllers/AssessmentContext";
+import { useAuth } from "@/controllers/AuthContext";
 import { ASSESSMENT_TOTAL_STEPS, STEP_FACILITIES } from "@/config/assessment";
 import type {
   AssessmentSubmission,
   BuildingClassification,
   FiberProximity,
 } from "@/models/assessment";
+import { toLandIntakeData } from "@/models/assessment";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
 
@@ -32,6 +34,7 @@ import { cn } from "@/lib/cn";
 export default function FacilitiesPage() {
   const router = useRouter();
   const { draft, update, preview, previewLoading } = useAssessment();
+  const { isAuthenticated, initializing: authInitializing, profile } = useAuth();
   const config = STEP_FACILITIES;
 
   const [submitting, setSubmitting] = useState(false);
@@ -46,12 +49,25 @@ export default function FacilitiesPage() {
 
   async function handleSubmit() {
     if (!canSubmit) return;
+    if (authInitializing) {
+      setSubmitError("Đang xác thực tài khoản Panda Cloud. Vui lòng thử lại sau giây lát.");
+      return;
+    }
+    if (!isAuthenticated || !profile) {
+      router.push(`/login?returnTo=${encodeURIComponent("/assessment/facilities")}`);
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
 
     try {
-      const result = await api.assessment.submit(draft as AssessmentSubmission);
-      router.push(`/assessment/results?id=${encodeURIComponent(result.id)}`);
+      const submission = draft as AssessmentSubmission;
+      const session = await api.assessment.createSession({
+        assessmentType: "land",
+        landIntakeData: toLandIntakeData(submission),
+        clientRequestId: crypto.randomUUID(),
+      });
+      router.push(`/assessment/ai?sessionId=${encodeURIComponent(session.session.sessionId)}`);
     } catch (cause) {
       setSubmitError(normalizeError(cause).message);
       setSubmitting(false);

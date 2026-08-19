@@ -85,6 +85,143 @@ export interface AssessmentSubmission {
   facilities: FacilitiesStep;
 }
 
+export type AssessmentType = "land";
+
+/** Normalized data sent from the Land Form into the AI Assessment boundary. */
+export interface LandIntakeData {
+  areaAcres: number;
+  landUse: LandUseType;
+  location?: string | null;
+  gridTier: GridTier;
+  substationDistance: SubstationDistance;
+  voltage: LineVoltage;
+  energyMix: EnergyMix;
+  ppaAvailable: boolean;
+  buildingSqft: number;
+  buildingClassification: BuildingClassification;
+  fiberProximity: FiberProximity;
+}
+
+export type AssessmentSessionStatus =
+  | "draft"
+  | "in_progress"
+  | "needs_information"
+  | "ready_for_review"
+  | "human_review"
+  | "completed"
+  | "stuck"
+  | "needs_verification";
+
+export interface AssessmentSession {
+  sessionId: string;
+  assessmentType: AssessmentType;
+  status: AssessmentSessionStatus;
+  revision: number;
+  questionCount: number;
+  paidQuestionCount?: number;
+  maxPaidQuestions?: number;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  accessTier?: "free" | "paid";
+  assessmentStage?: string;
+  leadId?: string;
+  paidReport?: AssessmentCompletedResult;
+}
+
+export interface AssessmentEntitlementResponse {
+  accessTier: "free" | "paid";
+  assessmentStage: string;
+  entitlement: { status: "active" | "revoked"; productCode: string; grantedAt: number } | null;
+}
+
+export interface AssessmentCheckoutResponse {
+  checkoutUrl: string;
+  checkoutSessionId: string;
+  amountMinor: number;
+  currency: string;
+  status: "pending";
+}
+
+export interface AssessmentContextSnapshot {
+  knownFields: Record<string, unknown>;
+  missingFields: string[];
+  currentQuestion?: AssessmentQuestionResult;
+}
+
+export interface AssessmentQuestionResult {
+  type: "question";
+  questionId: string;
+  targetField: string;
+  question: string;
+  evidenceRequired: boolean;
+}
+
+export interface AssessmentCompletedResult {
+  type: "completed";
+  summary?: string;
+  overallRecommendation: "pass" | "fail" | "unknown" | "needs_verification" | "not_ready";
+  informationCoveragePercent: number;
+  criticalGaps: string[];
+  missingEvidence: string[];
+  recommendations: string[];
+  needsHumanReview: boolean;
+  feasibilityScore?: number;
+  scoreBreakdown?: Record<string, unknown>;
+  criticalBlockers?: Array<Record<string, unknown>>;
+  infrastructureAssessment?: Record<string, unknown>;
+  planningEvidence?: Array<Record<string, unknown>>;
+  developmentPlan?: Array<Record<string, unknown>>;
+  actionPlan?: Record<string, unknown>;
+  salesHandoff?: Record<string, unknown>;
+}
+
+export type AssessmentMessageResult = AssessmentQuestionResult | AssessmentCompletedResult;
+
+export interface CreateAssessmentSessionRequest {
+  assessmentType: AssessmentType;
+  landIntakeData: LandIntakeData;
+  clientRequestId: string;
+}
+
+export interface SubmitAssessmentMessageRequest {
+  clientMessageId: string;
+  text: string;
+  expectedSessionRevision: number;
+}
+
+export interface AssessmentSessionResponse {
+  session: AssessmentSession;
+  initialQuestion?: AssessmentQuestionResult;
+}
+
+export interface AssessmentSessionDetailResponse extends AssessmentSessionResponse {
+  context: AssessmentContextSnapshot;
+}
+
+export interface AssessmentMessageResponse extends AssessmentSessionResponse {
+  result: AssessmentMessageResult;
+}
+
+export interface AssessmentSummaryResponse extends AssessmentSessionResponse {
+  summary: AssessmentCompletedResult;
+}
+
+export function toLandIntakeData(submission: AssessmentSubmission): LandIntakeData {
+  return {
+    areaAcres: submission.landProfile.areaAcres,
+    landUse: submission.landProfile.landUse,
+    location: submission.landProfile.location ?? null,
+    gridTier: submission.powerCapacity.gridTier,
+    substationDistance: submission.powerCapacity.substationDistance,
+    voltage: submission.powerCapacity.voltage,
+    energyMix: submission.energySource.energyMix,
+    ppaAvailable: submission.energySource.ppaAvailable,
+    buildingSqft: submission.facilities.buildingSqft,
+    buildingClassification: submission.facilities.buildingClassification,
+    fiberProximity: submission.facilities.fiberProximity,
+  };
+}
+
 /* ------------------------- Live preview panel ----------------------- */
 
 /**

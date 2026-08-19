@@ -1,6 +1,14 @@
 import type {
   AssessmentResult,
   AssessmentSubmission,
+  AssessmentMessageResponse,
+  AssessmentSessionDetailResponse,
+  AssessmentSessionResponse,
+  AssessmentSummaryResponse,
+  AssessmentCheckoutResponse,
+  AssessmentEntitlementResponse,
+  CreateAssessmentSessionRequest,
+  SubmitAssessmentMessageRequest,
   AuthProfile,
   DashboardSummary,
   GpuModel,
@@ -79,7 +87,7 @@ import type {
   SubmissionConvertRequest,
   SubmissionConvertResponse,
   Submission,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
   DealChangeRequest, DealChangeRequestCreate, DealChangeRequestDecision, DealChangeRequestPage,
 } from "@/models";
@@ -112,6 +120,13 @@ export interface AssessmentService {
   preview(payload: LivePreviewRequest): Promise<LivePreview>;
   submit(payload: AssessmentSubmission): Promise<AssessmentResult>;
   getResult(id: string): Promise<AssessmentResult>;
+  createSession(payload: CreateAssessmentSessionRequest): Promise<AssessmentSessionResponse>;
+  getSession(sessionId: string): Promise<AssessmentSessionDetailResponse>;
+  submitMessage(sessionId: string, payload: SubmitAssessmentMessageRequest): Promise<AssessmentMessageResponse>;
+  getSummary(sessionId: string): Promise<AssessmentSummaryResponse>;
+  createCheckout(sessionId: string): Promise<AssessmentCheckoutResponse>;
+  getEntitlement(sessionId: string): Promise<AssessmentEntitlementResponse>;
+  startAdvanced(sessionId: string): Promise<{ sessionId: string; assessmentStage: string }>;
 }
 
 export interface BookingService {
@@ -200,6 +215,8 @@ export interface ManagerService {
   project(projectId: string): Promise<Record<string, unknown>>;
   projectReport(query?: { from?: string; to?: string }): Promise<ManagerProjectReport>;
   convertDealToProject(dealId: string, body: import('@/models/manager').ManagerProjectConversionRequest): Promise<import('@/models/manager').ManagerProjectConversionResponse>;
+  assessmentLeadQueue(): Promise<AssessmentLeadQueueResponse>;
+  assignAssessmentLead(leadId: string, salesUserId: string): Promise<AssessmentLeadAssignmentResponse>;
 }
 
 /**

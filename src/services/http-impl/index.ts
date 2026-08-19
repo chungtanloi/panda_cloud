@@ -19,7 +19,7 @@ import type {
   SubmissionCreateResponse,
   SubmissionConvertRequest,
   SubmissionConvertResponse,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage,
   DdAssessmentCreate,
   DdAssessmentCreateResponse,
   DdAssessmentDetail,
@@ -33,6 +33,14 @@ import type {
   DdResponse,
   AssessmentResult,
   AssessmentSubmission,
+  AssessmentMessageResponse,
+  AssessmentSessionDetailResponse,
+  AssessmentSessionResponse,
+    AssessmentSummaryResponse,
+  AssessmentCheckoutResponse,
+  AssessmentEntitlementResponse,
+  CreateAssessmentSessionRequest,
+  SubmitAssessmentMessageRequest,
   AuthProfile,
   BookingDraft,
   BookingQuote,
@@ -135,6 +143,23 @@ export const httpApi: ApiClient = {
       http.post<AssessmentResult>(endpoints.assessment.submit, payload),
 
     getResult: (id: string) => http.get<AssessmentResult>(endpoints.assessment.byId(id)),
+    createSession: (payload: CreateAssessmentSessionRequest) =>
+      http.post<AssessmentSessionResponse>(endpoints.assessment.sessions, payload),
+    getSession: (sessionId: string) =>
+      http.get<AssessmentSessionDetailResponse>(endpoints.assessment.session(sessionId)),
+    submitMessage: (sessionId: string, payload: SubmitAssessmentMessageRequest) =>
+      http.post<AssessmentMessageResponse>(endpoints.assessment.messages(sessionId), {
+        ...payload,
+        expectedRevision: payload.expectedSessionRevision,
+      }),
+    getSummary: (sessionId: string) =>
+      http.get<AssessmentSummaryResponse>(endpoints.assessment.summary(sessionId)),
+    createCheckout: (sessionId: string) =>
+      http.post<AssessmentCheckoutResponse>(endpoints.assessment.checkout(sessionId), {}),
+    getEntitlement: (sessionId: string) =>
+      http.get<AssessmentEntitlementResponse>(endpoints.assessment.entitlement(sessionId)),
+    startAdvanced: (sessionId: string) =>
+      http.post<{ sessionId: string; assessmentStage: string }>(endpoints.assessment.startAdvanced(sessionId), {}),
   },
 
   booking: {
@@ -470,6 +495,8 @@ export const httpApi: ApiClient = {
     project: (projectId: string) => http.get<Record<string, unknown>>(endpoints.manager.projectById(projectId)),
     projectReport: (query = {}) => http.get<ManagerProjectReport>(endpoints.manager.projectReport, { query }),
     convertDealToProject: (dealId, body) => http.post<ManagerProjectConversionResponse>(endpoints.manager.convertDealToProject(dealId), body),
+    assessmentLeadQueue: () => http.get<AssessmentLeadQueueResponse>(endpoints.manager.assessmentLeads),
+    assignAssessmentLead: (leadId: string, salesUserId: string) => http.post<AssessmentLeadAssignmentResponse>(endpoints.manager.assignAssessmentLead(leadId), { salesUserId }),
   },
 };
 

@@ -23,6 +23,13 @@ export const endpoints = {
     preview: "/assessments/preview",
     submit: "/assessments",
     byId: (id: string) => `/assessments/${id}`,
+    sessions: "/ai-assessment-sessions",
+    session: (id: string) => `/ai-assessment-sessions/${id}`,
+    messages: (id: string) => `/ai-assessment-sessions/${id}/messages`,
+    summary: (id: string) => `/ai-assessment-sessions/${id}/summary`,
+    checkout: (id: string) => `/ai-assessment-sessions/${id}/checkout`,
+    entitlement: (id: string) => `/ai-assessment-sessions/${id}/entitlement`,
+    startAdvanced: (id: string) => `/ai-assessment-sessions/${id}/advanced/start`,
   },
 
   booking: {
@@ -167,5 +174,5 @@ export const endpoints = {
     downloadSession: (documentId: string) => `/documents/${documentId}/download-session`,
   },
   admin: { overview: "/admin/overview", users: "/admin/users", userById: (id: string) => `/admin/users/${id}`, roles: "/admin/roles", health: "/admin/system/health", auditLogs: "/admin/audit-logs", auditById: (id: string) => `/admin/audit-logs/${id}` },
-  manager: { overview: "/manager/overview", team: "/manager/team", teamMember: (userId: string) => `/manager/team/${userId}`, projects: "/manager/projects", projectById: (projectId: string) => `/manager/projects/${projectId}`, projectReport: "/manager/reports/projects", convertDealToProject: (dealId: string) => `/deals/${dealId}/project` },
+  manager: { overview: "/manager/overview", team: "/manager/team", teamMember: (userId: string) => `/manager/team/${userId}`, projects: "/manager/projects", projectById: (projectId: string) => `/manager/projects/${projectId}`, projectReport: "/manager/reports/projects", convertDealToProject: (dealId: string) => `/deals/${dealId}/project`, assessmentLeads: "/manager/assessment-leads", assignAssessmentLead: (leadId: string) => `/manager/assessment-leads/${leadId}/assign` },
 } as const;

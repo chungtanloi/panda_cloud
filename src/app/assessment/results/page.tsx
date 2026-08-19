@@ -12,7 +12,7 @@ import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { ErrorState, LoadingState, Skeleton } from "@/components/ui/states";
 import { useAsync } from "@/controllers/useAsync";
 import { ASSESSMENT_REPORT } from "@/config/assessment";
-import type { AssessmentResult, AssessmentRisk } from "@/models/assessment";
+import type { AssessmentCompletedResult, AssessmentResult, AssessmentRisk, AssessmentSessionDetailResponse } from "@/models/assessment";
 import { api } from "@/services/api";
 import { cn } from "@/lib/cn";
 
@@ -36,9 +36,13 @@ function ResultsView() {
   const id = params.get("id");
   const config = ASSESSMENT_REPORT;
 
-  const fetchResult = useCallback(() => {
+  const fetchResult = useCallback(async (): Promise<{ kind: "ai"; data: AssessmentSessionDetailResponse } | { kind: "standard"; data: AssessmentResult }> => {
     if (!id) throw new Error("No assessment id supplied.");
-    return api.assessment.getResult(id);
+    try {
+      return { kind: "ai", data: await api.assessment.getSession(id) };
+    } catch {
+      return { kind: "standard", data: await api.assessment.getResult(id) };
+    }
   }, [id]);
 
   const { state, run } = useAsync(fetchResult, { immediate: [] });
@@ -77,7 +81,7 @@ function ResultsView() {
         ) : state.status === "error" ? (
           <ErrorState error={state.error} onRetry={() => void run()} />
         ) : state.status === "success" ? (
-          <ReportBody result={state.data} />
+          state.data.kind === "ai" ? <AiSessionReport session={state.data.data} /> : <ReportBody result={state.data.data} />
         ) : (
           <ReportSkeleton />
         )}
@@ -87,6 +91,24 @@ function ResultsView() {
     </>
   );
 }
+
+function AiSessionReport({ session }: { session: AssessmentSessionDetailResponse }) {
+  const report = session.session.paidReport ?? (session.session.accessTier !== "paid" ? undefined : undefined);
+  if (!report) {
+    return <section className="relative rounded-card border border-amber-300/30 bg-amber-300/5 p-[24px]"><p className="font-mono text-[10px] uppercase tracking-[1.2px] text-amber-200">Assessment status</p><h2 className="mt-[10px] text-[24px] font-semibold text-white">Report is still being prepared</h2><p className="mt-[8px] text-[14px] leading-[22px] text-ink-dim">The assessment session has been found, but the completed Decision Pack is not available yet. Please return to the AI assessment and retry the last answer.</p><Link href={`/assessment/ai?sessionId=${encodeURIComponent(session.session.sessionId)}`} className="mt-[18px] inline-flex rounded-full bg-accent px-[18px] py-[11px] font-mono text-[11px] uppercase tracking-[1px] text-black">Continue assessment</Link></section>;
+  }
+  return <section className="relative space-y-[24px]">
+    <div className="rounded-card border border-accent/30 bg-accent/10 p-[24px]"><p className="font-mono text-[10px] uppercase tracking-[1.2px] text-accent">Paid Decision Pack · Completed</p><div className="mt-[10px] flex flex-wrap items-center justify-between gap-[12px]"><h2 className="text-[28px] font-semibold text-white">Assessment report completed</h2><span className="rounded-full border border-accent/40 px-[12px] py-[7px] font-mono text-[10px] uppercase tracking-[1px] text-accent">{report.overallRecommendation.replaceAll("_", " ")}</span></div><p className="mt-[12px] text-[14px] leading-[23px] text-ink">{report.summary}</p></div>
+    <div className="grid gap-[16px] sm:grid-cols-3"><ReportMetric label="Coverage" value={`${report.informationCoveragePercent}%`} /><ReportMetric label="Feasibility score" value={typeof report.feasibilityScore === "number" ? `${report.feasibilityScore}/100` : "—"} /><ReportMetric label="Human review" value={report.needsHumanReview ? "Required" : "Not required"} /></div>
+    <div className="grid gap-[16px] lg:grid-cols-2"><ReportObject title="Critical blockers" items={report.criticalBlockers} /><ReportObject title="Missing evidence" items={report.missingEvidence.map((item) => ({ item }))} /><ReportObject title="Infrastructure assessment" items={report.infrastructureAssessment ? [report.infrastructureAssessment] : undefined} /><ReportObject title="30/60/90-day action plan" items={report.actionPlan ? [report.actionPlan] : undefined} /></div>
+    {report.recommendations.length ? <ReportObject title="Recommendations" items={report.recommendations.map((item) => ({ item }))} /> : null}
+    <div className="rounded-card border border-accent/30 bg-accent/10 p-[20px] text-[14px] text-ink">A Panda Cloud infrastructure specialist can review this assessment and coordinate the next step.</div>
+  </section>;
+}
+
+function ReportMetric({ label, value }: { label: string; value: string }) { return <div className="rounded-card border border-line-hair bg-card p-[18px]"><p className="font-mono text-[10px] uppercase tracking-[1.1px] text-ink-mute">{label}</p><p className="mt-[9px] text-[24px] font-semibold text-white">{value}</p></div>; }
+
+function ReportObject({ title, items }: { title: string; items?: Array<Record<string, unknown>> }) { return <div className="rounded-card border border-line-hair bg-card p-[18px]"><p className="font-mono text-[10px] uppercase tracking-[1.1px] text-ink-mute">{title}</p>{items?.length ? <ul className="mt-[10px] space-y-[8px] text-[13px] leading-[21px] text-ink">{items.map((item, index) => <li key={index}>{Object.entries(item).map(([key, value]) => `${key.replaceAll("_", " ")}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`).join(" · ")}</li>)}</ul> : <p className="mt-[10px] text-[13px] text-ink-dim">No information reported.</p>}</div>; }
 
 function ReportBody({ result }: { result: AssessmentResult }) {
   const config = ASSESSMENT_REPORT;

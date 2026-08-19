@@ -165,12 +165,23 @@ async function execute<T>(path: string, options: RequestOptions): Promise<T> {
 
   let response: Response;
   try {
-    response = await fetch(buildUrl(path, query), {
+    const requestInit: RequestInit = {
       method,
       headers,
       body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
       signal: controller.signal,
-    });
+    };
+    response = await fetch(buildUrl(path, query), requestInit);
+    // A Clerk token can rotate between the auth bootstrap request and the
+    // first protected mutation. Mint one fresh token and retry once so a
+    // transient 401 does not discard the user's assessment input.
+    if (response.status === 401 && !anonymous) {
+      const refreshedToken = await sessionBridge.getToken();
+      if (refreshedToken) {
+        headers.Authorization = `Bearer ${refreshedToken}`;
+        response = await fetch(buildUrl(path, query), requestInit);
+      }
+    }
   } catch (cause) {
     const aborted = cause instanceof DOMException && cause.name === "AbortError";
     // No response, so no gateway-assigned correlation id — send ours, which is
