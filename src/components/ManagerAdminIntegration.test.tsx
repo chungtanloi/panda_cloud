@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/services/api", () => ({ api: mocks, normalizeError: (cause: unknown) => cause }));
 
 import { ManagerOverviewView, ManagerProjectsView, ManagerProjectDetailView, ManagerReportsView, ManagerSalesPerformanceView, ManagerTeamMemberView, ManagerTeamView } from "./workspace/ManagerViews";
-import { AdminApiView, AdminUserDetailView } from "./workspace/AdminApiView";
+import { AdminApiView, AdminAuditDetailView, AdminIntegrationEventDetailView, AdminUserDetailView } from "./workspace/AdminApiView";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -30,6 +30,8 @@ beforeEach(() => {
   mocks.admin.health.mockResolvedValue({ api: { status: "ok" }, convex: { status: "ok", schemaVersion: 1 }, serverTime: "2026-01-01T00:00:00.000Z" });
   mocks.admin.auditLogs.mockResolvedValue({ items: [], nextCursor: null, isDone: true });
   mocks.admin.events.mockResolvedValue({ items: [], nextCursor: null, isDone: true });
+  mocks.admin.auditLog.mockResolvedValue({ auditId: "audit-1", actorUserId: "user-1", actorType: "staff", action: "deal.updated", resourceType: "deal", resourceId: "deal-1", organizationId: "org-1", createdAt: "2026-01-01T00:00:00.000Z", beforeData: { status: "open" }, afterData: { status: "won" } });
+  mocks.admin.event.mockResolvedValue({ eventId: "event-1", provider: "clerk", externalEventId: "evt_1", eventType: "user.updated", status: "processed", attemptCount: 1, lastAttemptAt: "2026-01-01T00:00:00.000Z", nextAttemptAt: null, retryExhausted: false, receivedAt: "2026-01-01T00:00:00.000Z", processedAt: "2026-01-01T00:00:01.000Z", lastErrorSummary: null });
 });
 afterEach(cleanup);
 
@@ -41,4 +43,6 @@ describe("Manager and Admin backend-driven workspace views", () => {
   it("renders project report and preserves sales report caveats", async () => { render(<ManagerReportsView />); expect(await screen.findByText("Started projects")).toBeInTheDocument(); cleanup(); render(<ManagerSalesPerformanceView />); expect((await screen.findAllByText("$10.00")).length).toBe(2); expect(screen.getByText(/conversion formulas/i)).toBeInTheDocument(); });
   it("renders typed Admin overview, users, roles, health, audit and events without raw JSON", async () => { render(<AdminApiView kind="overview" />); expect(await screen.findByText("DD templates")).toBeInTheDocument(); render(<AdminApiView kind="roles" />); expect(await screen.findByText("manager")).toBeInTheDocument(); render(<AdminApiView kind="system" />); expect(await screen.findByText("schemaVersion")).toBeInTheDocument(); render(<AdminApiView kind="users" />); expect(mocks.admin.users).toHaveBeenCalledWith({ limit: 50 }); render(<AdminApiView kind="audit" />); expect(mocks.admin.auditLogs).toHaveBeenCalledWith({ limit: 50 }); render(<AdminApiView kind="events" />); expect(mocks.admin.events).toHaveBeenCalledWith({ limit: 50 }); });
   it("renders read-only Admin user detail and membership roles", async () => { render(<AdminUserDetailView userId="user-1" />); expect(await screen.findByText("Ada")).toBeInTheDocument(); expect(screen.getByText(/manager · active/)).toBeInTheDocument(); expect(mocks.admin.user).toHaveBeenCalledWith("user-1"); });
+  it("links Admin audit and integration-event rows to their opaque detail routes", async () => { mocks.admin.auditLogs.mockResolvedValue({ items: [{ auditId: "audit-1", actorUserId: "user-1", actorType: "staff", action: "deal.updated", resourceType: "deal", resourceId: "deal-1", organizationId: "org-1", createdAt: "2026-01-01T00:00:00.000Z", beforeData: null, afterData: null }], nextCursor: null, isDone: true }); render(<AdminApiView kind="audit" />); expect(await screen.findByRole("link", { name: "deal.updated" })).toHaveAttribute("href", "/admin/audit-logs/audit-1"); cleanup(); mocks.admin.events.mockResolvedValue({ items: [{ eventId: "event-1", provider: "clerk", externalEventId: "evt_1", eventType: "user.updated", status: "processed", attemptCount: 1, lastAttemptAt: null, nextAttemptAt: null, retryExhausted: false, receivedAt: "2026-01-01T00:00:00.000Z", processedAt: null, lastErrorSummary: null }], nextCursor: null, isDone: true }); render(<AdminApiView kind="events" />); expect(await screen.findByRole("link", { name: "clerk · user.updated" })).toHaveAttribute("href", "/admin/integrations/events/event-1"); });
+  it("renders linked Admin audit and integration-event details from safe backend projections", async () => { render(<AdminAuditDetailView auditId="audit-1" />); expect(await screen.findByText("deal.updated")).toBeInTheDocument(); expect(screen.getByText("won")).toBeInTheDocument(); expect(mocks.admin.auditLog).toHaveBeenCalledWith("audit-1"); cleanup(); render(<AdminIntegrationEventDetailView eventId="event-1" />); expect(await screen.findByText("clerk · user.updated")).toBeInTheDocument(); expect(screen.queryByRole("button", { name: /retry/i })).toBeNull(); expect(mocks.admin.event).toHaveBeenCalledWith("event-1"); });
 });

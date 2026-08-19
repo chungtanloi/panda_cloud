@@ -4,12 +4,12 @@
 
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
-- `branch_at_refresh`: `feat/integration-v1-manager-admin`
-- `head_at_refresh`: `9388cc5` (diagnostic only)
-- `source_file_count`: `27`
-- `source_fingerprint`: `b4add550fa6fd07b303d217bf23e1b2609dafedda3daebc972b26fb11fe28950`
+- `branch_at_refresh`: `chore/cross-workspace-e2e-readiness`
+- `head_at_refresh`: `430aab1` (diagnostic only)
+- `source_file_count`: `30`
+- `source_fingerprint`: `b209a29b9ddd0781278125bf7d377f069630e358cd74a9de478bbef0b39c67f6`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-19T03:45:00Z`
+- `last_context_refresh_at_utc`: `2026-08-19T04:12:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -67,6 +67,19 @@ authority.
 > typed read-only views; Permissions and Settings are truthful blocked notices.
 > The new handoff records backend `4aa9a6c`, seven focused integration tests,
 > one adapter contract test, and a final frontend suite of 113 passing tests.
+
+> 2026-08-19 cross-workspace E2E-readiness audit: frontend `430aab1` was
+> audited with backend `4aa9a6c`. Auth, Sales, Deal Change Requests,
+> DD/Documents, KYC, deal-scoped NCNDA, Readiness, Projects, Manager and Admin
+> route/service continuity were checked against the current HTTP gateway. One
+> frontend defect was fixed: Admin audit and integration-event detail endpoints
+> now have linked, typed, read-only pages that expose only the backend's safe
+> projection and no retry control. The frontend test suite is 115 tests in 16
+> files; typecheck, lint, production build and diff check pass. Real E2E is
+> **BLOCKED / NOT RUN** because the dev gateway, matching Clerk users and
+> memberships, disposable fixtures, storage, and malware-scanner transition
+> are unverified without external calls. See the new cross-workspace runbook
+> and integration-status documents.
 
 ## Product purpose
 
@@ -358,6 +371,8 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/API_CONTRACT.md` | `2edf5bad1a8b6fda7bd1aaf3ce0c7f245af0133de916a080a44d3ee5ff5746bb` | 26848 | `2026-08-18T02:45:00Z` |
 | `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
 | `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
+| `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` | `3d5b4f253c49584a41d308d52aeaf66d9d2361d3bd974655d4d43e80d7cf9287` | 8135 | `2026-08-19T04:12:00Z` |
+| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `a548d34ea6ca1fbd012f68104a02341cb08ef786e530efb57fe33d5b18f324b7` | 5586 | `2026-08-19T04:12:00Z` |
 | `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
 | `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md` | `5611f634eac70a578a8a32c722f35c891e32683666908feffd6085617b493188` | 2645 | `2026-08-18T10:00:00Z` |
 | `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `abb6b6de198e17f0ddcda33de4907d8ace9c234a83a9245912a8002f04a72647` | 2793 | `2026-08-18T09:12:36Z` |
@@ -369,6 +384,7 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-18T02:45:00Z` |
 | `docs/KYC_NCNDA_INTEGRATION_PHASE_1_HANDOFF.md` | `a48c7b85e5ce35e70779bfe6bc6c73af2acfc394d223b174800edc6514c1276f` | 4876 | `2026-08-18T12:36:45Z` |
 | `docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md` | `6d0f275b40f523aa58a497dea33f4a96835bc02f68f410fd7be743c85bb6e8c4` | 3422 | `2026-08-18T02:45:00Z` |
+| `docs/MANAGER_ADMIN_INTEGRATION_PHASE_1_HANDOFF.md` | `e20f3de2e795f088fd92aad09d82cb65bbd15cbc89bd724ffb5443fb275752dd` | 3881 | `2026-08-19T04:12:00Z` |
 | `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-18T02:45:00Z` |
 | `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |
 | `docs/PIPELINE_TRANSITION_POLICY_HANDOFF.md` | `aec86874e4488e1b79e27dd9449f9505cb5f19d3b633bf78b19f49115f89807d` | 3357 | `2026-08-18T10:00:00Z` |
