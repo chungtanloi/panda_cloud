@@ -11,3 +11,6 @@ export type ManagerProjectListResponse = { items: ManagerProject[]; nextCursor: 
 export type ManagerProjectQuery = { status?: ManagerProjectStatus; vertical?: ManagerProjectVertical; ownerId?: string; cursor?: string; limit?: number };
 export type ManagerProjectConversionRequest = { expectedRevision: number; idempotencyKey: string; projectCode: string; projectName?: string };
 export type ManagerProjectConversionResponse = { projectId?: string; dealId?: string; created?: boolean } & Record<string, unknown>;
+export type AssessmentLeadQueueItem = { leadId: string; assessmentSessionId: string | null; paymentId: string | null; dealId?: string | null; source: string; vertical: string | null; status: string; priority: string; summary: string | null; assignmentStatus: "manager_review" | "assigned" | null; assignedSalesUserId: string | null; sourcePayload: Record<string, unknown> | null };
+export type AssessmentLeadQueueResponse = { leads: AssessmentLeadQueueItem[] };
+export type AssessmentLeadAssignmentResponse = { leadId: string; dealId?: string; assignmentStatus: "assigned"; assignedSalesUserId: string; assignedAt: number };

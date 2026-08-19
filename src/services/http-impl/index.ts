@@ -19,7 +19,7 @@ import type {
   SubmissionCreateResponse,
   SubmissionConvertRequest,
   SubmissionConvertResponse,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectConversionResponse, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
   DdAssessmentCreate,
   DdAssessmentCreateResponse,
   DdAssessmentDetail,
@@ -472,6 +472,8 @@ export const httpApi: ApiClient = {
     project: (projectId: string) => http.get<import('@/models/manager').ManagerProject>(endpoints.manager.projectById(projectId)),
     projectReport: (query = {}) => http.get<ManagerProjectReport>(endpoints.manager.projectReport, { query }),
     convertDealToProject: (dealId, body) => http.post<ManagerProjectConversionResponse>(endpoints.manager.convertDealToProject(dealId), body),
+    assessmentLeadQueue: () => http.get<AssessmentLeadQueueResponse>(endpoints.manager.assessmentLeads),
+    assignAssessmentLead: (leadId: string, salesUserId: string) => http.post<AssessmentLeadAssignmentResponse>(endpoints.manager.assignAssessmentLead(leadId), { salesUserId }),
   },
 };
 

@@ -1358,6 +1358,8 @@ export const mockApi: ApiClient = {
     project: async (projectId: string) => ({ projectId, projectCode: projectId, name: projectId, vertical: "gpu" as const, status: "initiated" as const, ownerId: null, startedAt: null, updatedAt: new Date(0).toISOString(), revision: 1, sourceDeal: { dealId: "mock-deal", title: "Mock project source", organizationId: "mock-org", status: "won", estimatedValueMinor: null, currency: null, wonAt: null } }),
     projectReport: async () => ({ countsByStatus: {}, countsByVertical: {}, startedProjects: 0, completedProjects: 0, wonDealsPendingProject: 0 }),
     convertDealToProject: async (dealId: string) => ({ dealId, projectId: "mock-project-" + dealId, created: true }),
+    assessmentLeadQueue: async () => ({ leads: [] }),
+    assignAssessmentLead: async (leadId: string, salesUserId: string) => ({ leadId, assignmentStatus: "assigned" as const, assignedSalesUserId: salesUserId, assignedAt: Date.now() }),
   },
 
   dealRequests: {

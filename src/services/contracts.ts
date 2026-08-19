@@ -79,7 +79,7 @@ import type {
   SubmissionConvertRequest,
   SubmissionConvertResponse,
   Submission,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectQuery, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectQuery, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
   DealChangeRequest, DealChangeRequestCreate, DealChangeRequestDecision, DealChangeRequestPage,
 } from "@/models";
@@ -202,6 +202,8 @@ export interface ManagerService {
   project(projectId: string): Promise<import('@/models/manager').ManagerProject>;
   projectReport(query?: { from?: string; to?: string }): Promise<ManagerProjectReport>;
   convertDealToProject(dealId: string, body: import('@/models/manager').ManagerProjectConversionRequest): Promise<import('@/models/manager').ManagerProjectConversionResponse>;
+  assessmentLeadQueue(): Promise<AssessmentLeadQueueResponse>;
+  assignAssessmentLead(leadId: string, salesUserId: string): Promise<AssessmentLeadAssignmentResponse>;
 }
 
 /**

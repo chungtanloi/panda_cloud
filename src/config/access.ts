@@ -121,7 +121,7 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
     { label: "Customers", href: "/sales/customers", permission: "lead:view" }, { label: "Reports", href: "/sales/reports", permission: "report:view" },
   ],
   manager: [
-    { label: "Overview", href: "/manager" }, { label: "Sales Performance", href: "/manager/sales", permission: "report:view" }, { label: "Team", href: "/manager/team", permission: "team:view" },
+    { label: "Overview", href: "/manager" }, { label: "Sales Performance", href: "/manager/sales", permission: "report:view" }, { label: "Assessment Leads", href: "/manager/assessment-leads", permission: "lead:assign" }, { label: "Team", href: "/manager/team", permission: "team:view" },
     { label: "Pipeline", href: "/manager/pipeline", permission: "lead:view" }, { label: "Operations", href: "/manager/operations", permission: "operation:view" },
     { label: "Approvals", href: "/manager/approvals", permission: "approval:view" }, { label: "Reports", href: "/manager/reports", permission: "report:view" },
   ],
