@@ -1,6 +1,6 @@
 # Cross-Workspace Integration Status — Phase 1
 
-Audited frontend: `8fdf2ba` on `main`.
+Audited frontend: `4880cf7` on `main`.
 Audited backend: `4aa9a6c` on `main`. This is a source/contract audit; no live
 provider or production deployment was called. One local negative gateway
 smoke was executed; authenticated E2E remains blocked.
@@ -62,6 +62,7 @@ terminal move or automatic project conversion.
 **E2E_BLOCKED.** The unauthenticated gateway boundary was verified locally;
 positive workflows were not run because role identities, memberships, and
 disposable data are unavailable. See
+`docs/E2E_ENVIRONMENT_BOOTSTRAP_CHECKLIST.md` for the owner actions and
 `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` for the exact non-production
 prerequisites, role matrix, fixture set, safe mutations, cleanup rules and
 correlation-ID capture procedure.
