@@ -1,13 +1,15 @@
 # Cross-Workspace Integration Status — Phase 1
 
-Audited frontend: `4880cf7` on `main`.
-Audited backend: `4aa9a6c` on `main`. This is a source/contract audit; no live
-provider or production deployment was called. One local negative gateway
-smoke was executed; authenticated E2E remains blocked.
+Audited frontend: `40698ecaa6c30cf354bea8a89fba8ad742106c65` on `main`.
+Audited backend: `1cefbe02004be645b52ad595ad18654bd0537ea0` on `main`. The real
+authenticated E2E attempt passed frontend secret hygiene but stopped when
+`npx convex dev` rejected an existing non-production `leads` document whose
+stored `priority` field is absent from the current schema. No live
+authenticated workflow ran.
 
 | Domain | Frontend status | Backend status | Automated coverage | Real E2E status | Blocker | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| Auth | Integrated through Clerk session bridge and `/auth/me` | Implemented | Auth/session and HTTP-client tests | BLOCKED | No approved Clerk dev role sessions/memberships available | Run role smoke step 1 |
+| Auth | Integrated through Clerk session bridge and `/auth/me` | Implemented | Auth/session and HTTP-client tests | BLOCKED_ENVIRONMENT | Convex dev startup fails schema validation on existing non-production data | Resolve deployment data/schema mismatch, then role smoke step 1 |
 | Sales | Integrated: overview, leads, pipeline, tasks, activities, customers, reports | Implemented | Adapter/component and backend gateway/route tests | BLOCKED | Authenticated Sales identity and disposable fixtures unavailable | Run non-terminal Sales smoke |
 | Lookups | Integrated through HTTP lookups | Implemented | HTTP contract tests | BLOCKED | Staff fixture scope unverified | Exercise opaque-cursor lookups |
 | Deal Change Requests | Integrated Sales request and Manager/Admin decision queue | Implemented | Frontend workflow and backend tests | BLOCKED | Safe pending request fixture unverified | Run terminal-request round trip |
@@ -59,9 +61,11 @@ terminal move or automatic project conversion.
 
 ## Real E2E decision
 
-**E2E_BLOCKED.** The unauthenticated gateway boundary was verified locally;
-positive workflows were not run because role identities, memberships, and
-disposable data are unavailable. See
+**REAL_E2E_BLOCKED.** Frontend secret hygiene passed, but the required Convex
+development startup failed schema validation on an existing non-production
+`leads` document with an extra `priority` field. No credentials, sessions,
+provider calls, or fixture mutations were performed. Resolve that deployment
+data/schema mismatch and rerun the stack gate. See
 `docs/E2E_ENVIRONMENT_BOOTSTRAP_CHECKLIST.md` for the owner actions and
 `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` for the exact non-production
 prerequisites, role matrix, fixture set, safe mutations, cleanup rules and
