@@ -4,6 +4,9 @@ This runbook exercises the current frontend through the backend-owned
 `/api/v1` gateway in a disposable, non-production environment. It is not a
 seed script, deployment guide, or permission workaround.
 
+Environment setup is tracked in
+[`E2E_ENVIRONMENT_BOOTSTRAP_CHECKLIST.md`](./E2E_ENVIRONMENT_BOOTSTRAP_CHECKLIST.md).
+
 ## Prerequisites
 
 | Requirement | Status from local audit | Required for a real run |
