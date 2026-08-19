@@ -155,6 +155,26 @@ describe("workspace HTTP contracts", () => {
     });
   });
 
+  it("maps Manager project reads and Admin governance reads to approved paths", async () => {
+    get.mockResolvedValue({ items: [], nextCursor: null, isDone: true });
+    await httpApi.manager.overview();
+    await httpApi.manager.team({ from: "2026-01-01T00:00:00.000Z" });
+    await httpApi.manager.teamMember("user-1");
+    await httpApi.manager.projects({ status: "active", vertical: "gpu", ownerId: "user-1", cursor: "opaque", limit: 10 });
+    await httpApi.manager.project("project-1");
+    await httpApi.manager.projectReport({ from: "2026-01-01T00:00:00.000Z" });
+    await httpApi.admin.overview();
+    await httpApi.admin.users({ limit: 10 });
+    await httpApi.admin.user("user-1");
+    await httpApi.admin.auditLogs({ limit: 10 });
+    await httpApi.admin.events({ status: "failed", limit: 10 });
+    await httpApi.admin.event("event-1");
+    expect(get.mock.calls.map(([path]) => path)).toEqual([
+      "/manager/overview", "/manager/team", "/manager/team/user-1", "/manager/projects", "/manager/projects/project-1", "/manager/reports/projects",
+      "/admin/overview", "/admin/users", "/admin/users/user-1", "/admin/audit-logs", "/admin/integrations/events", "/admin/integrations/events/event-1",
+    ]);
+  });
+
   it("creates and finalizes a secure document upload session", async () => {
     const body = { context: { type: "kyc" as const, resourceId: "case-1" }, originalFilename: "passport.pdf", mimeType: "application/pdf", sizeBytes: 12, sha256Checksum: "a".repeat(64), retentionClass: "kyc" as const, idempotencyKey: "upload-1" };
     post.mockResolvedValueOnce({ documentId: "doc-1", uploadUrl: "https://storage.example/upload", expiresAt: "2026-08-18T00:00:00Z", replayed: false }).mockResolvedValueOnce({ documentId: "doc-1", finalized: true, checksumVerified: false, malwareScanStatus: "pending", encryptionStatus: "pending" });
