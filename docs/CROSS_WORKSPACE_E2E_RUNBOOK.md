@@ -25,10 +25,10 @@ Run these independently from their repository roots:
 
 ```text
 # PandaCloudBackend
-npm run dev
+npm run dev -- -p 3001
 
 # panda_cloud
-NEXT_PUBLIC_API_ADAPTER=http npm run dev
+NEXT_PUBLIC_API_ADAPTER=http npm run dev -- -p 3000
 ```
 
 Use the environment-management mechanism for the remaining variables. Do not
@@ -128,9 +128,12 @@ safe request shape, status/error code, correlation ID, and fixture alias.
 
 ## Current real-E2E decision
 
-**E2E_BLOCKED.** Local configuration keys are present, but no external
-provider or deployment was contacted during this audit. Matching live Clerk
-sessions, active memberships, a reachable dev gateway/Convex deployment,
-private storage, a trusted malware transition, and disposable fixture data
-remain unverified. Execute this runbook only after those prerequisites are
-confirmed by the environment owner.
+**E2E_BLOCKED.** The local gateway was started successfully and the negative
+authentication boundary smoke passed (`401 UNAUTHENTICATED`, correlation ID
+`e2e-unauth-001`). No Clerk role session, active membership, disposable
+Dealflow fixture, or trusted malware transition is available locally, so no
+authenticated workflow was attempted. The local frontend environment also
+contains server-only variable names and must be cleaned before a browser run.
+Execute the remaining steps only after the environment owner supplies approved
+non-production identities, memberships, fixtures, and confirms private-storage
+alignment.

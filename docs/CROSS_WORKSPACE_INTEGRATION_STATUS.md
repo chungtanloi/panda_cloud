@@ -1,13 +1,14 @@
 # Cross-Workspace Integration Status — Phase 1
 
-Audited frontend: `430aab1` on `chore/cross-workspace-e2e-readiness`.
+Audited frontend: `8fdf2ba` on `main`.
 Audited backend: `4aa9a6c` on `main`. This is a source/contract audit; no live
-provider or deployment was called.
+provider or production deployment was called. One local negative gateway
+smoke was executed; authenticated E2E remains blocked.
 
 | Domain | Frontend status | Backend status | Automated coverage | Real E2E status | Blocker | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| Auth | Integrated through Clerk session bridge and `/auth/me` | Implemented | Auth/session and HTTP-client tests | BLOCKED | Matching Clerk dev users/memberships unverified | Run role smoke step 1 |
-| Sales | Integrated: overview, leads, pipeline, tasks, activities, customers, reports | Implemented | Adapter/component and backend gateway/route tests | BLOCKED | Disposable Sales fixtures unverified | Run non-terminal Sales smoke |
+| Auth | Integrated through Clerk session bridge and `/auth/me` | Implemented | Auth/session and HTTP-client tests | BLOCKED | No approved Clerk dev role sessions/memberships available | Run role smoke step 1 |
+| Sales | Integrated: overview, leads, pipeline, tasks, activities, customers, reports | Implemented | Adapter/component and backend gateway/route tests | BLOCKED | Authenticated Sales identity and disposable fixtures unavailable | Run non-terminal Sales smoke |
 | Lookups | Integrated through HTTP lookups | Implemented | HTTP contract tests | BLOCKED | Staff fixture scope unverified | Exercise opaque-cursor lookups |
 | Deal Change Requests | Integrated Sales request and Manager/Admin decision queue | Implemented | Frontend workflow and backend tests | BLOCKED | Safe pending request fixture unverified | Run terminal-request round trip |
 | DD | Deal-scoped assessments, progress and revisioned responses | Implemented | Technical component and backend tests | BLOCKED | Technical role and Deal B unverified | Run assessment/revision smoke |
@@ -58,7 +59,9 @@ terminal move or automatic project conversion.
 
 ## Real E2E decision
 
-**E2E_BLOCKED / NOT RUN.** See
+**E2E_BLOCKED.** The unauthenticated gateway boundary was verified locally;
+positive workflows were not run because role identities, memberships, and
+disposable data are unavailable. See
 `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` for the exact non-production
 prerequisites, role matrix, fixture set, safe mutations, cleanup rules and
 correlation-ID capture procedure.

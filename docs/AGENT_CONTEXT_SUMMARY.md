@@ -4,12 +4,12 @@
 
 - `schema_version`: `1`
 - `repository`: `panda_cloud`
-- `branch_at_refresh`: `chore/cross-workspace-e2e-readiness`
-- `head_at_refresh`: `430aab1` (diagnostic only)
+- `branch_at_refresh`: `main`
+- `head_at_refresh`: `8fdf2ba` (diagnostic only)
 - `source_file_count`: `30`
-- `source_fingerprint`: `b209a29b9ddd0781278125bf7d377f069630e358cd74a9de478bbef0b39c67f6`
+- `source_fingerprint`: `881033101fa3a1f97da6e3fcdd2d1841f48644cafaba9b77a0a02175afcc99e3`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-19T04:12:00Z`
+- `last_context_refresh_at_utc`: `2026-08-19T04:36:00Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -80,6 +80,15 @@ authority.
 > memberships, disposable fixtures, storage, and malware-scanner transition
 > are unverified without external calls. See the new cross-workspace runbook
 > and integration-status documents.
+
+> 2026-08-19 E2E execution: the owner-resolved clean checkpoint was verified
+> for frontend `8fdf2ba` and backend `4aa9a6c`. The documented local gateway
+> and frontend started on ports 3001 and 3000. A real unauthenticated
+> `/api/v1/auth/me` request returned `401 UNAUTHENTICATED`, echoed CORS and
+> correlation ID `e2e-unauth-001`. No Clerk role sessions, memberships,
+> disposable fixtures, or trusted scanner-clean document were available, so
+> authenticated workflows were not attempted. Final classification:
+> **REAL_E2E_BLOCKED**. See `CROSS_WORKSPACE_E2E_EXECUTION_PHASE_1.md`.
 
 ## Product purpose
 
@@ -371,8 +380,9 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/API_CONTRACT.md` | `2edf5bad1a8b6fda7bd1aaf3ce0c7f245af0133de916a080a44d3ee5ff5746bb` | 26848 | `2026-08-18T02:45:00Z` |
 | `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
 | `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
-| `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` | `3d5b4f253c49584a41d308d52aeaf66d9d2361d3bd974655d4d43e80d7cf9287` | 8135 | `2026-08-19T04:12:00Z` |
-| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `a548d34ea6ca1fbd012f68104a02341cb08ef786e530efb57fe33d5b18f324b7` | 5586 | `2026-08-19T04:12:00Z` |
+| `docs/CROSS_WORKSPACE_E2E_EXECUTION_PHASE_1.md` | `08f59068a3142d6540d7457ecedf60e5eaae4240ceb7afa1b1f1a7e3762b5016` | 4426 | `2026-08-19T04:36:00Z` |
+| `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` | `15a162ccbe76a3b6bb4235271bc16361182b9b7e70a6bb1cf052fe78d2f87bad` | 8373 | `2026-08-19T04:36:00Z` |
+| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `cf802cf224decb5ff610f0644fb32d10d908a0d00402aa4883b880c941dddba1` | 5842 | `2026-08-19T04:36:00Z` |
 | `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
 | `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md` | `5611f634eac70a578a8a32c722f35c891e32683666908feffd6085617b493188` | 2645 | `2026-08-18T10:00:00Z` |
 | `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `abb6b6de198e17f0ddcda33de4907d8ace9c234a83a9245912a8002f04a72647` | 2793 | `2026-08-18T09:12:36Z` |
