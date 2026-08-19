@@ -1,11 +1,29 @@
 # Cross-Workspace E2E Execution — Phase 1
 
-Execution date: 2026-08-19 (local non-production configuration)
+Execution date: 2026-08-19 (real authenticated E2E attempt; stopped at Convex startup)
+
+## Latest execution result
+
+- Frontend SHA: `40698ecaa6c30cf354bea8a89fba8ad742106c65`
+- Backend SHA: `1cefbe02004be645b52ad595ad18654bd0537ea0`
+- Both repositories were on `main` and synchronized. The backend had only
+  generated Convex/Next type noise at inspection; those files were restored and
+  the backend is source-clean.
+- Frontend secret-name hygiene passed: neither `CLERK_SECRET_KEY` nor
+  `SUPABASE_STORAGE_SERVICE_ROLE_KEY` was present.
+- Required `npx convex dev` then failed schema validation because an existing
+  non-production `leads` document contains an extra `priority` field rejected
+  by the current validator. No data repair or backend source change was
+  attempted.
+- No owner login, authenticated API request, fixture creation, or membership
+  mutation was performed. Local dev processes were stopped after the failure.
+- The deployment owner must resolve the non-production Convex data/schema
+  mismatch before retrying.
 
 ## Sources and environment
 
-- Frontend SHA: `8fdf2ba3babc38c68dc19196debbe8aa28f48aa8`
-- Backend SHA: `4aa9a6cebe95f8396d2aea631b6ff050645b98c2`
+- Frontend SHA (previous recorded smoke): `8fdf2ba3babc38c68dc19196debbe8aa28f48aa8`
+- Backend SHA (previous recorded smoke): `4aa9a6cebe95f8396d2aea631b6ff050645b98c2`
 - Both repositories were on `main`, clean, and synchronized with their
   authoritative remotes before execution.
 - Frontend origin: `http://localhost:3000`.
@@ -15,13 +33,11 @@ Execution date: 2026-08-19 (local non-production configuration)
   HMAC configuration, and storage configuration: **PRESENT** locally.
 - Non-production tenant/deployment and private-storage alignment:
   **UNVERIFIED**. No remote deployment or provider dashboard was contacted.
-- Frontend local environment contains server-only variable names
-  (`CLERK_SECRET_KEY` and Supabase service-role configuration): **INVALID**
-  local hygiene; remove them before browser execution. No values are recorded.
+- Frontend local environment secret-name hygiene passed in the latest attempt.
 
 ## Roles and fixtures
 
-Roles actually authenticated: **none**. No Clerk session or supported
+Roles authenticated in the latest attempt: **none**. No Clerk session or supported
 non-production identity/membership set was available. Sales, Technical,
 Compliance, Legal, Manager and Admin identities therefore remain
 **BLOCKED_TEST_DATA**. No Deal, Lead, Contact, pending change request, Won
@@ -34,6 +50,8 @@ assessment/template dataset and was not treated as E2E data.
 
 | Workflow | Result | Evidence |
 | --- | --- | --- |
+| Current frontend secret-hygiene gate | PASS | Neither forbidden server-only frontend variable name was present. |
+| Current Convex dev startup | BLOCKED_ENVIRONMENT | `npx convex dev` failed schema validation because an existing `leads` document contains an extra `priority` field; no repair was attempted. |
 | Local gateway startup | PASS | Existing `npm run dev -- -p 3001` command started the Next gateway. |
 | Frontend startup | PASS | Existing `npm run dev -- -p 3000` command started Next.js; no browser identity was available. |
 | Missing-auth `/auth/me` boundary | PASS_WITH_EXPECTED_POLICY_BLOCK | `GET http://localhost:3001/api/v1/auth/me` with Origin `http://localhost:3000` and correlation ID `e2e-unauth-001` returned `401 UNAUTHENTICATED`; the response echoed CORS and the same correlation ID. |

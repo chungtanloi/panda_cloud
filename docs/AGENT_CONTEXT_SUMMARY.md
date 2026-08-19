@@ -7,7 +7,7 @@
 - `branch_at_refresh`: `main`
 - `head_at_refresh`: `4880cf7` (diagnostic only)
 - `source_file_count`: `31`
-- `source_fingerprint`: `ee5575b056082a9ef284ec8e9c63ef6f0ebb0e43c9ec0f7976c62d0e00e68487`
+- `source_fingerprint`: `c870c1764270a346eb9e0f635496df95699e6233c04b24d40ff4a6baaa2482c8`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
 - `last_context_refresh_at_utc`: `2026-08-19T04:51:00Z`
 
@@ -100,6 +100,13 @@ authority.
 > `SUPABASE_STORAGE_SERVICE_ROLE_KEY` names remain an owner cleanup action;
 > values were not read or copied. Validation remains 115 tests / 16 files,
 > typecheck, lint and 76-route production build green.
+
+> 2026-08-19 resumed real authenticated E2E attempt: frontend `40698ec` and
+> backend `1cefbe02` passed the frontend forbidden-variable gate, but
+> `npx convex dev` failed schema validation on existing non-production data (a
+> `leads` document contains an extra `priority` field). No data repair, login,
+> provider call, or fixture mutation was attempted. Final classification remains
+> **REAL_E2E_BLOCKED** pending deployment-owner resolution.
 
 ## Product purpose
 
@@ -391,9 +398,9 @@ frontend fingerprint does not imply a valid backend fingerprint.
 | `docs/API_CONTRACT.md` | `2edf5bad1a8b6fda7bd1aaf3ce0c7f245af0133de916a080a44d3ee5ff5746bb` | 26848 | `2026-08-18T02:45:00Z` |
 | `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
 | `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
-| `docs/CROSS_WORKSPACE_E2E_EXECUTION_PHASE_1.md` | `08f59068a3142d6540d7457ecedf60e5eaae4240ceb7afa1b1f1a7e3762b5016` | 4426 | `2026-08-19T04:51:00Z` |
+| `docs/CROSS_WORKSPACE_E2E_EXECUTION_PHASE_1.md` | `83d3fd5bd5a914afe0bb944e77844f9159bb48c809c6a00aee91197d319d6cf1` | 5634 | `2026-08-19T06:28:23Z` |
 | `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` | `1ac9ddb3287b213507c5f0e56a8dce2bdc1980b39b6dacac9d458563031201f2` | 8492 | `2026-08-19T04:51:00Z` |
-| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `76862308f6f0856a3dcc649db3f7af33f6418b000f11b9ea4da023f2ae5a0ba0` | 5914 | `2026-08-19T04:51:00Z` |
+| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `295f422a843252238095113ce8b50f4805430ab22f58ba13ff8287433e000384` | 6305 | `2026-08-19T06:28:34Z` |
 | `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
 | `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md` | `5611f634eac70a578a8a32c722f35c891e32683666908feffd6085617b493188` | 2645 | `2026-08-18T10:00:00Z` |
 | `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `abb6b6de198e17f0ddcda33de4907d8ace9c234a83a9245912a8002f04a72647` | 2793 | `2026-08-18T09:12:36Z` |
