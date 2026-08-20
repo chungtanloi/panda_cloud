@@ -81,7 +81,7 @@ import type {
   SubmissionConvertRequest,
   SubmissionConvertResponse,
   Submission,
-  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectQuery, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent,
+  ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectQuery, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent, AdminOrganizationPage, AdminOrganizationDetail, AdminMembershipPage, AdminUserUpdateRequest, AdminOrganizationCreateRequest, AdminOrganizationUpdateRequest, AdminMembershipCreateRequest, AdminMembershipUpdateRequest, AdminUser, AdminOrganizationSummary, AdminMembership,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
   DealChangeRequest, DealChangeRequestCreate, DealChangeRequestDecision, DealChangeRequestPage,
 } from "@/models";
@@ -187,13 +187,22 @@ export interface WorkspaceService {
 export interface AdminService {
   overview(): Promise<AdminOverview>;
   users(query?: Record<string, string | number | undefined>): Promise<AdminUserPage>;
-  user(userId: string): Promise<import('@/models/admin').AdminUser>;
+  user(userId: string): Promise<AdminUser>;
+  updateUser(userId: string, body: AdminUserUpdateRequest): Promise<AdminUser>;
   roles(): Promise<AdminRoles>;
   health(): Promise<AdminHealth>;
   auditLogs(query?: Record<string, string | number | undefined>): Promise<AdminAuditPage>;
   auditLog(auditId: string): Promise<import('@/models/admin').AdminAuditRecord>;
   events(query?: Record<string, string | number | undefined>): Promise<AdminIntegrationEventPage>;
   event(eventId: string): Promise<AdminIntegrationEvent>;
+  organizations(query?: Record<string, string | number | undefined>): Promise<AdminOrganizationPage>;
+  organization(orgId: string): Promise<AdminOrganizationDetail>;
+  createOrganization(body: AdminOrganizationCreateRequest): Promise<AdminOrganizationSummary>;
+  updateOrganization(orgId: string, body: AdminOrganizationUpdateRequest): Promise<AdminOrganizationSummary>;
+  memberships(orgId: string, query?: Record<string, string | number | undefined>): Promise<AdminMembershipPage>;
+  membership(orgId: string, membershipId: string): Promise<AdminMembership>;
+  createMembership(orgId: string, body: AdminMembershipCreateRequest): Promise<AdminMembership>;
+  updateMembership(orgId: string, membershipId: string, body: AdminMembershipUpdateRequest): Promise<AdminMembership>;
 }
 
 export interface ManagerService {
