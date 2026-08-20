@@ -85,9 +85,16 @@ export interface AssessmentSubmission {
   facilities: FacilitiesStep;
 }
 
+/**
+ * Proposed AI Assessment integration contract.
+ *
+ * This is the normalized payload sent by the backend gateway to the AI
+ * orchestration boundary. It deliberately mirrors the existing Land Owner
+ * wizard fields so the AI layer does not create a second form or ask the user
+ * to re-enter known values.
+ */
 export type AssessmentType = "land";
 
-/** Normalized data sent from the Land Form into the AI Assessment boundary. */
 export interface LandIntakeData {
   areaAcres: number;
   landUse: LandUseType;
@@ -205,7 +212,6 @@ export interface AssessmentMessageResponse extends AssessmentSessionResponse {
 export interface AssessmentSummaryResponse extends AssessmentSessionResponse {
   summary: AssessmentCompletedResult;
 }
-
 export function toLandIntakeData(submission: AssessmentSubmission): LandIntakeData {
   return {
     areaAcres: submission.landProfile.areaAcres,

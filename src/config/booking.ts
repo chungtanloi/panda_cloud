@@ -254,11 +254,11 @@ export const STEP_POWER_COOLING = {
 /* -------------------------------- Step 5 -------------------------------- */
 
 export const STEP_DEPLOYMENT_READY = {
-  badge: "ALLOCATION SECURED",
-  title: "Deployment Ready",
+  badge: "QUOTE READY",
+  title: "Review Your Quote",
   body:
-    "Your high-performance compute cluster has been reserved. Review the final specifications " +
-    "before initialization.",
+    "Review this non-binding configuration estimate. A Cloud Panda specialist will confirm " +
+    "availability, commercial terms and next steps.",
   architectureTitle: "Cluster Architecture",
   labels: {
     primaryGpu: "PRIMARY GPU",
@@ -271,12 +271,11 @@ export const STEP_DEPLOYMENT_READY = {
   },
   riskTitle: "Risk Considerations & Acknowledgement",
   riskBody:
-    "By proceeding with this deployment, you acknowledge that cluster provisioning is binding. " +
-    "Cancellation policies apply as per standard enterprise agreements. Hardware availability " +
-    "is guaranteed for the selected duration upon initialization.",
+    "This quote is an estimate, not a reservation or provisioning order. Availability, pricing " +
+    "and SLA terms are confirmed by Sales before any binding agreement.",
   commitmentTitle: "Estimated Monthly Commitment",
   perMonth: "/mo",
-  primaryCta: "Initialize Deployment",
+  primaryCta: "Request Quote",
   pdfCta: "PDF Quote",
   callCta: "Expert Call",
 } as const;

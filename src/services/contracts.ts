@@ -188,6 +188,7 @@ export interface LeadService {
  */
 export interface SubmissionService {
   create(body: SubmissionCreateRequest): Promise<SubmissionCreateResponse>;
+  attachDocuments(submissionId: string, documentIds: string[]): Promise<{ leadId: string; documentIds: string[]; attached: boolean }>;
   list(query?: { status?: string; cursor?: string }): Promise<SubmissionListResponse>;
   get(submissionId: string): Promise<Submission>;
   convert(submissionId: string, body: SubmissionConvertRequest): Promise<SubmissionConvertResponse>;

@@ -245,12 +245,30 @@ export const httpApi: ApiClient = {
         source: "website",
         persona: "other",
         summary: payload.useCase ?? `${payload.contactName}: ${payload.interests.join(", ")}`,
+        contact: {
+          fullName: payload.contactName,
+          email: payload.email,
+          ...(payload.phone ? { phone: payload.phone } : {}),
+          ...(payload.companyName ? { companyName: payload.companyName } : {}),
+        },
+        sourcePayload: {
+          interests: payload.interests.join(", "),
+          gpuType: payload.gpuType ?? null,
+          quantity: payload.quantity ?? null,
+          timeline: payload.timeline ?? null,
+          budget: payload.budget ?? null,
+          locationPreference: payload.locationPreference ?? null,
+          source: payload.source ?? null,
+          path: payload.path ?? null,
+        },
       }, { anonymous: true }),
   },
 
   submissions: {
     create: (body: SubmissionCreateRequest) =>
       http.post<SubmissionCreateResponse>(endpoints.submissions.collection, body, { anonymous: true }),
+    attachDocuments: (submissionId: string, documentIds: string[]) =>
+      http.post<{ leadId: string; documentIds: string[]; attached: boolean }>(endpoints.submissions.documents(submissionId), { documentIds }),
     list: (query = {}) =>
       http.get<SubmissionListResponse>(endpoints.submissions.collection, { query }),
     get: (submissionId: string) =>

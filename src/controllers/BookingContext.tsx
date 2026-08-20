@@ -15,6 +15,13 @@ import { api, normalizeError } from "@/services/api";
 
 const STORAGE_KEY = "cp.booking.draft";
 const QUOTE_DEBOUNCE_MS = 300;
+const GPU_ID_ALIASES: Record<string, string> = {
+  "nvidia-h100-80gb": "h100",
+  "nvidia-h100": "h100",
+  "h100-sxm": "h100",
+  "nvidia-h200-141gb": "h200",
+  "nvidia-b200-192gb": "b200",
+};
 
 interface BookingContextValue {
   draft: BookingDraft;
@@ -68,9 +75,20 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         const result = await api.booking.listGpuModels();
-        if (!cancelled) setModels(result);
+        if (!cancelled) {
+          setModels(result);
+          setDraft((previous) => {
+            const currentId = previous.hardware?.gpuModelId;
+            if (!currentId) return previous;
+            const normalizedId = GPU_ID_ALIASES[currentId] ?? currentId;
+            if (!result.some((model) => model.id === normalizedId) || normalizedId === currentId) return previous;
+            return { ...previous, hardware: { ...previous.hardware, gpuModelId: normalizedId } };
+          });
+        }
       } catch (cause) {
-        if (!cancelled) setError(normalizeError(cause));
+        if (!cancelled) {
+          setError(normalizeError(cause));
+        }
       } finally {
         if (!cancelled) setModelsLoading(false);
       }
@@ -87,7 +105,8 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
 
     // Pricing needs a model and a count; before that there is nothing to quote.
-    if (!draft.hardware?.gpuModelId || !draft.scale?.gpuCount) {
+    const catalogModel = models.find((model) => model.id === draft.hardware?.gpuModelId);
+    if (!catalogModel || !draft.scale?.gpuCount) {
       setQuote(null);
       return;
     }
@@ -99,7 +118,10 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
         const result = await api.booking.quote(draft);
         if (!cancelled) setQuote(result);
       } catch (cause) {
-        if (!cancelled) setError(normalizeError(cause));
+        if (!cancelled) {
+          setQuote(null);
+          setError(normalizeError(cause));
+        }
       } finally {
         if (!cancelled) setQuoteLoading(false);
       }
@@ -109,7 +131,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [draft, hydrated]);
+  }, [draft, hydrated, models]);
 
   const update = useCallback<BookingContextValue["update"]>((step, patch) => {
     setDraft((prev) => ({ ...prev, [step]: { ...(prev[step] ?? {}), ...patch } }));

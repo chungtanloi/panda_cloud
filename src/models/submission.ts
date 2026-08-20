@@ -18,8 +18,18 @@ export interface Submission {
   convertedAt?: string | null;
   archivedAt?: string | null;
 }
+export interface SubmissionContact { fullName: string; email: string; phone?: string; companyName?: string; }
 export interface SubmissionListResponse { leads: readonly Submission[]; continueCursor: string | null; isDone: boolean; }
-export interface SubmissionCreateRequest { source: SubmissionSource; persona?: SubmissionPersona; vertical?: SubmissionVertical; summary: string; }
+export interface SubmissionCreateRequest {
+  source: SubmissionSource;
+  persona?: SubmissionPersona;
+  vertical?: SubmissionVertical;
+  summary: string;
+  sourcePayload?: Record<string, string | number | boolean | null>;
+  documentIds?: string[];
+  idempotencyKey?: string;
+  contact: SubmissionContact;
+}
 export interface SubmissionCreateResponse extends Submission {}
 export interface SubmissionConvertRequest { organizationId: string; ownerId: string; title: string; vertical: SubmissionVertical; priority: SubmissionPriority; description?: string; }
 export interface SubmissionConvertResponse { leadId: string; dealId: string; dealRevision: number; leadStatus: "converted"; updatedAt: string; }

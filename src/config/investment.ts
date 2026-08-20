@@ -194,7 +194,7 @@ export const STEP_KYC = {
   ],
   organizationLabel: "ORGANIZATION NAME",
   organizationOptional: "OPTIONAL",
-  uploadLabel: "ACCREDITED INVESTOR PROOF",
+  uploadLabel: "COMPLIANCE DOCUMENTS (REQUESTED AFTER INQUIRY)",
   upload: {
     title: "Drag & Drop Documents",
     body: "Upload government ID, proof of address, or accreditation certificates.",
@@ -223,10 +223,10 @@ export const STEP_KYC = {
 /* -------------------------------- Step 5 -------------------------------- */
 
 export const STEP_CONFIRMATION = {
-  title: "Investment Confirmed",
+  title: "Inquiry Received",
   body:
-    "Your AI compute token allocation has been successfully processed and recorded on the " +
-    "ledger. Welcome to the infrastructure revolution.",
+    "Your AI token investment inquiry has been received. Our Compliance and Sales teams will " +
+    "contact you with the next steps before any payment or allocation.",
   totalLabel: "TOTAL INVESTMENT",
   allocationLabel: "TOKEN ALLOCATION",
   meta: {

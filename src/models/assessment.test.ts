@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { toLandIntakeData, type AssessmentSubmission } from "./assessment";
 
 describe("toLandIntakeData", () => {
-  it("normalizes the five-step submission without losing fields", () => {
+  it("normalizes the five-step Land Owner submission without losing fields", () => {
     const submission: AssessmentSubmission = {
       landProfile: { areaAcres: 12, landUse: "industrial", location: "Can Tho" },
       powerCapacity: {

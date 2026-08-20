@@ -8,12 +8,12 @@ import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { CountUp } from "@/components/motion/CountUp";
 import { Reveal } from "@/components/motion/Reveal";
 import { Footer } from "@/components/layout/Footer";
-import { useAuth } from "@/controllers/AuthContext";
 import { useBooking } from "@/controllers/BookingContext";
 import { STEP_DEPLOYMENT_READY } from "@/config/booking";
-import type { BookingSubmission } from "@/models/booking";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
+import { CustomerContactFields } from "@/components/customer/CustomerContactFields";
+import type { SubmissionContact } from "@/models/submission";
 
 /**
  * Step 5 — Deployment Ready. Transcribed from `dev.png`.
@@ -26,36 +26,47 @@ import { cn } from "@/lib/cn";
 export default function ReviewPage() {
   const router = useRouter();
   const { draft, quote, selectedModel } = useBooking();
-  const { isAuthenticated, initializing } = useAuth();
   const config = STEP_DEPLOYMENT_READY;
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [needsAccount, setNeedsAccount] = useState(false);
+  const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
 
   const gpuCount = draft.scale?.gpuCount ?? 0;
-  const ready = Boolean(selectedModel && quote && draft.powerCooling?.cooling);
+  const ready = Boolean(selectedModel && quote && draft.powerCooling?.cooling && contact.fullName.trim() && contact.email.trim());
 
-  async function initialize() {
+  async function requestQuote() {
     if (!ready) return;
-
-    if (!isAuthenticated) {
-      setNeedsAccount(true);
-      return;
-    }
-
     setSubmitting(true);
     setError(null);
     try {
-      const result = await api.booking.submit(draft as BookingSubmission);
-      router.push(`/requests/${encodeURIComponent(result.reference)}`);
+      const result = await api.submissions.create({
+        source: "website",
+        persona: "gpu_buyer",
+        vertical: "gpu",
+        summary: "GPU cluster quote request",
+        contact,
+        idempotencyKey: `gpu-${selectedModel?.id ?? "unknown"}-${gpuCount}-${draft.scale?.deploymentTarget ?? "unknown"}`,
+        sourcePayload: {
+          workload: draft.workload?.workload ?? null,
+          gpuModelId: draft.hardware?.gpuModelId ?? null,
+          gpuCount,
+          deploymentTarget: draft.scale?.deploymentTarget ?? null,
+          commitment: draft.scale?.commitment ?? null,
+          deploymentModel: draft.powerCooling?.deploymentModel ?? null,
+          cooling: draft.powerCooling?.cooling ?? null,
+          sla: draft.powerCooling?.sla ?? null,
+          quoteMonthlyTotalUsd: quote?.monthly.total ?? null,
+          quoteHourlyTotalUsd: quote?.hourly.total ?? null,
+          quoteValidUntil: quote?.validUntil ?? null,
+        },
+      });
+      router.push(`/requests/${encodeURIComponent(result.leadId)}`);
     } catch (cause) {
       setError(normalizeError(cause).message);
       setSubmitting(false);
     }
   }
-
-  const returnTo = "/booking/review";
 
   return (
     <>
@@ -76,6 +87,8 @@ export default function ReviewPage() {
             {config.body}
           </p>
         </Reveal>
+
+        <CustomerContactFields value={contact} onChange={setContact} />
 
         <div className="relative grid grid-cols-1 items-start gap-[24px] lg:grid-cols-[1.6fr_1fr]">
           <div className="flex flex-col gap-[20px]">
@@ -187,8 +200,9 @@ export default function ReviewPage() {
 
               <button
                 type="button"
-                onClick={initialize}
-                disabled={!ready || submitting || initializing}
+                onClick={requestQuote}
+                disabled={!ready || submitting}
+                title={!contact.fullName.trim() || !contact.email.trim() ? "Nhập họ tên và email để nhận báo giá." : undefined}
                 className={cn(
                   "inline-flex w-full items-center justify-center gap-[8px] rounded-full bg-accent px-[20px] py-[13px]",
                   "font-sans text-[13px] font-bold leading-[20px] text-accent-fg transition-all duration-200",
@@ -197,33 +211,13 @@ export default function ReviewPage() {
                 )}
               >
                 <span aria-hidden>⚡</span>
-                {submitting ? "Reserving…" : config.primaryCta}
+                {submitting ? "Sending…" : "Request Quote"}
               </button>
 
-              {needsAccount ? (
-                <div
-                  role="status"
-                  className="flex flex-col gap-[10px] rounded-field border border-accent-line bg-accent-soft p-[14px]"
-                >
-                  <p className="font-sans text-[12px] leading-[18px] text-ink">
-                    Provisioning is binding, so we need an account before reserving. Your
-                    configuration is saved — you will come straight back here.
-                  </p>
-                  <div className="flex flex-wrap gap-[8px]">
-                    <Link
-                      href={`/signup?returnTo=${encodeURIComponent(returnTo)}`}
-                      className="rounded-full bg-accent px-[16px] py-[8px] font-sans text-[12px] font-bold leading-[16px] text-accent-fg"
-                    >
-                      Create account
-                    </Link>
-                    <Link
-                      href={`/login?returnTo=${encodeURIComponent(returnTo)}`}
-                      className="rounded-full border border-line-strong px-[16px] py-[8px] font-sans text-[12px] font-medium leading-[16px] text-ink transition-colors hover:border-accent hover:text-accent"
-                    >
-                      I have an account
-                    </Link>
-                  </div>
-                </div>
+              {!ready && !submitting ? (
+                <p className="text-[11px] leading-[17px] text-amber-300">
+                  Nhập họ tên và email ở phần thông tin liên hệ để gửi yêu cầu báo giá.
+                </p>
               ) : null}
 
               {error ? (
@@ -237,7 +231,7 @@ export default function ReviewPage() {
                 <button
                   type="button"
                   disabled
-                  title="The quote PDF is generated once the cluster is reserved."
+                  title="Quote PDF becomes available after Sales review."
                   className="inline-flex cursor-not-allowed items-center justify-center gap-[6px] rounded-full border border-line-strong px-[14px] py-[10px] font-sans text-[11px] font-medium uppercase leading-[14px] tracking-[1px] text-ink-dim opacity-50"
                 >
                   <span aria-hidden>⭳</span>

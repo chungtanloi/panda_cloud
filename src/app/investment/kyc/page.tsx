@@ -9,6 +9,8 @@ import { INVESTMENT_TOTAL_STEPS, STEP_KYC } from "@/config/investment";
 import type { InvestorClassification, KycCheckState, UploadedDocument } from "@/models/investment";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
+import { CustomerContactFields } from "@/components/customer/CustomerContactFields";
+import type { SubmissionContact } from "@/models/submission";
 
 /**
  * Step 4 — Identity Verification. Transcribed from `KYC.png`.
@@ -30,26 +32,14 @@ export default function KycPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
 
   const needsOrganization = classification === "institutional" && !organizationName.trim();
-  const canSubmit = Boolean(classification) && documentIds.length > 0 && !needsOrganization;
+  const canSubmit = Boolean(classification) && !needsOrganization && Boolean(contact.fullName.trim() && contact.email.trim());
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
-    setUploading(true);
-    setError(null);
-
-    try {
-      for (const file of Array.from(files)) {
-        const uploaded = await api.investment.uploadKycDocument(file);
-        setDocuments((prev) => [...prev, uploaded]);
-        update("kyc", { documentIds: [...documentIds, uploaded.id] });
-      }
-    } catch (cause) {
-      setError(normalizeError(cause).message);
-    } finally {
-      setUploading(false);
-    }
+    setError("Compliance documents are requested after this inquiry is reviewed.");
   }
 
   function removeDocument(id: string) {
@@ -63,8 +53,24 @@ export default function KycPage() {
     setError(null);
 
     try {
-      const result = await api.investment.submit(draft as never);
-      router.push(`/investment/confirmation?id=${encodeURIComponent(result.id)}`);
+      const result = await api.submissions.create({
+        source: "website",
+        persona: "investor",
+        vertical: "token",
+        summary: "AI token investment compliance inquiry",
+        contact,
+        idempotencyKey: `token-${draft.intent?.intent ?? "unknown"}-${draft.volume?.amountUsd ?? 0}`,
+        sourcePayload: {
+          intent: draft.intent?.intent ?? null,
+          amountUsd: draft.volume?.amountUsd ?? null,
+          paymentMethod: draft.payment?.method ?? null,
+          settlementNetwork: draft.payment?.network ?? null,
+          investorClassification: classification ?? null,
+          organizationName: organizationName.trim() || null,
+          complianceDocumentsDeferred: true,
+        },
+      });
+      router.push(`/requests/${encodeURIComponent(result.leadId)}`);
     } catch (cause) {
       setError(normalizeError(cause).message);
       setSubmitting(false);
@@ -75,7 +81,7 @@ export default function KycPage() {
   const progress: Record<string, KycCheckState> = {
     secureConnection: "complete",
     walletSignature: classification ? "complete" : "pending",
-    sourcingDocuments: uploading ? "active" : documentIds.length > 0 ? "complete" : "pending",
+    sourcingDocuments: "pending",
     nodeValidation: submitting ? "active" : "pending",
   };
 
@@ -272,6 +278,8 @@ export default function KycPage() {
                   {error}
                 </p>
               ) : null}
+
+              <CustomerContactFields value={contact} onChange={setContact} />
 
               <FlowNav
                 backLabel={config.back}

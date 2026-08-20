@@ -6,9 +6,11 @@ import { FlowFooter, FlowHeader, FlowProgress } from "@/components/wizard/FlowCh
 import { Reveal } from "@/components/motion/Reveal";
 import { useHyperscale } from "@/controllers/HyperscaleContext";
 import { HYPERSCALE_TOTAL_STEPS, STEP_RFP } from "@/config/hyperscale";
-import type { HyperscaleSubmission, UploadedDocument } from "@/models";
+import type { UploadedDocument } from "@/models";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
+import { CustomerContactFields } from "@/components/customer/CustomerContactFields";
+import type { SubmissionContact } from "@/models/submission";
 
 /**
  * Step 4 — RFP & Consultation. Transcribed from `hyper4.png`.
@@ -26,30 +28,28 @@ export default function RfpPage() {
   const config = STEP_RFP;
 
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
 
   const documentIds = draft.rfp?.documentIds ?? [];
   const requestConsultation = draft.rfp?.requestConsultation ?? false;
-  const canSubmit = documentIds.length > 0 || requestConsultation;
+  const canSubmit = (documentIds.length > 0 || pendingFiles.length > 0 || requestConsultation) && Boolean(contact.fullName.trim() && contact.email.trim());
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
-    setUploading(true);
     setError(null);
-
-    try {
-      for (const file of Array.from(files)) {
-        const uploaded = await api.hyperscale.uploadRfpDocument(file);
-        setDocuments((prev) => [...prev, uploaded]);
-        update("rfp", { documentIds: [...documentIds, uploaded.id] });
-      }
-    } catch (cause) {
-      setError(normalizeError(cause).message);
-    } finally {
-      setUploading(false);
-    }
+    const selected = Array.from(files);
+    setPendingFiles((prev) => [...prev, ...selected]);
+    setDocuments((prev) => [...prev, ...selected.map((file, index) => ({
+      id: `pending-${Date.now()}-${index}`,
+      fileName: file.name,
+      sizeBytes: file.size,
+      uploadedAt: new Date().toISOString(),
+      mimeType: file.type || "application/octet-stream",
+    }))]);
   }
 
   async function handleSubmit() {
@@ -58,11 +58,48 @@ export default function RfpPage() {
     setError(null);
 
     try {
-      const result = await api.hyperscale.submit(draft as HyperscaleSubmission);
-      router.push(`/requests/${encodeURIComponent(result.reference)}`);
+      const result = await api.submissions.create({
+        source: "website",
+        persona: "hyperscaler",
+        vertical: "hyperscale",
+        summary: "Hyperscale data center planning request",
+        contact,
+        idempotencyKey: `hyperscale-${draft.projectStage?.stage ?? "unknown"}-${draft.capacity?.targetCapacityMw ?? 0}-${draft.geography?.region ?? "unknown"}`,
+        sourcePayload: {
+          projectStage: draft.projectStage?.stage ?? null,
+          targetCapacityMw: draft.capacity?.targetCapacityMw ?? null,
+          cooling: draft.capacity?.cooling ?? null,
+          region: draft.geography?.region ?? null,
+          targetGoLive: draft.geography?.targetGoLive ?? null,
+          requestConsultation,
+        },
+      });
+      const uploadedIds = [...documentIds];
+      for (const file of pendingFiles) {
+        setUploading(true);
+        const checksum = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer())))
+          .map((value) => value.toString(16).padStart(2, "0")).join("");
+        const session = await api.documents.createUploadSession({
+          context: { type: "submission", resourceId: result.leadId },
+          originalFilename: file.name,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+          sha256Checksum: checksum,
+          retentionClass: "standard",
+          idempotencyKey: `rfp-${result.leadId}-${file.name}-${file.size}`,
+        });
+        await api.documents.uploadToSignedUrl(session.uploadUrl, file, session.requiredHeaders);
+        const finalized = await api.documents.finalize(session.documentId);
+        if (finalized.malwareScanStatus !== "clean") throw new Error("RFP document is pending malware scan and cannot be attached yet.");
+        uploadedIds.push(finalized.documentId);
+      }
+      if (uploadedIds.length > documentIds.length) await api.submissions.attachDocuments(result.leadId, uploadedIds);
+      router.push(`/requests/${encodeURIComponent(result.leadId)}`);
     } catch (cause) {
       setError(normalizeError(cause).message);
       setSubmitting(false);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -149,6 +186,8 @@ export default function RfpPage() {
                 ))}
               </div>
             </Reveal>
+
+            <CustomerContactFields value={contact} onChange={setContact} />
 
             {/* Consultation */}
             <Reveal delay={80}>

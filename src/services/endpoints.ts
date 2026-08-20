@@ -67,6 +67,7 @@ export const endpoints = {
   submissions: {
     collection: "/submissions",
     byId: (id: string) => `/submissions/${id}`,
+    documents: (id: string) => `/submissions/${id}/documents`,
     convert: (id: string) => `/submissions/${id}/convert`,
   },
 

@@ -1,4 +1,4 @@
-export type DocumentUploadContextType = "deal" | "dd_assessment" | "ncnda" | "kyc";
+export type DocumentUploadContextType = "deal" | "dd_assessment" | "ncnda" | "kyc" | "submission";
 export type DocumentRetentionClass = "standard" | "legal" | "kyc" | "audit";
 export type DocumentScanStatus = "pending" | "clean" | "infected" | "failed";
 export type DocumentEncryptionStatus = "pending" | "encrypted" | "failed";

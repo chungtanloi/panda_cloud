@@ -55,6 +55,7 @@ import type {
   DealChangeRequestCreate,
   DealChangeRequestDecision,
 } from "@/models";
+import type { SubmissionCreateRequest, SubmissionCreateResponse } from "@/models/submission";
 import { kycUpdateProblems } from "@/models";
 import type { SalesLeadQualifyRequest } from "@/models/salesWorkspace";
 import type { ApiClient } from "../contracts";
@@ -1295,7 +1296,21 @@ export const mockApi: ApiClient = {
   },
 
   submissions: {
-    create: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Submission mock is not configured.", status: 501 }); },
+    create: async (body: SubmissionCreateRequest): Promise<SubmissionCreateResponse> => delay({
+      leadId: reference("lead").toLowerCase(),
+      source: body.source,
+      persona: body.persona ?? null,
+      vertical: body.vertical ?? null,
+      status: "new",
+      summary: body.summary,
+      updatedAt: new Date().toISOString(),
+      organizationId: null,
+      primaryContactId: null,
+      createdBy: null,
+      convertedAt: null,
+      archivedAt: null,
+    }),
+    attachDocuments: async (submissionId: string, documentIds: string[]) => delay({ leadId: submissionId, documentIds, attached: true }),
     list: async () => ({ leads: [], continueCursor: null, isDone: true }),
     get: async () => { throw new ApiError({ code: "NOT_FOUND", message: "Submission not found.", status: 404 }); },
     convert: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Submission conversion mock is not configured.", status: 501 }); },
