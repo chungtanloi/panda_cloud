@@ -3,6 +3,7 @@ import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { BOOKING_INTRO } from "@/config/booking";
+import { FlowHeader } from "@/components/wizard/FlowChrome";
 
 /**
  * GPU Cluster Booking entry — transcribed from `GPU.png`.
@@ -14,6 +15,9 @@ export default function BookingIntroPage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center px-[24px] py-[64px]">
       <AnimatedBackdrop stars />
+      <div className="absolute left-0 right-0 top-0">
+        <FlowHeader exitHref="/" exitLabel="Back to home" />
+      </div>
 
       <Reveal className="relative flex w-full max-w-[820px] flex-col items-center gap-[20px] text-center">
         <span className="inline-flex items-center gap-[8px] rounded-full border border-accent/30 bg-accent-soft px-[13px] py-[5px] font-mono text-[10px] uppercase leading-[12px] tracking-[1.2px] text-accent">

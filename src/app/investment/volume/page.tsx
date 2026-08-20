@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 /**
  * Step 2 — Determine Volume. Transcribed from `invest2.png`.
  *
- * The projection panel is fetched, not computed here: token allocation,
+ * The estimate panel is fetched, not computed here: token allocation,
  * hash-rate and five-year ROI are commercial figures shown to an investor, so
  * they must come from one authoritative source.
  */
@@ -133,7 +133,7 @@ export default function VolumePage() {
 
           {/* Projection */}
           <Reveal delay={100}>
-            <FlowPanel title={config.panel.title} badge="LIVE" className="h-full">
+            <FlowPanel title={config.panel.title} badge="ESTIMATE" className="h-full">
               <Metric
                 label={config.panel.tokenLabel}
                 value={
@@ -173,6 +173,9 @@ export default function VolumePage() {
                   </span>
                 </div>
               </div>
+              <p className="font-sans text-[11px] leading-[17px] text-ink-faint">
+                Estimate only. No payment, settlement, minting, or allocation is performed here.
+              </p>
             </FlowPanel>
           </Reveal>
         </div>

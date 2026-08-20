@@ -42,15 +42,13 @@ export function FlowHeader({
         </span>
       ) : null}
 
-      {exitHref ? (
-        <Link
-          href={exitHref}
+      <Link
+          href={exitHref ?? "/"}
           className="flex items-center gap-[8px] font-sans text-[12px] leading-[18px] text-ink-dim transition-colors hover:text-accent"
         >
-          {exitLabel ?? "Exit"}
+          {exitLabel ?? "Back to home"}
           <span aria-hidden>✕</span>
-        </Link>
-      ) : null}
+      </Link>
     </header>
   );
 }

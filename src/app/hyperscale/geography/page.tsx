@@ -30,13 +30,14 @@ export default function GeographyPage() {
   const targetGoLive = draft.geography?.targetGoLive ?? "";
 
   const fetchRegions = useCallback(() => api.hyperscale.listRegions(), []);
-  const { data: regions } = useAsync(fetchRegions, { immediate: [] });
+  const { state: regionsState, run: retryRegions } = useAsync(fetchRegions, { immediate: [] });
+  const regions = regionsState.status === "success" ? regionsState.data : [];
 
   const fetchSchedule = useCallback(() => api.hyperscale.buildSchedule(draft), [draft]);
   const { state, run } = useAsync(fetchSchedule);
 
   useEffect(() => {
-    void run();
+    if (region && targetGoLive) void run();
   }, [region, targetGoLive, run]);
 
   const schedule = state.status === "success" ? state.data : null;
@@ -87,6 +88,7 @@ export default function GeographyPage() {
                 <select
                   id="region"
                   value={region}
+                  disabled={regionsState.status === "loading" || regionsState.status === "error"}
                   onChange={(event) => update("geography", { region: event.target.value })}
                   className={cn(
                     "w-full rounded-field border border-line-strong bg-deep px-[16px] py-[12px]",
@@ -103,6 +105,16 @@ export default function GeographyPage() {
                     </option>
                   ))}
                 </select>
+
+                {regionsState.status === "loading" ? (
+                  <p className="font-sans text-[11px] text-ink-faint">Loading available regions…</p>
+                ) : null}
+                {regionsState.status === "error" ? (
+                  <div className="flex items-center justify-between gap-[10px] rounded-field border border-red-400/30 bg-red-400/10 p-[10px]">
+                    <p role="alert" className="font-sans text-[11px] text-red-300">Unable to load regions.</p>
+                    <button type="button" onClick={() => void retryRegions()} className="font-mono text-[10px] uppercase text-accent hover:underline">Retry</button>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-[10px]">
                   <Fact label={config.region.powerLabel} value={selectedRegion?.availablePower} />
@@ -181,6 +193,15 @@ export default function GeographyPage() {
               </div>
 
               <ol className="flex flex-col gap-[10px]">
+                {state.status === "loading" ? (
+                  <li className="py-[28px] text-center font-sans text-[12px] text-ink-faint">Calculating delivery schedule…</li>
+                ) : null}
+                {state.status === "error" ? (
+                  <li className="flex items-center justify-between gap-[10px] rounded-field border border-red-400/30 bg-red-400/10 p-[12px]">
+                    <span role="alert" className="font-sans text-[11px] text-red-300">Unable to calculate schedule.</span>
+                    <button type="button" onClick={() => void run()} className="font-mono text-[10px] uppercase text-accent hover:underline">Retry</button>
+                  </li>
+                ) : null}
                 {schedule?.phases.map((phase) => (
                   <li key={phase.label} className="flex items-center gap-[8px]">
                     <span className="w-[38%] shrink-0">
@@ -211,6 +232,11 @@ export default function GeographyPage() {
                     </span>
                   </li>
                 ))}
+                {!schedule && state.status !== "loading" && state.status !== "error" ? (
+                  <li className="py-[28px] text-center font-sans text-[12px] leading-[19px] text-ink-faint">
+                    Select a region and target go-live date to generate the schedule.
+                  </li>
+                ) : null}
               </ol>
 
               <div className="flex flex-wrap items-center justify-between gap-[12px] border-t border-line-soft pt-[12px]">

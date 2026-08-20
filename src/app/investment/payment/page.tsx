@@ -13,13 +13,13 @@ import { cn } from "@/lib/cn";
 /**
  * Step 3 — Payment Method. Transcribed from `payment.png`.
  *
- * ⚠ The design's Settlement panel shows "Token Allocation Volume: 50,000 GPU"
+ * ⚠ The design's funding panel shows "Token Allocation Volume: 50,000 GPU"
  * — a unit mismatch flagged in the system report, since the asset elsewhere is
  * CPT. The value here is rendered in CPT, matching every other screen. If GPU
  * really is a separate unit, say so and it becomes a contract field.
  *
- * No card details are collected in the frontend. Card payment hands off to the
- * processor; only the method choice is stored.
+ * No card details or wallet signatures are collected in the frontend. The
+ * method is a preference recorded for Compliance/Sales; no payment is made.
  */
 export default function PaymentPage() {
   const { draft, update } = useInvestment();
@@ -32,7 +32,7 @@ export default function PaymentPage() {
   const { state, run } = useAsync(fetchSettlement);
 
   useEffect(() => {
-    if (method) void run();
+    if (method && !(method === "usdc" && !network)) void run();
   }, [method, network, run]);
 
   const settlement = state.status === "success" ? state.data : null;
@@ -80,7 +80,7 @@ export default function PaymentPage() {
                         value={option.value}
                         checked={isSelected}
                         onChange={() =>
-                          update("payment", { method: option.value as PaymentMethodType })
+                          update("payment", { method: option.value as PaymentMethodType, network: undefined })
                         }
                         className="sr-only"
                       />
@@ -161,7 +161,7 @@ export default function PaymentPage() {
             })}
           </fieldset>
 
-          {/* Settlement details */}
+          {/* Funding estimate */}
           <Reveal delay={140}>
             <FlowPanel title={config.panel.title}>
               <dl className="flex flex-col gap-[2px]">
@@ -181,13 +181,15 @@ export default function PaymentPage() {
                 <Row label={config.panel.rows.time} value={settlement?.settlementTime ?? "—"} />
               </dl>
 
+              {needsNetwork ? (
+                <p className="rounded-field border border-amber-400/30 bg-amber-400/10 p-[12px] font-sans text-[11px] leading-[17px] text-amber-200">
+                  Select a USDC network to calculate the funding estimate.
+                </p>
+              ) : null}
+
               {settlement ? (
                 <p className="rounded-field border border-line-soft bg-surface p-[12px] font-sans text-[11px] leading-[17px] text-ink-dim">
-                  ⓘ{" "}
-                  {config.panel.notice.replace(
-                    "{minutes}",
-                    String(settlement.rateLockMinutes),
-                  )}
+                  ⓘ {config.panel.notice}
                 </p>
               ) : null}
 

@@ -4,6 +4,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { Badge } from "@/components/ui/Badge";
 import { ASSESSMENT_INTRO } from "@/config/assessment";
+import { FlowHeader } from "@/components/wizard/FlowChrome";
 
 /**
  * Land Owner Assessment intro — Figma node 2:1152, transcribed from
@@ -16,6 +17,9 @@ export default function AssessmentIntroPage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center px-[24px] py-[64px]">
       <AnimatedBackdrop stars />
+      <div className="absolute left-0 right-0 top-0">
+        <FlowHeader exitHref="/" exitLabel="Back to home" />
+      </div>
 
       <Reveal className="relative flex w-full max-w-[900px] flex-col items-center gap-[24px] text-center">
         <Badge variant="pill">{ASSESSMENT_INTRO.badge}</Badge>

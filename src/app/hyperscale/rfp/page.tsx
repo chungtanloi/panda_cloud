@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlowFooter, FlowHeader, FlowProgress } from "@/components/wizard/FlowChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { useHyperscale } from "@/controllers/HyperscaleContext";
@@ -9,6 +9,7 @@ import { HYPERSCALE_TOTAL_STEPS, STEP_RFP } from "@/config/hyperscale";
 import type { UploadedDocument } from "@/models";
 import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/controllers/AuthContext";
 import { CustomerContactFields } from "@/components/customer/CustomerContactFields";
 import type { SubmissionContact } from "@/models/submission";
 
@@ -24,8 +25,11 @@ import type { SubmissionContact } from "@/models/submission";
  */
 export default function RfpPage() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const { draft, update } = useHyperscale();
-  const config = STEP_RFP;
+const config = STEP_RFP;
+
+const CONTACT_STORAGE_KEY = "cp.hyperscale.contact";
 
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
@@ -34,12 +38,29 @@ export default function RfpPage() {
   const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CONTACT_STORAGE_KEY);
+      if (saved) setContact((current) => ({ ...current, ...(JSON.parse(saved) as Partial<SubmissionContact>) }));
+    } catch {
+      // Ignore corrupt optional contact draft; the form remains editable.
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify(contact));
+  }, [contact]);
+
   const documentIds = draft.rfp?.documentIds ?? [];
   const requestConsultation = draft.rfp?.requestConsultation ?? false;
-  const canSubmit = (documentIds.length > 0 || pendingFiles.length > 0 || requestConsultation) && Boolean(contact.fullName.trim() && contact.email.trim());
+  const canSubmit = (documentIds.length > 0 || pendingFiles.length > 0 || requestConsultation) && Boolean(contact.fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim()));
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
+    if (!isAuthenticated) {
+      router.push(`/login?returnTo=${encodeURIComponent("/hyperscale/rfp")}`);
+      return;
+    }
     setError(null);
     const selected = Array.from(files);
     setPendingFiles((prev) => [...prev, ...selected]);
@@ -54,6 +75,10 @@ export default function RfpPage() {
 
   async function handleSubmit() {
     if (!canSubmit) return;
+    if (pendingFiles.length > 0 && !isAuthenticated) {
+      router.push(`/login?returnTo=${encodeURIComponent("/hyperscale/rfp")}`);
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -65,6 +90,7 @@ export default function RfpPage() {
         summary: "Hyperscale data center planning request",
         contact,
         idempotencyKey: `hyperscale-${draft.projectStage?.stage ?? "unknown"}-${draft.capacity?.targetCapacityMw ?? 0}-${draft.geography?.region ?? "unknown"}`,
+        authenticated: pendingFiles.length > 0,
         sourcePayload: {
           projectStage: draft.projectStage?.stage ?? null,
           targetCapacityMw: draft.capacity?.targetCapacityMw ?? null,
@@ -94,9 +120,19 @@ export default function RfpPage() {
         uploadedIds.push(finalized.documentId);
       }
       if (uploadedIds.length > documentIds.length) await api.submissions.attachDocuments(result.leadId, uploadedIds);
+      window.localStorage.removeItem(CONTACT_STORAGE_KEY);
       router.push(`/requests/${encodeURIComponent(result.leadId)}`);
     } catch (cause) {
-      setError(normalizeError(cause).message);
+      const normalized = normalizeError(cause);
+      // The public form may have a stale/partial Clerk session while the
+      // document gateway still requires a verified session. Route the user to
+      // the existing login flow instead of leaving the RFP wizard on a raw
+      // upload-session error page.
+      if (pendingFiles.length > 0 && [401, 403, 500].includes(normalized.status ?? 0)) {
+        router.replace(`/login?returnTo=${encodeURIComponent("/hyperscale/rfp")}`);
+        return;
+      }
+      setError(normalized.message);
       setSubmitting(false);
     } finally {
       setUploading(false);

@@ -14,6 +14,7 @@ import { api, normalizeError } from "@/services/api";
 import { cn } from "@/lib/cn";
 import { CustomerContactFields } from "@/components/customer/CustomerContactFields";
 import type { SubmissionContact } from "@/models/submission";
+import { FlowHeader } from "@/components/wizard/FlowChrome";
 
 /**
  * Step 5 — Deployment Ready. Transcribed from `dev.png`.
@@ -33,7 +34,7 @@ export default function ReviewPage() {
   const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
 
   const gpuCount = draft.scale?.gpuCount ?? 0;
-  const ready = Boolean(selectedModel && quote && draft.powerCooling?.cooling && contact.fullName.trim() && contact.email.trim());
+  const ready = Boolean(selectedModel && quote && draft.powerCooling?.cooling && contact.fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim()));
 
   async function requestQuote() {
     if (!ready) return;
@@ -70,6 +71,7 @@ export default function ReviewPage() {
 
   return (
     <>
+      <FlowHeader exitHref="/" exitLabel="Back to home" />
       <main className="relative mx-auto flex w-full max-w-[1200px] flex-1 flex-col gap-[32px] px-[24px] py-[48px] lg:px-[40px]">
         <AnimatedBackdrop stars />
 

@@ -105,22 +105,22 @@ export const STEP_VOLUME = {
     { at: 1_000_000, label: "$1000K+ (Enterprise)" },
   ],
   resetLabel: "RESET",
-  next: "INITIALIZE COMPUTE",
+  next: "CONTINUE INQUIRY",
   panel: {
-    title: "LIVE OUTPUT PROJECTION",
+    title: "LIVE ESTIMATE",
     tokenLabel: "PREDICTED TOKEN ALLOCATION",
     hashLabel: "EST. HASH RATE POWER",
     roiLabel: "5-YEAR ROI PROJECTION",
     breakEvenLabel: "Break Even",
     maxYieldLabel: "Max Yield",
   },
-  footer: "© 2024 Panda Cloud Inc. Secure Transaction Gateway.",
+  footer: "Non-binding estimate. No payment or token allocation occurs in this flow.",
 } as const;
 
 /* -------------------------------- Step 3 -------------------------------- */
 
 export const STEP_PAYMENT = {
-  statusRight: "SECURE CHECKOUT",
+  statusRight: "PREFERENCE ESTIMATE",
   stepLabel: "STEP 03 / 05",
   title: "Payment Method",
   body: "Select your preferred funding source for the token allocation.",
@@ -155,7 +155,7 @@ export const STEP_PAYMENT = {
     { value: "arbitrum", label: "Arbitrum" },
   ] as readonly { value: SettlementNetwork; label: string }[],
   panel: {
-    title: "Settlement Details",
+    title: "Funding Estimate",
     rows: {
       volume: "Token Allocation Volume",
       value: "Estimated USD Value",
@@ -163,10 +163,9 @@ export const STEP_PAYMENT = {
       time: "Settlement Time",
     },
     notice:
-      "Exchange rates are locked for {minutes} minutes. Final exact amounts will be calculated " +
-      "on the next screen before execution.",
+      "This is an estimate only. No rate is locked and no payment or token allocation occurs here.",
   },
-  next: "REVIEW & EXECUTE",
+  next: "CONTINUE TO COMPLIANCE",
   back: "BACK TO VOLUME",
 } as const;
 

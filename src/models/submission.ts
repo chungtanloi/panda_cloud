@@ -29,6 +29,10 @@ export interface SubmissionCreateRequest {
   documentIds?: string[];
   idempotencyKey?: string;
   contact: SubmissionContact;
+  /** Send the submission with the current Clerk session so owned documents
+   * can be attached to the resulting lead. This is client transport metadata
+   * and is never forwarded to the backend payload. */
+  authenticated?: boolean;
 }
 export interface SubmissionCreateResponse extends Submission {}
 export interface SubmissionConvertRequest { organizationId: string; ownerId: string; title: string; vertical: SubmissionVertical; priority: SubmissionPriority; description?: string; }

@@ -265,8 +265,14 @@ export const httpApi: ApiClient = {
   },
 
   submissions: {
-    create: (body: SubmissionCreateRequest) =>
-      http.post<SubmissionCreateResponse>(endpoints.submissions.collection, body, { anonymous: true }),
+    create: (body: SubmissionCreateRequest) => {
+      const { authenticated, ...payload } = body;
+      return http.post<SubmissionCreateResponse>(
+        endpoints.submissions.collection,
+        payload,
+        { anonymous: !authenticated },
+      );
+    },
     attachDocuments: (submissionId: string, documentIds: string[]) =>
       http.post<{ leadId: string; documentIds: string[]; attached: boolean }>(endpoints.submissions.documents(submissionId), { documentIds }),
     list: (query = {}) =>

@@ -35,7 +35,7 @@ export default function KycPage() {
   const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
 
   const needsOrganization = classification === "institutional" && !organizationName.trim();
-  const canSubmit = Boolean(classification) && !needsOrganization && Boolean(contact.fullName.trim() && contact.email.trim());
+  const canSubmit = Boolean(classification) && !needsOrganization && Boolean(contact.fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim()));
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
