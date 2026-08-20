@@ -174,10 +174,6 @@ export const httpApi: ApiClient = {
     quote: (payload: BookingDraft) =>
       http.post<BookingQuote>(endpoints.booking.quote, payload, { anonymous: true }),
 
-    submit: (payload: BookingSubmission) =>
-      http.post<BookingRequestResult>(endpoints.booking.submit, payload),
-
-    getRequest: (id: string) => http.get<BookingRequestResult>(endpoints.booking.byId(id)),
   },
 
   investment: {
@@ -192,16 +188,6 @@ export const httpApi: ApiClient = {
     settlement: (draft: InvestmentDraft) =>
       http.post<SettlementQuote>(endpoints.investment.settlement, draft, { anonymous: true }),
 
-    uploadKycDocument: (file: File) => {
-      const form = new FormData();
-      form.append("file", file);
-      return http.post<UploadedDocument>(endpoints.investment.kycDocuments, form);
-    },
-
-    submit: (payload: InvestmentSubmission) =>
-      http.post<InvestmentResult>(endpoints.investment.submit, payload),
-
-    getInvestment: (id: string) => http.get<InvestmentResult>(endpoints.investment.byId(id)),
   },
 
   hyperscale: {
@@ -220,16 +206,6 @@ export const httpApi: ApiClient = {
     buildSchedule: (draft: HyperscaleDraft) =>
       http.post<DeliverySchedule>(endpoints.hyperscale.schedule, draft, { anonymous: true }),
 
-    uploadRfpDocument: (file: File) => {
-      const form = new FormData();
-      form.append("file", file);
-      return http.post<UploadedDocument>(endpoints.hyperscale.documents, form);
-    },
-
-    submit: (payload: HyperscaleSubmission) =>
-      http.post<HyperscaleResult>(endpoints.hyperscale.submit, payload),
-
-    getRequest: (id: string) => http.get<HyperscaleResult>(endpoints.hyperscale.byId(id)),
   },
 
   dashboard: {

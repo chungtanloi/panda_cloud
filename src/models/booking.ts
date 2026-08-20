@@ -127,6 +127,10 @@ export interface BookingQuote {
   /** Effective discount applied by the chosen commitment, 0–100. */
   discountPercent: number;
   validUntil?: IsoDateTime;
+  currency?: string;
+  calculationVersion?: string;
+  generatedAt?: IsoDateTime;
+  disclaimer?: string;
 }
 
 export interface QuoteBreakdown {
@@ -146,7 +150,7 @@ export interface QuoteLineItem {
 export interface BookingRequestResult {
   id: string;
   reference: string;
-  status: "reserved" | "initializing" | "active" | "cancelled";
+  status: "quote_requested" | "reserved" | "initializing" | "active" | "cancelled";
   /** Final architecture summary shown on the Deployment Ready screen. */
   architecture: ClusterArchitecture;
   quote: BookingQuote;

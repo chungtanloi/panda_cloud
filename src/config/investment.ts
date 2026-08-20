@@ -229,7 +229,7 @@ export const STEP_CONFIRMATION = {
   totalLabel: "TOTAL INVESTMENT",
   allocationLabel: "TOKEN ALLOCATION",
   meta: {
-    transactionId: "Transaction ID",
+    transactionId: "Inquiry Reference",
     date: "Date",
     network: "Network",
     status: "Status",

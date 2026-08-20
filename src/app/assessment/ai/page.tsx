@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AssessmentFooter, AssessmentHeader } from "@/components/assessment/AssessmentChrome";
 import { useAssessment } from "@/controllers/AssessmentContext";
 import { useAuth } from "@/controllers/AuthContext";
@@ -14,7 +14,7 @@ import type {
 } from "@/models/assessment";
 import { api, normalizeError } from "@/services/api";
 
-export default function AiAssessmentPage() {
+function AiAssessmentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { draft } = useAssessment();
@@ -366,6 +366,10 @@ function PaidDecisionPack({ result }: { result: Extract<AssessmentMessageResult,
     {Object.keys(actionPlan).length ? <ObjectList title="30 / 60 / 90-day action plan" items={[actionPlan]} /> : null}
     <div className="rounded-field border border-accent/30 bg-accent/10 p-[14px] text-[13px] text-ink">A Panda Cloud infrastructure specialist can review the evidence and help you decide the next deployment step.</div>
   </div>;
+}
+
+export default function AiAssessmentPage() {
+  return <Suspense fallback={<main className="flex min-h-screen items-center justify-center text-ink-dim">Loading assessment…</main>}><AiAssessmentContent /></Suspense>;
 }
 
 function ObjectList({ title, items, tone = "default" }: { title: string; items: Array<Record<string, unknown>>; tone?: "default" | "warning" }) {

@@ -28,6 +28,8 @@ export default function GeographyPage() {
 
   const region = draft.geography?.region ?? "";
   const targetGoLive = draft.geography?.targetGoLive ?? "";
+  const projectStage = draft.projectStage?.stage ?? "";
+  const targetCapacityMw = draft.capacity?.targetCapacityMw ?? 0;
 
   const fetchRegions = useCallback(() => api.hyperscale.listRegions(), []);
   const { state: regionsState, run: retryRegions } = useAsync(fetchRegions, { immediate: [] });
@@ -37,12 +39,12 @@ export default function GeographyPage() {
   const { state, run } = useAsync(fetchSchedule);
 
   useEffect(() => {
-    if (region && targetGoLive) void run();
-  }, [region, targetGoLive, run]);
+    if (projectStage && targetCapacityMw && region && targetGoLive) void run();
+  }, [projectStage, targetCapacityMw, region, targetGoLive, run]);
 
   const schedule = state.status === "success" ? state.data : null;
   const selectedRegion = regions?.find((item) => item.id === region);
-  const complete = Boolean(region && targetGoLive);
+  const complete = Boolean(projectStage && targetCapacityMw && region && targetGoLive);
 
   return (
     <>

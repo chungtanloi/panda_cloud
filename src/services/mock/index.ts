@@ -433,20 +433,21 @@ function uploadedDocument(file: File) {
   };
 }
 
-/** Assembles the Investment Confirmed screen's payload. */
+/** Assembles the legacy investment adapter payload as an inquiry estimate. */
 function buildInvestmentResult(id: string, amountUsd: number): InvestmentResult {
   const projection = projectVolume(amountUsd);
 
   return {
     id,
     reference: reference("CP-INV"),
-    status: "confirmed",
+    status: "inquiry_received",
     totalInvestmentUsd: amountUsd,
     tokenAllocation: projection.tokenAllocation,
     tokenSymbol: projection.tokenSymbol,
-    transactionId: "0x7a…f92b",
+    // No transaction exists in the compliance-inquiry phase.
+    transactionId: undefined,
     transactionDate: new Date().toISOString(),
-    network: "Solana",
+    network: "Preference only",
     estimatedApyPercent: 14.2,
     // Compound the estimated APY over five years.
     fiveYearValueUsd: Math.round(amountUsd * Math.pow(1 + 0.142, 5)),
@@ -454,7 +455,7 @@ function buildInvestmentResult(id: string, amountUsd: number): InvestmentResult 
   };
 }
 
-/** Assembles the Deployment Ready screen's payload from a submission. */
+/** Assembles a non-binding quote-request payload from a submission. */
 function buildBookingResult(id: string, payload: BookingSubmission): BookingRequestResult {
   const model = mockGpuModels.find((gpu) => gpu.id === payload.hardware.gpuModelId);
   const quote = computeQuote(payload, mockGpuModels);
@@ -468,7 +469,7 @@ function buildBookingResult(id: string, payload: BookingSubmission): BookingRequ
   return {
     id,
     reference: reference("CP-GPU"),
-    status: "reserved",
+    status: "quote_requested",
     architecture: {
       primaryGpu: model ? `NVIDIA ${model.name}` : "—",
       formFactor: model?.specs.formFactor ?? "—",
@@ -1228,23 +1229,6 @@ export const mockApi: ApiClient = {
 
     quote: (payload: BookingDraft) => delay(computeQuote(payload, mockGpuModels)),
 
-    submit: (payload: BookingSubmission) =>
-      delay(buildBookingResult(reference("bkg").toLowerCase(), payload)),
-
-    getRequest: (id: string) =>
-      // Without a store, replay a representative reservation.
-      delay(
-        buildBookingResult(id, {
-          workload: { workload: "llm_training" },
-          hardware: { gpuModelId: "h100" },
-          scale: { gpuCount: 64, deploymentTarget: "asap", commitment: "one_year" },
-          powerCooling: {
-            deploymentModel: "bare_metal",
-            cooling: "liquid",
-            sla: "enterprise",
-          },
-        }),
-      ),
   },
 
   investment: {
@@ -1254,12 +1238,6 @@ export const mockApi: ApiClient = {
 
     settlement: (draft: InvestmentDraft) => delay(quoteSettlement(draft)),
 
-    uploadKycDocument: (file: File) => delay(uploadedDocument(file)),
-
-    submit: (payload: InvestmentSubmission) =>
-      delay(buildInvestmentResult(reference("inv").toLowerCase(), payload.volume.amountUsd)),
-
-    getInvestment: (id: string) => delay(buildInvestmentResult(id, 250_000)),
   },
 
   hyperscale: {
@@ -1271,23 +1249,6 @@ export const mockApi: ApiClient = {
 
     buildSchedule: (draft: HyperscaleDraft) => delay(buildSchedule(draft)),
 
-    uploadRfpDocument: (file: File) => delay(uploadedDocument(file)),
-
-    submit: (payload: HyperscaleSubmission) =>
-      delay({
-        id: reference("hyp").toLowerCase(),
-        reference: reference("CP-HYP"),
-        status: payload.rfp.requestConsultation ? ("scheduled" as const) : ("received" as const),
-        createdAt: new Date().toISOString(),
-      }),
-
-    getRequest: (id: string) =>
-      delay({
-        id,
-        reference: reference("CP-HYP"),
-        status: "in_review" as const,
-        createdAt: "2026-08-08T16:20:00Z",
-      }),
   },
 
   dashboard: {

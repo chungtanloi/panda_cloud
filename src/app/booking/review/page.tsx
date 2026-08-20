@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AssetPlaceholder } from "@/components/marketing/AssetPlaceholder";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { CountUp } from "@/components/motion/CountUp";
@@ -19,10 +19,8 @@ import { FlowHeader } from "@/components/wizard/FlowChrome";
 /**
  * Step 5 — Deployment Ready. Transcribed from `dev.png`.
  *
- * This is the only gated point in the flow. The screen states that
- * provisioning is binding, so "Initialize Deployment" requires an account —
- * committing a customer to a contract without knowing who they are is not
- * something the UI should allow. Everything before this stays open.
+ * This is the quote-request step. It creates a non-binding Sales inquiry;
+ * it does not reserve hardware, provision a cluster or charge the customer.
  */
 export default function ReviewPage() {
   const router = useRouter();
@@ -32,6 +30,12 @@ export default function ReviewPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState<SubmissionContact>({ fullName: "", email: "", companyName: "", phone: "" });
+
+  useEffect(() => {
+    if (!draft.workload?.workload || !draft.hardware?.gpuModelId || !draft.scale?.gpuCount || !draft.scale?.deploymentTarget || !draft.scale?.commitment || !draft.powerCooling?.deploymentModel || !draft.powerCooling?.cooling || !draft.powerCooling?.sla || !quote) {
+      router.replace("/booking/workload");
+    }
+  }, [draft, quote, router]);
 
   const gpuCount = draft.scale?.gpuCount ?? 0;
   const ready = Boolean(selectedModel && quote && draft.powerCooling?.cooling && contact.fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim()));
@@ -47,7 +51,7 @@ export default function ReviewPage() {
         vertical: "gpu",
         summary: "GPU cluster quote request",
         contact,
-        idempotencyKey: `gpu-${selectedModel?.id ?? "unknown"}-${gpuCount}-${draft.scale?.deploymentTarget ?? "unknown"}`,
+        idempotencyKey: `gpu-${selectedModel?.id ?? "unknown"}-${gpuCount}-${draft.scale?.deploymentTarget ?? "unknown"}-${quote?.calculationVersion ?? "unknown"}-${quote?.validUntil ?? "unknown"}`,
         sourcePayload: {
           workload: draft.workload?.workload ?? null,
           gpuModelId: draft.hardware?.gpuModelId ?? null,
@@ -60,6 +64,13 @@ export default function ReviewPage() {
           quoteMonthlyTotalUsd: quote?.monthly.total ?? null,
           quoteHourlyTotalUsd: quote?.hourly.total ?? null,
           quoteValidUntil: quote?.validUntil ?? null,
+          quoteCurrency: quote?.currency ?? null,
+          quoteCalculationVersion: quote?.calculationVersion ?? null,
+          quoteGeneratedAt: quote?.generatedAt ?? null,
+          quoteDisclaimer: quote?.disclaimer ?? null,
+          quoteDiscountPercent: quote?.discountPercent ?? null,
+          quoteMonthlyLineItemsJson: quote ? JSON.stringify(quote.monthly.lineItems) : null,
+          quoteHourlyLineItemsJson: quote ? JSON.stringify(quote.hourly.lineItems) : null,
         },
       });
       router.push(`/requests/${encodeURIComponent(result.leadId)}`);

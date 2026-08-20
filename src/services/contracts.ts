@@ -139,8 +139,6 @@ export interface BookingService {
    * change, so it must be cheap and free of side effects.
    */
   quote(payload: BookingDraft): Promise<BookingQuote>;
-  submit(payload: BookingSubmission): Promise<BookingRequestResult>;
-  getRequest(id: string): Promise<BookingRequestResult>;
 }
 
 export interface InvestmentService {
@@ -150,9 +148,6 @@ export interface InvestmentService {
   project(amountUsd: number): Promise<VolumeProjection>;
   /** Settlement Details panel on the Payment step. */
   settlement(draft: InvestmentDraft): Promise<SettlementQuote>;
-  uploadKycDocument(file: File): Promise<UploadedDocument>;
-  submit(payload: InvestmentSubmission): Promise<InvestmentResult>;
-  getInvestment(id: string): Promise<InvestmentResult>;
 }
 
 export interface HyperscaleService {
@@ -164,9 +159,6 @@ export interface HyperscaleService {
   listRegions(): Promise<RegionFacts[]>;
   /** Auto-generated delivery schedule for the chosen go-live date. */
   buildSchedule(draft: HyperscaleDraft): Promise<DeliverySchedule>;
-  uploadRfpDocument(file: File): Promise<UploadedDocument>;
-  submit(payload: HyperscaleSubmission): Promise<HyperscaleResult>;
-  getRequest(id: string): Promise<HyperscaleResult>;
 }
 
 export interface DashboardService {

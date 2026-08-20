@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FlowFooter, FlowHeader, FlowProgress } from "@/components/wizard/FlowChrome";
 import { Reveal } from "@/components/motion/Reveal";
@@ -50,6 +51,12 @@ const CONTACT_STORAGE_KEY = "cp.hyperscale.contact";
   useEffect(() => {
     window.localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify(contact));
   }, [contact]);
+
+  useEffect(() => {
+    if (!draft.projectStage?.stage || !draft.capacity?.targetCapacityMw || !draft.capacity?.cooling || !draft.geography?.region || !draft.geography?.targetGoLive) {
+      router.replace("/hyperscale/stage");
+    }
+  }, [draft, router]);
 
   const documentIds = draft.rfp?.documentIds ?? [];
   const requestConsultation = draft.rfp?.requestConsultation ?? false;
@@ -101,6 +108,7 @@ const CONTACT_STORAGE_KEY = "cp.hyperscale.contact";
         },
       });
       const uploadedIds = [...documentIds];
+      let pendingScan = false;
       for (const file of pendingFiles) {
         setUploading(true);
         const checksum = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer())))
@@ -116,19 +124,19 @@ const CONTACT_STORAGE_KEY = "cp.hyperscale.contact";
         });
         await api.documents.uploadToSignedUrl(session.uploadUrl, file, session.requiredHeaders);
         const finalized = await api.documents.finalize(session.documentId);
-        if (finalized.malwareScanStatus !== "clean") throw new Error("RFP document is pending malware scan and cannot be attached yet.");
-        uploadedIds.push(finalized.documentId);
+        if (finalized.malwareScanStatus === "clean") uploadedIds.push(finalized.documentId);
+        else pendingScan = true;
       }
       if (uploadedIds.length > documentIds.length) await api.submissions.attachDocuments(result.leadId, uploadedIds);
       window.localStorage.removeItem(CONTACT_STORAGE_KEY);
-      router.push(`/requests/${encodeURIComponent(result.leadId)}`);
+      router.push(`/requests/${encodeURIComponent(result.leadId)}${pendingScan ? "?documentScan=pending" : ""}`);
     } catch (cause) {
       const normalized = normalizeError(cause);
       // The public form may have a stale/partial Clerk session while the
       // document gateway still requires a verified session. Route the user to
       // the existing login flow instead of leaving the RFP wizard on a raw
       // upload-session error page.
-      if (pendingFiles.length > 0 && [401, 403, 500].includes(normalized.status ?? 0)) {
+      if (pendingFiles.length > 0 && [401, 403].includes(normalized.status ?? 0)) {
         router.replace(`/login?returnTo=${encodeURIComponent("/hyperscale/rfp")}`);
         return;
       }
@@ -242,6 +250,8 @@ const CONTACT_STORAGE_KEY = "cp.hyperscale.contact";
                 <div className="flex flex-wrap gap-[10px]">
                   <button
                     type="button"
+                    aria-pressed={requestConsultation}
+                    onClick={() => update("rfp", { requestConsultation: true })}
                     className="inline-flex items-center gap-[7px] rounded-full border border-line-strong px-[18px] py-[10px] font-sans text-[12px] leading-[18px] text-ink transition-colors hover:border-accent hover:text-accent"
                   >
                     <span aria-hidden>◷</span>
@@ -327,6 +337,16 @@ const CONTACT_STORAGE_KEY = "cp.hyperscale.contact";
             </div>
           </Reveal>
         </div>
+
+        <nav className="mt-[4px] flex items-center">
+          <Link
+            href="/hyperscale/geography"
+            className="inline-flex items-center gap-[8px] rounded-full border border-line-strong px-[22px] py-[11px] font-sans text-[12px] font-medium uppercase leading-[12px] tracking-[1.2px] text-ink-dim transition-colors hover:border-accent hover:text-accent"
+          >
+            <span aria-hidden>←</span>
+            Back to geography
+          </Link>
+        </nav>
       </main>
 
       <FlowFooter />

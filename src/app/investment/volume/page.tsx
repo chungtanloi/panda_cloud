@@ -122,6 +122,8 @@ export default function VolumePage() {
                 </button>
 
                 <FlowNav
+                  backLabel="Back to intent"
+                  backHref="/investment/intent"
                   nextLabel={config.next}
                   nextHref="/investment/payment"
                   disabled={!projection}

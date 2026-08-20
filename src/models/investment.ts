@@ -117,12 +117,13 @@ export interface InvestmentSubmission {
 export interface InvestmentResult {
   id: string;
   reference: string;
-  status: "pending_payment" | "processing" | "confirmed" | "failed";
+  status: "inquiry_received" | "pending_payment" | "processing" | "confirmed" | "failed";
   totalInvestmentUsd: number;
-  tokenAllocation: number;
+  /** Estimate only; never a settled allocation in the public inquiry flow. */
+  tokenAllocation?: number;
   tokenSymbol: string;
-  /** On-chain or ledger transaction id. */
-  transactionId: string;
+  /** Absent until a future settlement flow exists. */
+  transactionId?: string;
   transactionDate: IsoDateTime;
   /** e.g. "Solana". */
   network: string;

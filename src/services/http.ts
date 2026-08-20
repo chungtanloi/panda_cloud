@@ -55,6 +55,7 @@ export interface RequestOptions {
 }
 
 const CORRELATION_HEADER = "X-Correlation-Id";
+const ANONYMOUS_SESSION_KEY = "pandacloud.anonymous-session-id";
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
   const url = `${apiConfig.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
@@ -72,6 +73,19 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
 function newCorrelationId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `fe-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function anonymousSessionId(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const existing = window.localStorage.getItem(ANONYMOUS_SESSION_KEY);
+    if (existing && /^[A-Za-z0-9_-]{16,128}$/.test(existing)) return existing;
+    const created = newCorrelationId().replace(/-/g, "");
+    window.localStorage.setItem(ANONYMOUS_SESSION_KEY, created);
+    return created;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Fallback when the gateway returns a status but no parseable body. */
@@ -152,6 +166,10 @@ async function execute<T>(path: string, options: RequestOptions): Promise<T> {
     Accept: "application/json",
     [CORRELATION_HEADER]: correlationId,
   };
+  if (anonymous) {
+    const scope = anonymousSessionId();
+    if (scope) headers["X-Anonymous-Session-Id"] = scope;
+  }
 
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
   if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";

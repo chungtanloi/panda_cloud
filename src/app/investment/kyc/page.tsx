@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlowFooter, FlowHeader, FlowNav, FlowPanel, FlowProgress } from "@/components/wizard/FlowChrome";
 import { Reveal } from "@/components/motion/Reveal";
 import { useInvestment } from "@/controllers/InvestmentContext";
@@ -36,6 +36,12 @@ export default function KycPage() {
 
   const needsOrganization = classification === "institutional" && !organizationName.trim();
   const canSubmit = Boolean(classification) && !needsOrganization && Boolean(contact.fullName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email.trim()));
+
+  useEffect(() => {
+    if (!draft.intent?.intent || !draft.volume?.amountUsd || !draft.payment?.method || (draft.payment.method === "usdc" && !draft.payment.network)) {
+      router.replace("/investment/intent");
+    }
+  }, [draft, router]);
 
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -87,7 +93,11 @@ export default function KycPage() {
 
   return (
     <>
-      <FlowHeader status={config.statusRight} />
+      <FlowHeader
+        status={config.statusRight}
+        exitHref="/investment/payment"
+        exitLabel="Back to payment"
+      />
 
       <main className="mx-auto flex w-full max-w-[1150px] flex-1 flex-col gap-[24px] px-[24px] py-[24px] lg:px-[40px]">
         <Reveal className="flex flex-col gap-[12px]">
