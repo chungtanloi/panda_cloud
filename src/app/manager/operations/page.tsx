@@ -1,1 +1,1 @@
-import { ManagerProjectsView } from "@/components/workspace/ManagerViews"; export default function Page() { return <ManagerProjectsView />; }
+import { ManagerOperationsCenterView } from "@/components/workspace/ManagerViews"; export default function Page() { return <ManagerOperationsCenterView />; }

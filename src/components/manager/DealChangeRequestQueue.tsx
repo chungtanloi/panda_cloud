@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { DealChangeRequest, DealChangeRequestStatus } from "@/models";
 import { api, normalizeError } from "@/services/api";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const TYPE_LABEL = {
   mark_won: "Mark deal Won",
@@ -18,6 +19,7 @@ export function DealChangeRequestQueue({ workspace = "Manager" }: { workspace?: 
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [confirming, setConfirming] = useState<{ item: DealChangeRequest; decision: "approve" | "reject" } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,10 +146,10 @@ export function DealChangeRequestQueue({ workspace = "Manager" }: { workspace?: 
                     className="resize-y rounded-field border border-line-strong bg-deep px-[12px] py-[9px] text-[12px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
                   />
                   <div className="flex flex-wrap gap-[8px]">
-                    <button type="button" disabled={busy || stale} onClick={() => void decide(item, "approve")} className="rounded-full bg-emerald-300 px-[15px] py-[8px] text-[11px] font-bold text-black disabled:opacity-40">
+                    <button type="button" disabled={busy || stale} onClick={() => setConfirming({ item, decision: "approve" })} className="rounded-full bg-emerald-300 px-[15px] py-[8px] text-[11px] font-bold text-black disabled:opacity-40">
                       {busy ? "Working…" : "Approve"}
                     </button>
-                    <button type="button" disabled={busy} onClick={() => void decide(item, "reject")} className="rounded-full border border-red-300/40 px-[15px] py-[8px] text-[11px] font-semibold text-red-200 disabled:opacity-40">Reject</button>
+                    <button type="button" disabled={busy} onClick={() => setConfirming({ item, decision: "reject" })} className="rounded-full border border-red-300/40 px-[15px] py-[8px] text-[11px] font-semibold text-red-200 disabled:opacity-40">Reject</button>
                     <Link href={`/deal-readiness/${item.dealId}`} className="rounded-full border border-line-strong px-[15px] py-[8px] text-[11px] font-semibold text-ink-dim hover:text-accent">Review readiness</Link>
                   </div>
                 </div>
@@ -160,6 +162,7 @@ export function DealChangeRequestQueue({ workspace = "Manager" }: { workspace?: 
           );
         })}
       </div>
+      {confirming ? <ConfirmDialog title={`${confirming.decision === "approve" ? "Approve" : "Reject"} this request?`} message="This decision is recorded in the audit trail and may change the Deal workflow." confirmLabel={confirming.decision === "approve" ? "Approve" : "Reject"} onConfirm={() => { const value = confirming; setConfirming(null); void decide(value.item, value.decision); }} onCancel={() => setConfirming(null)} busy={busyId === confirming.item.requestId} /> : null}
     </main>
   );
 }

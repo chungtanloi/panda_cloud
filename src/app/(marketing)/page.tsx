@@ -210,21 +210,26 @@ function AboutSection() {
           />
         </Reveal>
 
-        <Reveal delay={100} className="max-w-[535px]">
-          <h2 className="font-sans text-[16px] leading-[24px] text-white">{ABOUT.eyebrow}</h2>
+        <Reveal delay={100} className="max-w-[600px]">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[1.8px] text-accent">{ABOUT.eyebrow}</p>
+          <h2 className="max-w-[560px] pt-[18px] font-sans text-[30px] font-semibold leading-[1.08] tracking-[-1.2px] text-white lg:text-[42px]">{ABOUT.title}</h2>
 
-          <p className="pt-[23px] font-sans text-[16px] leading-[25.6px] text-ink-dim">
-            {ABOUT.body}
-          </p>
+          <div className="space-y-[18px] pt-[26px]">
+            {ABOUT.paragraphs.map((paragraph) => <p key={paragraph} className="font-sans text-[16px] leading-[25.6px] text-ink-dim">{paragraph}</p>)}
+          </div>
 
-          <ul className="flex flex-col gap-[16px] pt-[40px]">
-            {ABOUT.bullets.map((bullet) => (
-              <li key={bullet} className="flex items-start gap-[12px]">
-                <CheckIcon />
-                <span className="font-sans text-[16px] leading-[25.6px] text-ink">{bullet}</span>
-              </li>
+          <div className="grid grid-cols-1 gap-3 pt-[34px] sm:grid-cols-3">
+            {ABOUT.principles.map((principle) => (
+              <div key={principle.label} className="rounded-field border border-line-hair bg-white/[0.035] p-4">
+                <p className="font-mono text-[12px] font-semibold uppercase tracking-[1px] text-accent">{principle.label}</p>
+                <p className="pt-2 font-sans text-[12px] leading-[18px] text-ink-dim">{principle.detail}</p>
+              </div>
             ))}
-          </ul>
+          </div>
+
+          <div className="mt-[28px] border-l-2 border-accent pl-5">
+            <p className="font-sans text-[15px] font-medium leading-[24px] text-ink">{ABOUT.closing}</p>
+          </div>
         </Reveal>
       </div>
     </section>

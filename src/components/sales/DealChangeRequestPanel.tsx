@@ -6,6 +6,7 @@ import type { DealChangeRequest, DealChangeRequestType } from "@/models";
 import type { SalesCard } from "@/models/sales";
 import { useAuth } from "@/controllers/AuthContext";
 import { api, normalizeError } from "@/services/api";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const LABELS: Record<DealChangeRequestType, string> = {
   mark_won: "Mark as Won",
@@ -28,6 +29,7 @@ export function DealChangeRequestPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,7 @@ export function DealChangeRequestPanel({
       }
     } finally {
       setSaving(false);
+      setConfirming(false);
     }
   }
 
@@ -142,7 +145,7 @@ export function DealChangeRequestPanel({
           </label>
           <button
             type="button"
-            onClick={submit}
+            onClick={() => setConfirming(true)}
             disabled={saving}
             className="rounded-full bg-amber-300 px-[16px] py-[9px] text-[11px] font-bold text-black disabled:opacity-50"
           >
@@ -164,6 +167,7 @@ export function DealChangeRequestPanel({
       ))}
 
       {error ? <p role="alert" className="text-[11px] text-red-300">{error}</p> : null}
+      {confirming ? <ConfirmDialog title={`Send ${LABELS[type]} request?`} message="This will create an auditable approval request for the Manager. The deal will not change until it is reviewed." confirmLabel="Send request" onConfirm={() => void submit()} onCancel={() => setConfirming(false)} busy={saving} /> : null}
     </section>
   );
 }

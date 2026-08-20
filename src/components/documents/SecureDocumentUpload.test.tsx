@@ -76,7 +76,8 @@ describe("SecureDocumentUpload", () => {
     expect(uploadToSignedUrl).toHaveBeenCalledWith(
       "https://storage.example/upload",
       file,
-      { "x-upload": "signed" },
+    { "x-upload": "signed" },
+      expect.any(Function),
     );
     expect(finalize).toHaveBeenCalledTimes(1);
     expect(createUploadSession.mock.calls[0]![0]).toEqual(expect.objectContaining({

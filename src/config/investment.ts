@@ -123,24 +123,24 @@ export const STEP_PAYMENT = {
   statusRight: "SECURE CHECKOUT",
   stepLabel: "STEP 03 / 05",
   title: "Payment Method",
-  body: "Select your preferred funding source for the token allocation.",
+  body: "Record a preferred funding route for compliance follow-up. No payment or settlement occurs in this inquiry.",
   methods: [
     {
       value: "usdc",
       title: "USDC",
-      body: "Fund directly from your Web3 wallet using stablecoins.",
+      body: "Record USDC and network preference for a later compliance discussion.",
       badge: "Recommended",
       networkLabel: "Select Network",
     },
     {
       value: "bank_wire",
       title: "Bank Wire",
-      body: "Traditional fiat bank transfer via SWIFT/ACH. Settlement may take 1-3 business days.",
+      body: "Record bank-wire preference; Sales will provide next steps after review.",
     },
     {
       value: "credit_card",
       title: "Credit Card",
-      body: "Instant settlement via Stripe. Additional 2.9% processing fee applies.",
+      body: "Record card preference only; no card is charged in this flow.",
     },
   ] as readonly {
     value: PaymentMethodType;
@@ -162,9 +162,7 @@ export const STEP_PAYMENT = {
       fee: "Network Fee (Est.)",
       time: "Settlement Time",
     },
-    notice:
-      "Exchange rates are locked for {minutes} minutes. Final exact amounts will be calculated " +
-      "on the next screen before execution.",
+    notice: "These are non-binding estimates. Rates are not locked and no payment or token allocation is executed.",
   },
   next: "REVIEW & EXECUTE",
   back: "BACK TO VOLUME",
@@ -223,14 +221,14 @@ export const STEP_KYC = {
 /* -------------------------------- Step 5 -------------------------------- */
 
 export const STEP_CONFIRMATION = {
-  title: "Investment Confirmed",
+  title: "Inquiry Received",
   body:
-    "Your AI compute token allocation has been successfully processed and recorded on the " +
-    "ledger. Welcome to the infrastructure revolution.",
-  totalLabel: "TOTAL INVESTMENT",
-  allocationLabel: "TOKEN ALLOCATION",
+    "Your non-binding investment inquiry has been received. Compliance and Sales will follow up " +
+    "before any payment, settlement, token allocation or investment commitment.",
+  totalLabel: "ESTIMATED INTEREST",
+  allocationLabel: "PROJECTED TOKEN AMOUNT",
   meta: {
-    transactionId: "Transaction ID",
+    reference: "Inquiry reference",
     date: "Date",
     network: "Network",
     status: "Status",
@@ -249,6 +247,6 @@ export const STEP_CONFIRMATION = {
   actions: {
     prospectus: "Prospectus",
     expertCall: "Expert Call",
-    dashboard: "Dashboard",
+    dashboard: "Return to Panda Cloud",
   },
 } as const;

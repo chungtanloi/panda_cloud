@@ -217,6 +217,14 @@ export interface DdAssessmentListResponse {
   items: readonly DdAssessmentSummary[];
 }
 
+export interface DdAssessmentQueueItem extends DdAssessmentSummary {
+  dealTitle: string | null;
+}
+
+export interface DdAssessmentQueueResponse {
+  items: readonly DdAssessmentQueueItem[];
+}
+
 /**
  * `GET /due-diligence/assessments/{assessmentId}/progress`.
  *

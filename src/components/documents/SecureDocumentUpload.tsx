@@ -17,6 +17,16 @@ type UploadPhase =
   | "finalize_failed"
   | "complete";
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const ALLOWED_UPLOAD_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "image/png",
+  "image/jpeg",
+  "application/zip",
+]);
+
 async function sha256(file: File): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
   return Array.from(new Uint8Array(digest))
@@ -46,6 +56,7 @@ export function SecureDocumentUpload({
   const [result, setResult] = useState<DocumentFinalizeResponse | null>(null);
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
   const idempotencyKey = useRef<string | null>(null);
 
   async function finalize(documentId: string) {
@@ -64,6 +75,14 @@ export function SecureDocumentUpload({
 
   async function upload() {
     if (!file) return;
+    if (file.size < 1 || file.size > MAX_UPLOAD_BYTES) {
+      setError("File must be between 1 byte and 25 MB.");
+      return;
+    }
+    if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
+      setError("This file type is not supported. Use PDF, DOCX, XLSX, PNG, JPG or ZIP.");
+      return;
+    }
     setError(null);
     setResult(null);
     try {
@@ -82,7 +101,8 @@ export function SecureDocumentUpload({
       });
       setUploadedDocumentId(session.documentId);
       setPhase("uploading");
-      await api.documents.uploadToSignedUrl(session.uploadUrl, file, session.requiredHeaders);
+      setProgress(0);
+      await api.documents.uploadToSignedUrl(session.uploadUrl, file, session.requiredHeaders, setProgress);
       await finalize(session.documentId);
     } catch (cause) {
       setError(normalizeError(cause).message);
@@ -127,6 +147,7 @@ export function SecureDocumentUpload({
             setResult(null);
             setUploadedDocumentId(null);
             setError(null);
+            setProgress(0);
             setPhase("idle");
             idempotencyKey.current = null;
           }}
@@ -153,6 +174,7 @@ export function SecureDocumentUpload({
       </button>
 
       {error ? <p role="alert" className="mt-3 text-xs text-red-300">{error}</p> : null}
+      {phase === "uploading" ? <div className="mt-4" aria-live="polite"><div className="h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full bg-accent transition-[width]" style={{ width: `${progress}%` }} /></div><p className="mt-1 text-xs text-ink-dim">Uploading {progress}%</p></div> : null}
 
       {result ? (
         <div className="mt-4 rounded-xl border border-line bg-white/[0.02] p-4 text-xs text-ink-dim">

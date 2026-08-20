@@ -131,6 +131,12 @@ export interface KycCaseListResponse {
   items: readonly KycCase[];
 }
 
+export type KycQueueItem = Pick<KycCase, "caseId" | "dealId" | "dealTitle" | "status" | "riskLevel" | "assignedToId" | "assignedToName" | "updatedAt" | "revision">;
+
+export interface KycQueueResponse {
+  items: readonly KycQueueItem[];
+}
+
 /**
  * `convex/kyc.ts#createCase`.
  *

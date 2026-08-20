@@ -8,6 +8,7 @@ import { formatMinorUnits } from "@/models/common";
 import { WorkspacePage } from "./WorkspacePage";
 import { GapNotice } from "./GapNotice";
 import { ErrorState, LoadingState } from "@/components/ui/states";
+import type { Submission } from "@/models";
 
 const statusLabels: Record<ManagerProjectStatus, string> = { initiated: "Initiated", active: "Active", on_hold: "On hold", completed: "Completed", cancelled: "Cancelled" };
 type Money = { currency: string; amountMinor: string };
@@ -40,6 +41,28 @@ export function ManagerProjectsView() {
   if (state.status === "loading" || state.status === "idle") return <WorkspacePage eyebrow="Manager / Operations" title="Projects" description="Persisted project execution state."><LoadingState label="Loading projects" /></WorkspacePage>;
   if (state.status === "error") return <WorkspacePage eyebrow="Manager / Operations" title="Projects" description="Persisted project execution state."><ErrorState error={state.error} onRetry={() => void run()} /></WorkspacePage>;
   return <WorkspacePage eyebrow="Manager / Operations" title="Projects" description="Persisted project execution state."><ProjectTable projects={state.data.items} /><GapNotice tone="blocked" title="Unmodeled operations remain unavailable" source="Manager Workspace Phase 1 handoff"><p>GPU capacity, deployments, infrastructure requests, land assessments, investment settlement and RFP lifecycle have no authoritative backend stores.</p></GapNotice></WorkspacePage>;
+}
+
+/**
+ * Manager Operations Center. Project state and customer-flow inquiries are
+ * shown together because GPU, token and hyperscale requests are qualification
+ * work before they become projects. The data remains backend-owned; this view
+ * intentionally does not invent capacity, RFP processing or settlement facts.
+ */
+export function ManagerOperationsCenterView() {
+  const { state, run } = useAsync(() => Promise.all([
+    api.manager.projects({ limit: 100 }),
+    api.submissions.list({}),
+  ]), { immediate: [] });
+  const [vertical, setVertical] = useState<"all" | "gpu" | "token" | "hyperscale">("all");
+  if (state.status === "loading" || state.status === "idle") return <WorkspacePage eyebrow="Manager / Operations" title="Operations center" description="Projects and customer-flow inquiries from backend records."><LoadingState label="Loading operations center" /></WorkspacePage>;
+  if (state.status === "error") return <WorkspacePage eyebrow="Manager / Operations" title="Operations center" description="Backend operations data could not be loaded."><ErrorState error={state.error} onRetry={() => void run()} /></WorkspacePage>;
+  const [projects, submissionPage] = state.data;
+  const inquiries = submissionPage.leads.filter((item) => ["gpu", "token", "hyperscale"].includes(item.vertical ?? "") && (vertical === "all" || item.vertical === vertical));
+  return <WorkspacePage eyebrow="Manager / Operations" title="Operations center" description="Coordinate project execution and customer inquiries before qualification. No provisioning, settlement or RFP status is inferred without a backend record." stats={[{ label: "Projects", value: String(projects.items.length) }, { label: "Customer inquiries", value: String(inquiries.length) }, { label: "GPU", value: String(inquiries.filter((item) => item.vertical === "gpu").length) }, { label: "Hyperscale", value: String(inquiries.filter((item) => item.vertical === "hyperscale").length) }]}>
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-ink">Customer-flow control room</h2><p className="mt-1 text-xs text-ink-dim">Review, assign and qualify inquiries. Open the lead record for the authoritative contact and follow-up task.</p></div><div className="flex gap-2"><select value={vertical} onChange={(event) => setVertical(event.target.value as typeof vertical)} className="rounded-full border border-line bg-surface px-3 py-2 text-xs text-ink"><option value="all">All verticals</option><option value="gpu">GPU</option><option value="token">Token</option><option value="hyperscale">Hyperscale</option></select><button type="button" onClick={() => void run()} className="rounded-full border border-accent/40 px-3 py-2 text-xs text-accent">Refresh</button></div></div>
+    <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]"><section className="overflow-hidden rounded-2xl border border-line bg-surface"><div className="border-b border-line p-5"><h2 className="font-semibold text-ink">Customer inquiries</h2><p className="mt-1 text-xs text-ink-dim">GPU quote requests, token compliance inquiries and hyperscale RFP/consultation requests.</p></div>{inquiries.length ? <div className="divide-y divide-line">{inquiries.map((inquiry) => <article key={inquiry.leadId} className="p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="rounded-full border border-accent/30 px-2 py-1 text-[10px] uppercase tracking-wider text-accent">{inquiry.vertical}</span><span className="rounded-full border border-line px-2 py-1 text-[10px] uppercase tracking-wider text-ink-dim">{inquiry.status}</span></div><p className="mt-3 text-sm font-medium text-ink">{inquiry.summary ?? "Untitled inquiry"}</p><p className="mt-1 text-xs text-ink-dim">Lead {inquiry.leadId} · updated {new Date(inquiry.updatedAt).toLocaleString()}</p></div><Link href={`/sales/leads/${encodeURIComponent(inquiry.leadId)}`} className="rounded-full border border-accent/40 px-3 py-2 text-xs text-accent hover:border-accent">Open lead</Link></div></article>)}</div> : <p className="p-8 text-center text-sm text-ink-dim">No inquiries in this filter.</p>}</section><section className="overflow-hidden rounded-2xl border border-line bg-surface"><div className="border-b border-line p-5"><h2 className="font-semibold text-ink">Project execution</h2><p className="mt-1 text-xs text-ink-dim">Only persisted projects created from qualified/won work appear here.</p></div>{projects.items.length ? <div className="divide-y divide-line">{projects.items.map((project) => <Link key={project.projectId} href={`/manager/operations/${encodeURIComponent(project.projectId)}`} className="block p-5 hover:bg-white/[0.03]"><div className="flex justify-between gap-3"><div><p className="text-sm font-medium text-ink">{project.name}</p><p className="mt-1 text-xs text-ink-dim">{project.vertical} · {project.projectCode}</p></div><span className="text-xs text-accent">{project.status}</span></div></Link>)}</div> : <p className="p-8 text-center text-sm text-ink-dim">No projects returned.</p>}</section></div>
+  </WorkspacePage>;
 }
 
 export function ManagerProjectDetailView({ projectId }: { projectId: string }) {

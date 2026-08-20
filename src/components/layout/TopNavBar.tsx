@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { MARKETING_NAV } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { BrandMark } from "./BrandMark";
@@ -20,6 +21,7 @@ import { BrandMark } from "./BrandMark";
  */
 export function TopNavBar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-line bg-base/80 backdrop-blur-chrome">
@@ -53,6 +55,16 @@ export function TopNavBar() {
           })}
         </nav>
 
+        <button
+          type="button"
+          aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-line-strong text-ink lg:hidden"
+        >
+          <span aria-hidden className="text-[20px] leading-none">{open ? "×" : "☰"}</span>
+        </button>
+
         {/* Low contrast is intentional — it matches the design exactly.
             Flagged in docs/FIGMA_SCREEN_MAP.md as an accessibility question
             for the designer rather than silently "corrected" here. */}
@@ -63,6 +75,26 @@ export function TopNavBar() {
           Get Started
         </Link>
       </div>
+      {open ? (
+        <nav aria-label="Mobile primary" className="border-t border-line bg-base px-[24px] py-[14px] lg:hidden">
+          <div className="mx-auto flex max-w-[1440px] flex-col gap-[4px]">
+            {MARKETING_NAV.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className={cn("min-h-[44px] rounded-field px-[12px] py-[10px] font-sans text-[16px]", isActive ? "bg-accent-soft text-accent" : "text-ink-dim hover:text-ink")}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      ) : null}
     </header>
   );
 }

@@ -21,17 +21,19 @@ export const HERO = {
 } as const;
 
 export const ABOUT = {
-  eyebrow: "About Panda Cloud",
-  body:
-    "We are a global strategic partner in intensive computing infrastructure. From " +
-    "providing the latest generation GPUs to designing energy-optimized data centers, " +
-    "Panda Cloud offers comprehensive solutions for AI enterprises, scientific research, " +
-    "and software development.",
-  bullets: [
-    "World-class technical expert team.",
-    "Diverse service ecosystem: Rent, Buy, Operate.",
-    "Committed to maximum security and performance.",
+  eyebrow: "About Panda Cloud.AI",
+  title: "We build and operate the physical foundation of AI.",
+  paragraphs: [
+    "With over fifteen years across high-performance computing, data centers, cloud, GPUs, energy, land and investments, our team has worked every layer of the stack — from securing power and sites to deploying compute, delivering it as cloud, and structuring the capital behind it.",
+    "That range is the point. AI infrastructure sits at the intersection of hardware, real estate, and energy, and deals fail when those pieces are handled in isolation. Panda Cloud.AI brings them together.",
   ],
+  principles: [
+    { label: "15+ years", detail: "Across the full infrastructure stack" },
+    { label: "One integrated view", detail: "Hardware, sites, energy and capital" },
+    { label: "Long-term by design", detail: "Structures built to hold up" },
+  ],
+  closing:
+    "Every deal we structure is built around the client's economics first. We take a long view: we would rather build one relationship that lasts a decade than close ten transactions that don't. Our clients come back because the structures we put in place hold up.",
 } as const;
 
 export const ECOSYSTEM = {

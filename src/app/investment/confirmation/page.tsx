@@ -15,11 +15,10 @@ import type { InvestmentResult } from "@/models/investment";
 import { api } from "@/services/api";
 
 /**
- * Step 5 — Investment Confirmed. Transcribed from `conf.png`.
+ * Step 5 — Compliance inquiry receipt.
  *
- * Every figure comes from `api.investment.getInvestment(id)` — an investment
- * receipt is a financial record and must reflect what the ledger actually
- * holds, not what the client believed it submitted.
+ * This is an inquiry receipt. It must never imply payment, settlement or token
+ * allocation; all figures are explicitly estimates/projections.
  */
 export default function InvestmentConfirmationPage() {
   return (
@@ -144,17 +143,20 @@ function ConfirmationBody({ result }: { result: InvestmentResult }) {
             </div>
 
             <dl className="grid grid-cols-2 gap-[16px] border-t border-line-soft pt-[16px] sm:grid-cols-4">
-              <MetaCell label={config.meta.transactionId} value={result.transactionId} mono />
+              <MetaCell
+                label={config.meta.reference}
+                value={result.reference}
+              />
               <MetaCell
                 label={config.meta.date}
-                value={new Date(result.transactionDate).toLocaleDateString("en-US", {
+                value={new Date(result.createdAt).toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
                   year: "numeric",
                 })}
               />
               <MetaCell label={config.meta.network} value={result.network} dot />
-              <MetaCell label={config.meta.status} value="Confirmed" accent dot />
+              <MetaCell label={config.meta.status} value="Inquiry received" accent dot />
             </dl>
           </div>
         </Reveal>
@@ -229,7 +231,7 @@ function ConfirmationBody({ result }: { result: InvestmentResult }) {
           </Link>
 
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex items-center gap-[7px] rounded-full bg-accent px-[20px] py-[10px] font-sans text-[12px] font-bold leading-[18px] text-accent-fg transition-all duration-200 hover:-translate-y-[2px] hover:drop-shadow-[0px_0px_18px_rgba(0,242,255,0.45)]"
           >
             {config.actions.dashboard}

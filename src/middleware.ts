@@ -33,7 +33,6 @@ const isProtectedRoute = createRouteMatcher([
   "/technical(.*)",
   "/legal(.*)",
   "/compliance(.*)",
-  "/requests(.*)",
   "/deal-readiness(.*)",
 ]);
 

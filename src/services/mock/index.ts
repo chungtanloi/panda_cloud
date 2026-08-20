@@ -373,7 +373,7 @@ function buildInvestmentResult(id: string, amountUsd: number): InvestmentResult 
   return {
     id,
     reference: reference("CP-INV"),
-    status: "confirmed",
+    status: "inquiry_received",
     totalInvestmentUsd: amountUsd,
     tokenAllocation: projection.tokenAllocation,
     tokenSymbol: projection.tokenSymbol,
@@ -1270,6 +1270,7 @@ export const mockApi: ApiClient = {
     listCustomers: async () => ({ customers: [], isDone: true }),
     getCustomer: async (id: string) => { throw new ApiError({ status: 404, code: "NOT_FOUND", message: `Customer ${id} not found` }); },
   },  dueDiligence: {
+    listQueue: (query = {}) => delay({ items: ddState.summaries.filter((row) => !query.status || row.status === query.status).map((row) => ({ ...withMetrics(row), dealTitle: row.dealId })) }),
     listAssessments: (dealId: string) =>
       delay({ items: ddState.summaries.filter((row) => row.dealId === dealId).map(withMetrics) }),
 
@@ -1330,6 +1331,7 @@ export const mockApi: ApiClient = {
 
   /** KYC — Compliance. The HTTP adapter is the production gateway path. */
   compliance: {
+    listQueue: (query = {}) => delay({ items: kycCases.filter((row) => (!query.status || row.status === query.status) && (!query.riskLevel || row.riskLevel === query.riskLevel)).map((row) => ({ caseId: row.caseId, dealId: row.dealId, dealTitle: row.dealId, status: row.status, riskLevel: row.riskLevel, assignedToId: row.assignedToId, assignedToName: row.assignedToName, updatedAt: row.updatedAt, revision: row.revision })) }),
     listCases: (dealId: string) => delay({ items: kycCases.filter((row) => row.dealId === dealId).map((row) => ({ ...row })) }),
     getCase: (caseId: string) => delay({ ...findCase(caseId) }),
     createCase: (dealId: string, body: Omit<KycCaseCreate, "dealId">) => delay(mockCreateKycCase({ ...body, dealId })),

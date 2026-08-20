@@ -52,6 +52,7 @@ import type {
   DdAssessmentCreateResponse,
   DdAssessmentDetail,
   DdAssessmentListResponse,
+  DdAssessmentQueueResponse,
   DdProgress,
   DdResponsePatch,
   DdResponseUpdateResponse,
@@ -68,6 +69,7 @@ import type {
   KycCaseCreate,
   KycCaseCreateResponse,
   KycCaseListResponse,
+  KycQueueResponse,
   KycCaseUpdate,
   KycCaseUpdateResponse,
   KycDocument,
@@ -264,6 +266,8 @@ export interface DealChangeRequestService {
 export interface DueDiligenceService {
   /** Assessments on one deal. */
   listAssessments(dealId: string): Promise<DdAssessmentListResponse>;
+  /** All assessments visible to the Technical queue, optionally filtered. */
+  listQueue(query?: { status?: string }): Promise<DdAssessmentQueueResponse>;
   /** Initialize an assessment from the published template (UC-010). */
   createAssessment(
     dealId: string,
@@ -340,6 +344,8 @@ export interface LegalService {
  */
 export interface ComplianceService {
   listCases(dealId: string): Promise<KycCaseListResponse>;
+  /** All KYC cases visible to Compliance, optionally filtered. */
+  listQueue(query?: { status?: string; riskLevel?: string }): Promise<KycQueueResponse>;
   getCase(caseId: string): Promise<KycCase>;
   /** Exactly one subject. A duplicate provider case is a 409. */
   createCase(dealId: string, body: Omit<KycCaseCreate, "dealId">): Promise<KycCaseCreateResponse>;
@@ -352,7 +358,7 @@ export interface ComplianceService {
 
 export interface DocumentsService {
   createUploadSession(body: DocumentUploadSessionRequest): Promise<DocumentUploadSessionResponse>;
-  uploadToSignedUrl(url: string, file: File, requiredHeaders?: Record<string, string>): Promise<void>;
+  uploadToSignedUrl(url: string, file: File, requiredHeaders?: Record<string, string>, onProgress?: (percent: number) => void): Promise<void>;
   finalize(documentId: string): Promise<DocumentFinalizeResponse>;
   getDocument(documentId: string): Promise<DocumentSummary>;
   createDownloadSession(documentId: string): Promise<DocumentDownloadSessionResponse>;

@@ -117,13 +117,13 @@ export interface InvestmentSubmission {
 export interface InvestmentResult {
   id: string;
   reference: string;
-  status: "pending_payment" | "processing" | "confirmed" | "failed";
+  status: "inquiry_received" | "pending_payment" | "processing" | "failed";
   totalInvestmentUsd: number;
   tokenAllocation: number;
   tokenSymbol: string;
-  /** On-chain or ledger transaction id. */
-  transactionId: string;
-  transactionDate: IsoDateTime;
+  /** Legacy fields retained for adapter compatibility; never render as settlement output. */
+  transactionId?: string;
+  transactionDate?: IsoDateTime;
   /** e.g. "Solana". */
   network: string;
   /** Estimated APY, e.g. 14.2. */

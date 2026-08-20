@@ -92,6 +92,7 @@ export const endpoints = {
    * for local UI development.
    */
   dueDiligence: {
+    queue: "/due-diligence/assessments/queue",
     dealAssessments: (dealId: string) => `/deals/${dealId}/due-diligence/assessments`,
     assessmentById: (assessmentId: string) => `/due-diligence/assessments/${assessmentId}`,
     assessmentProgress: (assessmentId: string) =>
@@ -146,6 +147,7 @@ export const endpoints = {
   },
   /** KYC gateway operations. */
   kyc: {
+    queue: "/kyc/queue",
     casesForDeal: (dealId: string) => `/deals/${dealId}/kyc`,
     caseById: (id: string) => `/kyc/${id}`,
     caseDocuments: (id: string) => `/kyc/${id}/documents`,

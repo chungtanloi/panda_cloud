@@ -65,7 +65,7 @@ export default function RequestReceivedPage() {
 
               <span className="inline-flex items-center gap-[8px] rounded-full border border-accent/30 bg-accent-soft px-[13px] py-[5px] font-mono text-[10px] uppercase leading-[12px] tracking-[1.2px] text-accent">
                 <span aria-hidden className="pulse-dot size-[6px] rounded-full bg-accent" />
-                Status: Complete
+                Request received
               </span>
 
               <h1 className="font-sans text-[36px] font-bold leading-[1.15] tracking-[-1.2px] text-white lg:text-[42px]">
@@ -115,12 +115,6 @@ export default function RequestReceivedPage() {
                 Return to Platform
               </Link>
 
-              <Link
-                href="/dashboard"
-                className="rounded-full border border-line-strong px-[32px] py-[13px] font-sans text-[13px] font-medium leading-[20px] text-ink transition-colors hover:border-accent hover:text-accent"
-              >
-                View Dashboard
-              </Link>
             </Reveal>
           </>
         ) : (

@@ -118,6 +118,8 @@ function mapNcndaAgreement(raw: BackendNcndaAgreement): NcndaAgreementDetail {
 }
 
 type BackendKycCase = { caseId: string; dealId: string; subjectOrganizationId: string | null; subjectContactId: string | null; provider: string | null; providerCaseId: string | null; status: KycCase["status"]; riskLevel: KycCase["riskLevel"]; assignedTo: string | null; rejectionReason: string | null; submittedAt: string | number | null; verifiedAt: string | number | null; expiresAt: string | number | null; revision: number; updatedAt: string | number; };
+type BackendKycQueueItem = { caseId: string; dealId: string; dealTitle: string | null; status: KycCase["status"]; riskLevel: KycCase["riskLevel"]; assignedTo: string | null; revision: number; updatedAt: string | number };
+function mapKycQueueItem(raw: BackendKycQueueItem) { return { caseId: raw.caseId, dealId: raw.dealId, dealTitle: raw.dealTitle, status: raw.status, riskLevel: raw.riskLevel, assignedToId: raw.assignedTo, assignedToName: null, revision: raw.revision, updatedAt: dateIso(raw.updatedAt) ?? new Date(0).toISOString() }; }
 function dateIso(value: string | number | null | undefined): string | null { if (value === null || value === undefined) return null; const date = typeof value === "number" ? new Date(value) : new Date(value); return Number.isNaN(date.getTime()) ? null : date.toISOString(); }
 function mapKycCase(raw: BackendKycCase): KycCase { return { caseId: raw.caseId, dealId: raw.dealId, dealTitle: null, subject: raw.subjectOrganizationId ? { kind: "organization", organizationId: raw.subjectOrganizationId, displayName: null } : { kind: "contact", contactId: raw.subjectContactId ?? "", displayName: null }, provider: raw.provider, providerCaseId: raw.providerCaseId, status: raw.status, riskLevel: raw.riskLevel, assignedToId: raw.assignedTo, assignedToName: null, rejectionReason: raw.rejectionReason, submittedAt: dateIso(raw.submittedAt), verifiedAt: dateIso(raw.verifiedAt), expiresAt: dateIso(raw.expiresAt), revision: raw.revision, updatedAt: dateIso(raw.updatedAt) ?? new Date(0).toISOString() }; }
 function dateMillis(value?: string | null): number | undefined { if (!value) return undefined; const n=Date.parse(value); return Number.isFinite(n) ? n : undefined; }
@@ -291,6 +293,10 @@ export const httpApi: ApiClient = {
 
   /** Technical Due Diligence gateway operations. */
   dueDiligence: {
+    listQueue: async (query = {}) => {
+      const response = await http.get<{ items: Array<BackendDdQueueItem> }>(endpoints.dueDiligence.queue, { query });
+      return { items: response.items.map(mapDdQueueItem) };
+    },
     listAssessments: async (dealId: string) => {
       const response = await http.get<{ assessments: BackendDdAssessmentSummary[] }>(
         endpoints.dueDiligence.dealAssessments(dealId),
@@ -413,6 +419,10 @@ export const httpApi: ApiClient = {
 
   /** KYC gateway operations. */
   compliance: {
+    listQueue: async (query = {}) => {
+      const response = await http.get<{ items: Array<BackendKycQueueItem> }>(endpoints.kyc.queue, { query });
+      return { items: response.items.map(mapKycQueueItem) };
+    },
     listCases: async (dealId: string) => {
       const response = await http.get<{ cases: BackendKycCase[] }>(endpoints.kyc.casesForDeal(dealId));
       return { items: response.cases.map(mapKycCase) };
@@ -441,9 +451,17 @@ export const httpApi: ApiClient = {
   documents: {
     createUploadSession: (body: DocumentUploadSessionRequest) =>
       http.post<DocumentUploadSessionResponse>(endpoints.documents.uploadSessions, body),
-    uploadToSignedUrl: async (url: string, file: File, requiredHeaders: Record<string, string> = {}) => {
-      const response = await fetch(url, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream", ...requiredHeaders } });
-      if (!response.ok) throw new Error(`Storage upload failed with status ${response.status}.`);
+    uploadToSignedUrl: async (url: string, file: File, requiredHeaders: Record<string, string> = {}, onProgress?: (percent: number) => void) => {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", url);
+        for (const [key, value] of Object.entries({ "Content-Type": file.type || "application/octet-stream", ...requiredHeaders })) xhr.setRequestHeader(key, value);
+        xhr.upload.onprogress = (event) => { if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100)); };
+        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage upload failed with status ${xhr.status}.`));
+        xhr.onerror = () => reject(new Error("Secure upload could not reach storage."));
+        xhr.onabort = () => reject(new Error("Upload cancelled."));
+        xhr.send(file);
+      });
     },
     finalize: (documentId: string) =>
       http.post<DocumentFinalizeResponse>(endpoints.documents.finalize(documentId), {}),
@@ -500,6 +518,8 @@ type BackendDdAssessmentSummary = {
   revision: number;
   updatedAt: string;
 };
+type BackendDdQueueItem = BackendDdAssessmentSummary & { dealTitle: string | null };
+function mapDdQueueItem(raw: BackendDdQueueItem) { return { ...mapDdAssessment(raw), dealTitle: raw.dealTitle }; }
 type BackendDdAssessmentDetail = {
   assessment: BackendDdAssessmentSummary;
   items: Array<Record<string, unknown>>;
