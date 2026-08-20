@@ -17,8 +17,9 @@ export type Permission =
   | "wallet:view" | "transaction:view" | "lead:view" | "lead:update"
   | "lead:assign" | "quote:view" | "quote:create" | "task:view"
   | "report:view" | "team:view" | "team:manage" | "operation:view"
-  | "approval:view" | "approval:decide" | "user:manage" | "role:manage"
+  | "approval:view" | "approval:decide" | "user:view" | "user:manage" | "role:manage"
   | "system:view" | "system:manage" | "audit:view"
+  | "org:view" | "org:manage"
   // ROLE_PERMISSION_MATRIX § 10 "Technical DD" — the only dd:* names the
   // source docs define. Who holds them is set by DD API.md, see below.
   | "dd:view" | "dd:respond" | "dd:review" | "dd:evidence:upload"
@@ -94,8 +95,9 @@ export const ROLE_PERMISSIONS: Record<MembershipRole, readonly Permission[]> = {
   customer: ["workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view"],
   // DD read is open to every staff role (DD API.md authorization line).
   sales: ["readiness:view", "lead:view", "lead:update", "quote:view", "quote:create", "task:view", "report:view", "dd:view"],
-  manager: ["readiness:view", "lead:view", "lead:update", "lead:assign", "quote:view", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "dd:view", "dd:respond", "dd:review", "dd:evidence:upload", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
-  admin: ["readiness:view", "workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:manage", "role:manage", "system:view", "system:manage", "audit:view", "dd:view", "dd:respond", "dd:review", "dd:evidence:upload", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage"],
+  manager: ["readiness:view", "lead:view", "lead:update", "lead:assign", "quote:view", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "dd:view", "dd:respond", "dd:review", "dd:evidence:upload", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage", "org:view", "user:view"],
+  admin: ["readiness:view", "workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:view", "user:manage", "role:manage", "system:view", "system:manage", "audit:view", "dd:view", "dd:respond", "dd:review", "dd:evidence:upload", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage", "org:view", "org:manage"],
+  super_admin: ["readiness:view", "workspace:user:view", "project:view", "gpu:view", "portfolio:view", "wallet:view", "transaction:view", "lead:view", "lead:update", "lead:assign", "quote:view", "quote:create", "task:view", "report:view", "team:view", "team:manage", "operation:view", "approval:view", "approval:decide", "user:view", "user:manage", "role:manage", "system:view", "system:manage", "audit:view", "dd:view", "dd:respond", "dd:review", "dd:evidence:upload", "ncnda:view", "ncnda:manage", "kyc:view", "kyc:manage", "org:view", "org:manage"],
   // ROLE_PERMISSION_MATRIX § 10 "Technical DD" — exactly these four names,
   // no more. dd:review is kept separate from dd:respond even though today's
   // UI does not yet distinguish "responder" from "reviewer" identities
@@ -126,9 +128,10 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
     { label: "Approvals", href: "/manager/approvals", permission: "approval:view" }, { label: "Reports", href: "/manager/reports", permission: "report:view" },
   ],
   admin: [
-    { label: "Overview", href: "/admin" }, { label: "Approvals", href: "/admin/approvals", permission: "approval:view" }, { label: "Users", href: "/admin/users", permission: "user:manage" }, { label: "Roles", href: "/admin/roles", permission: "role:manage" },
-    { label: "Permissions", href: "/admin/permissions", permission: "role:manage" }, { label: "System", href: "/admin/system", permission: "system:view" },
-    { label: "Audit Logs", href: "/admin/audit-logs", permission: "audit:view" }, { label: "Integration Events", href: "/admin/integrations/events", permission: "audit:view" }, { label: "Settings", href: "/admin/settings", permission: "system:manage" },
+    { label: "Overview", href: "/admin", permission: "role:manage" }, { label: "Approvals", href: "/admin/approvals", permission: "role:manage" },     { label: "Users", href: "/admin/users", permission: "user:view" }, { label: "Organizations", href: "/admin/organizations", permission: "org:view" },
+    { label: "Roles", href: "/admin/roles", permission: "role:manage" }, { label: "Permissions", href: "/admin/permissions", permission: "role:manage" },
+    { label: "System", href: "/admin/system", permission: "system:view" }, { label: "Audit Logs", href: "/admin/audit-logs", permission: "audit:view" },
+    { label: "Integration Events", href: "/admin/integrations/events", permission: "audit:view" }, { label: "Settings", href: "/admin/settings", permission: "system:manage" },
   ],
   // ROLE_PERMISSION_MATRIX § 5.2 route table.
   technical: [
@@ -164,6 +167,7 @@ export function workspaceForRole(role: MembershipRole): WorkspaceId | null {
     case "sales": return "sales";
     case "manager": return "manager";
     case "admin": return "admin";
+    case "super_admin": return "admin";
     case "technical": return "technical";
     case "legal": return "legal";
     case "compliance": return "compliance";
@@ -194,7 +198,8 @@ export function hasPermission(profile: AuthProfile | null, permission: Permissio
 export function canAccessWorkspace(profile: AuthProfile | null, workspace: WorkspaceId): boolean {
   if (!profile) return false;
   const roles = effectiveRoles(profile);
-  if (workspace === "customer") return roles.includes("customer") || roles.includes("admin");
+  if (workspace === "customer") return roles.includes("customer") || roles.includes("admin") || roles.includes("super_admin");
+  if (workspace === "admin") return roles.includes("admin") || roles.includes("super_admin") || roles.includes("manager");
   return roles.includes(workspace);
 }
 
@@ -207,6 +212,7 @@ export function canAccessWorkspace(profile: AuthProfile | null, workspace: Works
  */
 export function homeForProfile(profile: AuthProfile | null): string {
   const roles = effectiveRoles(profile);
+  if (roles.includes("super_admin")) return defaultRouteByWorkspace.admin;
   for (const role of WORKSPACE_ROLE_PRECEDENCE) {
     if (!roles.includes(role)) continue;
     const workspace = workspaceForRole(role);

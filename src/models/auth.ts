@@ -45,6 +45,7 @@ export const MEMBERSHIP_ROLES = [
   "technical",
   "manager",
   "admin",
+  "super_admin",
   "customer",
 ] as const;
 
@@ -58,6 +59,7 @@ export const STAFF_ROLES = [
   "technical",
   "manager",
   "admin",
+  "super_admin",
 ] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number];
@@ -71,6 +73,7 @@ export type StaffRole = (typeof STAFF_ROLES)[number];
  * whole role set, never against a single "primary" role.
  */
 export const WORKSPACE_ROLE_PRECEDENCE: readonly MembershipRole[] = [
+  "super_admin",
   "admin",
   "manager",
   "sales",
@@ -190,7 +193,12 @@ export function canManageSalesBoard(profile: AuthProfile | null): boolean {
 
 /** True only for `admin` — gates admin-only surfaces outside the sales board. */
 export function isAdmin(profile: AuthProfile | null): boolean {
-  return hasRole(profile, "admin");
+  return hasRole(profile, "admin") || hasRole(profile, "super_admin");
+}
+
+/** True only for `super_admin` — gates privileged role-transition surfaces. */
+export function isSuperAdmin(profile: AuthProfile | null): boolean {
+  return hasRole(profile, "super_admin");
 }
 
 /**
