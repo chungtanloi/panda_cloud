@@ -312,6 +312,9 @@ export const httpApi: ApiClient = {
     createActivity: (body: ActivityCreateRequest) => http.post<{activityId:string;dealRevision:number;updatedAt:string}>(endpoints.salesWorkspace.activities(body.dealId), body),
     listCustomers: (query: Record<string,string|number|boolean|undefined> = {}) => http.get<CustomerPage>(endpoints.salesWorkspace.customers, { query }),
     getCustomer: (id: string) => http.get<CustomerDetail>(endpoints.salesWorkspace.customerById(id)),
+    listLeadNotifications: (query = {}) => http.get<import("@/models/salesWorkspace").LeadNotification[]>(endpoints.salesWorkspace.leadNotifications, { query }),
+    markLeadNotificationRead: (id: string) => http.post<{notificationId:string;read:boolean}>(endpoints.salesWorkspace.leadNotificationRead(id), {}),
+    completeLeadFollowUpTask: (id: string) => http.post<{taskId:string;status:string;updatedAt:string}>(endpoints.salesWorkspace.leadTaskComplete(id), {}),
   },
 
   /** Technical Due Diligence gateway operations. */

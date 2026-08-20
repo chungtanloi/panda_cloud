@@ -160,7 +160,7 @@ export const endpoints = {
     caseDocument: (caseId: string, documentId: string) => `/kyc/${caseId}/documents/${documentId}`,
   },
 
-  salesWorkspace: { overview: "/sales/overview", reports: { conversion: "/sales/reports/conversion", activity: "/sales/reports/activity", forecast: "/sales/reports/forecast" }, leads: "/sales/leads", leadById: (id: string) => "/sales/leads/" + id, qualifyLead: (id: string) => "/sales/leads/" + id + "/qualify", tasks: "/sales/tasks", taskById: (id: string) => "/sales/tasks/" + id, activities: (dealId: string) => "/deals/" + dealId + "/activities", customers: "/sales/customers", customerById: (id: string) => "/sales/customers/" + id },
+  salesWorkspace: { overview: "/sales/overview", reports: { conversion: "/sales/reports/conversion", activity: "/sales/reports/activity", forecast: "/sales/reports/forecast" }, leads: "/sales/leads", leadById: (id: string) => "/sales/leads/" + id, qualifyLead: (id: string) => "/sales/leads/" + id + "/qualify", tasks: "/sales/tasks", taskById: (id: string) => "/sales/tasks/" + id, activities: (dealId: string) => "/deals/" + dealId + "/activities", customers: "/sales/customers", customerById: (id: string) => "/sales/customers/" + id, leadNotifications: "/sales/lead-notifications", leadNotificationRead: (id: string) => "/sales/lead-notifications/" + id + "/read", leadTaskComplete: (id: string) => "/sales/lead-tasks/" + id + "/complete" },
   sales: {
     columns: "/sales/columns",
     cards: "/sales/cards",

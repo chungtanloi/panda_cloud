@@ -1331,6 +1331,9 @@ export const mockApi: ApiClient = {
     createActivity: async () => ({ activityId: "mock-activity", dealRevision: 1, updatedAt: new Date().toISOString() }),
     listCustomers: async () => ({ customers: [], isDone: true }),
     getCustomer: async (id: string) => { throw new ApiError({ status: 404, code: "NOT_FOUND", message: `Customer ${id} not found` }); },
+    listLeadNotifications: async () => [],
+    markLeadNotificationRead: async (id: string) => ({ notificationId: id, read: true }),
+    completeLeadFollowUpTask: async (id: string) => ({ taskId: id, status: "completed", updatedAt: new Date().toISOString() }),
   },  dueDiligence: {
     listAssessments: (dealId: string) =>
       delay({ items: ddState.summaries.filter((row) => row.dealId === dealId).map(withMetrics) }),

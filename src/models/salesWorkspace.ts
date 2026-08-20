@@ -14,6 +14,7 @@ export type SalesLeadQualifyResponse = { leadId:string; status:string; updatedAt
 export type ActivitySummary = { activityId:string; dealId:string; contactId:string|null; activityType:string; direction:string; subject:string|null; notes:string; status:string; businessEvent:"proposal_sent"|"customer_response"|null; contactedAt:string|null; nextFollowUpAt:string|null; createdBy:string; updatedAt:string };
 export type ActivityPage = { activities:ActivitySummary[]; continueCursor?:string; isDone:boolean };
 export type TaskPage = { tasks:ActivitySummary[]; continueCursor?:string; isDone:boolean };
+export type LeadNotification = { notificationId:string; type:"lead_created"|"lead_follow_up"|"sla_breached"; title:string; message:string; leadId:string|null; taskId:string|null; readAt:string|null; createdAt:string };
 export type ActivityCreateRequest = {dealId:string;contactId?:string;activityType:string;direction:string;subject?:string;notes:string;status:string;businessEvent?:"proposal_sent"|"customer_response";contactedAt?:number;nextFollowUpAt?:number};
 export type TaskUpdateRequest = {subject?:string;notes?:string;status?:string;nextFollowUpAt?:number};
 export type CustomerSummary = {organizationId:string;displayName:string;legalName:string;organizationType:string;status:string;countryCode:string|null;websiteUrl:string|null;openDealCount:number;wonDealCount:number;totalDealCount:number;pipelineValueByCurrency:Array<{currency:string;amountMinor:string}>};
