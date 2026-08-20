@@ -6,10 +6,10 @@
 - `repository`: `panda_cloud`
 - `branch_at_refresh`: `main`
 - `head_at_refresh`: `4880cf7` (diagnostic only)
-- `source_file_count`: `31`
-- `source_fingerprint`: `ee5575b056082a9ef284ec8e9c63ef6f0ebb0e43c9ec0f7976c62d0e00e68487`
+- `source_file_count`: `37`
+- `source_fingerprint`: `aa7d25f49a01858db6c128083ed0f13e3c72a2e0655d8906d91afe98dc1f64a6`
 - `last_full_read_at_utc`: `2026-08-14T01:20:00Z`
-- `last_context_refresh_at_utc`: `2026-08-19T04:51:00Z`
+- `last_context_refresh_at_utc`: `2026-08-20T08:27:52Z`
 
 The branch and HEAD values are diagnostic only. The manifest includes dirty and
 untracked documentation, and the content fingerprint is the cache-validity
@@ -101,12 +101,46 @@ authority.
 > values were not read or copied. Validation remains 115 tests / 16 files,
 > typecheck, lint and 76-route production build green.
 
+> 2026-08-19 incremental refresh (09:56 UTC): twelve new or revised handoff,
+> audit, E2E, and proposal documents were read and incorporated. The real
+> authenticated cross-workspace E2E run remains blocked on approved Clerk test
+> identities, memberships, disposable fixtures, private storage, and a trusted
+> scanner-clean transition. The corpus also gained two proposed GPU Rental UX
+> specifications and `AI_ASSISTED_SITE_INSPECTION_SPEC.md`. These three product
+> specifications are requirements input only: their routes, persistence,
+> provider configuration, and HTTP operations are not implemented or frozen.
+
+> 2026-08-20 incremental refresh: the AI-Assisted Site Inspection proposal was
+> expanded into a complete eight-document suite. The canonical master now has
+> 46 stable requirements and a persisted `inspectionCaptureTasks` entity; new
+> documents define customer/reviewer/admin UX, proposed backend/API/data,
+> AI/standards/evaluation, security/privacy/operations, QA traceability, a
+> backend-free full-journey mock/demo, and delivery/handoff. This remains
+> requirements input only. No inspection route, service, OpenAPI operation,
+> provider call, profile, or mock UI was implemented by this documentation
+> change.
+
+> 2026-08-20 repository-ownership refresh: the Site Inspection suite was
+> split by authority across both repositories. Frontend now retains only the
+> UX/frontend specification, mock/demo specification, and a repository-local
+> documentation map. The backend owns the canonical product baseline, API/data,
+> AI/standards, security/operations, cross-system QA, and delivery governance.
+> No runtime feature or released HTTP contract was added.
+
+> 2026-08-20 Site Inspection development-workflow refresh: added the
+> frontend executable guide with nine deterministic demo tasks (FE-D01-D09)
+> and six released-contract HTTP integration tasks (FE-H01-H06). The guide
+> preserves the model/service/controller/view boundary, identical mock/HTTP
+> ports, pinned-client rule, local-file restrictions, and no production mock
+> fallback. The backend repository owns the shared workflow and BE backlog.
+
 ## Product purpose
 
 Cloud Panda is a Next.js frontend for a one-stop AI infrastructure platform. It
 covers public discovery, GPU rental and purchase, energy and land assessment,
 financing, infrastructure procurement, AI token investment, hyperscale data
-center consultation, customer dashboards, and a staff sales pipeline. The
+center consultation, customer dashboards, a staff sales pipeline, and a
+proposed AI-assisted data-center/electrical site-inspection service. The
 implemented and proposed experiences are derived from Figma file
 `pCxGT1lfFqO2CiDXEmrTk7` and related written analysis.
 
@@ -175,6 +209,11 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
 - GPU Cluster Booking, AI Token Investment, and Hyperscale flows are mapped in
   Figma but are marked not started in the screen map. The financing and
   infrastructure pages require text verification from their design sources.
+- GPU Rental customer/staff portals and AI-Assisted Site Inspection are
+  documented proposals only. Site Inspection now has a modular implementation
+  suite and full mock/demo specification, but its route maps, APIs, data models,
+  AI provider settings, reviewer operations, profile administration, and
+  reports are not implemented or approved backend contracts.
 - Known cleanup includes an obsolete wizard controller/shell and several unused
   types. Do not remove them without a task that includes implementation and
   verification.
@@ -199,6 +238,11 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
   leads, shared receipts, and workspace resource lists.
 - Production catalog and calculator gaps must fail closed with a clear
   unavailable state until approved OpenAPI operations exist.
+- The proposed US AI-assisted inspection pilot uses a checklist-first capture
+  journey with inline evidence preflight, provisional AI findings, and a
+  one-business-day Technical review target. It is readiness advisory only and
+  must not be represented as AHJ, licensed-electrical, professional-engineer,
+  standards-body, or third-party certification.
 
 ### Technical, Legal and Compliance workspaces
 
@@ -371,16 +415,18 @@ Documented end to end in `docs/CLERK_AUTH_DESIGN.md`, implemented 2026-08-14.
   inferred from mock screens.
 - Contract Change Requests CR-001, CR-002, CR-004, CR-006, CR-007 and CR-008
   require FE and BE owner review.
+- AI-assisted inspection still requires approved self-service organization and
+  membership onboarding, a licensed/versioned standards baseline, backend data
+  and retention controls, private clean-evidence gating, Technical reviewer
+  staffing/SLA policy, golden evaluation ownership, and released OpenAPI
+  operations before implementation.
 
 ## Cross-repository dependency
 
 The sibling `../PandaCloudBackend` repository owns business/domain persistence,
 the Vercel gateway, OpenAPI source and contract releases. Its Phase 1 identity
 slice is implemented: a Next.js gateway, Clerk verification, an HMAC-signed
-Convex transport, five Convex collections, and Clerk webhook handling. Validate
-that repository's `docs/AGENT_CONTEXT_SUMMARY.md` independently before cross-repo
-work — as of 2026-08-14 it was stale and overstated the implementation. A valid
-frontend fingerprint does not imply a valid backend fingerprint.
+Convex transport, five Convex collections, and Clerk webhook handling. Validate that repository's `docs/AGENT_CONTEXT_SUMMARY.md` independently before cross-repository work. The backend now owns the canonical Site Inspection product and production-governance documents; a valid frontend fingerprint still does not imply a valid backend fingerprint.
 
 ## Source manifest
 
@@ -388,37 +434,43 @@ frontend fingerprint does not imply a valid backend fingerprint.
 
 | Path | SHA-256 | Bytes | Incorporated UTC |
 |---|---|---:|---|
-| `docs/API_CONTRACT.md` | `2edf5bad1a8b6fda7bd1aaf3ce0c7f245af0133de916a080a44d3ee5ff5746bb` | 26848 | `2026-08-18T02:45:00Z` |
-| `docs/CLERK_AUTH_DESIGN.md` | `b95c75d980e37d599a8d4cb70da342a705996f031f47b6ba52fce9cad3c69223` | 21733 | `2026-08-18T02:45:00Z` |
-| `docs/CONTRACT_CONFORMANCE.md` | `94f667969ce2b6d86ba40b915610e8bdaedccbef3965325ab5c3c34084ed7d1c` | 9063 | `2026-08-18T02:45:00Z` |
-| `docs/CROSS_WORKSPACE_E2E_EXECUTION_PHASE_1.md` | `08f59068a3142d6540d7457ecedf60e5eaae4240ceb7afa1b1f1a7e3762b5016` | 4426 | `2026-08-19T04:51:00Z` |
-| `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` | `1ac9ddb3287b213507c5f0e56a8dce2bdc1980b39b6dacac9d458563031201f2` | 8492 | `2026-08-19T04:51:00Z` |
-| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `76862308f6f0856a3dcc649db3f7af33f6418b000f11b9ea4da023f2ae5a0ba0` | 5914 | `2026-08-19T04:51:00Z` |
-| `docs/DD_API_CONFORMANCE.md` | `7fda6b9f2f8c6435a9a906faf39050113eaca22bc0ead0d6fdd1a7b2838c2a9c` | 1407 | `2026-08-18T02:45:00Z` |
-| `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md` | `5611f634eac70a578a8a32c722f35c891e32683666908feffd6085617b493188` | 2645 | `2026-08-18T10:00:00Z` |
-| `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `abb6b6de198e17f0ddcda33de4907d8ace9c234a83a9245912a8002f04a72647` | 2793 | `2026-08-18T09:12:36Z` |
-| `docs/E2E_ENVIRONMENT_BOOTSTRAP_CHECKLIST.md` | `d9682bb757030ed3b4bee0008a81a7083142dc69c64f1f195d9f8b0037ff76c5` | 5827 | `2026-08-19T04:51:00Z` |
-| `docs/FIGMA_ASSETS.md` | `612a2d81993d15d756802a82fb3449a4e3f0ae15749bd1cabe7a1fd73ba42c48` | 5507 | `2026-08-18T02:45:00Z` |
-| `docs/FIGMA_SCREEN_MAP.md` | `66191f2f36aea246e6cfe8ae9daf92b46810bf31e0acbba5951d2255b17951f1` | 5545 | `2026-08-18T02:45:00Z` |
-| `docs/FRONTEND_CHECKLIST_AUDIT.md` | `fceb7794faf53722b220edff18557f0206c85bc4b2894faf787aee29df3ded1f` | 4063 | `2026-08-18T10:00:00Z` |
-| `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `f0757548d88769b5bc34d36d2f1776a867f01b6d4ac74c160ba77a48e71ba3f2` | 18105 | `2026-08-18T02:45:00Z` |
-| `docs/KANBAN_INTEGRATION.md` | `108f770d7c38e681a6e0c438eaa5612d4fb2ffaeebced459cb3d1768213821d8` | 5047 | `2026-08-18T02:45:00Z` |
-| `docs/KYC_API_CONFORMANCE.md` | `dc1b37c0a0cc5e38c15f526933ee8a3a1886c038e5486383c11d46caed95bcd8` | 1495 | `2026-08-18T02:45:00Z` |
-| `docs/KYC_NCNDA_INTEGRATION_PHASE_1_HANDOFF.md` | `a48c7b85e5ce35e70779bfe6bc6c73af2acfc394d223b174800edc6514c1276f` | 4876 | `2026-08-18T12:36:45Z` |
-| `docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md` | `6d0f275b40f523aa58a497dea33f4a96835bc02f68f410fd7be743c85bb6e8c4` | 3422 | `2026-08-18T02:45:00Z` |
-| `docs/MANAGER_ADMIN_INTEGRATION_PHASE_1_HANDOFF.md` | `e20f3de2e795f088fd92aad09d82cb65bbd15cbc89bd724ffb5443fb275752dd` | 3881 | `2026-08-19T04:12:00Z` |
-| `docs/MOTION.md` | `663f7dfcf504017172635bb7cfca548a741aa4c6849265401a29eed42b9176a3` | 3165 | `2026-08-18T02:45:00Z` |
-| `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `b1457cf44f3952ccc4afde17a91f6a232a99fab4a7c9b408a143872654b2a4df` | 19055 | `2026-08-18T02:45:00Z` |
-| `docs/PIPELINE_TRANSITION_POLICY_HANDOFF.md` | `aec86874e4488e1b79e27dd9449f9505cb5f19d3b633bf78b19f49115f89807d` | 3357 | `2026-08-18T10:00:00Z` |
-| `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `f847316fca11265e6e641f2e0f101de421d1e3b42222c7e90686406f17bac26d` | 2141 | `2026-08-18T02:45:00Z` |
-| `docs/SALES_BOARD_CONTRACT_GAP.md` | `e3b0b29e636d7e174e104b931e53d47ba676e8ad2138fde3ee5a5fa83a9532c0` | 7764 | `2026-08-18T02:45:00Z` |
-| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `2b7c3116319d5aa341e0ca731e0c12eeafc315ac9f095cbce3ab91144069a645` | 7247 | `2026-08-18T10:00:00Z` |
-| `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `9e538b7f3ba5d7cee60bad4e2ef585cd5cf3f61636b4ad65b2883e233a7d1a5d` | 1666 | `2026-08-18T09:12:36Z` |
-| `docs/SUBMISSIONS_API_CONFORMANCE.md` | `768902e31f44ebc77d89d658ba57b819bbbba989a63cac7158a85c572d2852ae` | 1203 | `2026-08-18T02:45:00Z` |
-| `docs/TECHNICAL_DD_SECURE_DOCUMENTS_INTEGRATION_HANDOFF.md` | `289cf5c18b90fc34c87a1f06765158d3059d8ad143b1115da6322c68b6d5e364` | 6292 | `2026-08-18T11:10:31Z` |
-| `docs/VERIFICATION.md` | `a0a61499a8710964691472e3f7bd39cce32181467ed5711385e908f0f5244ffb` | 5585 | `2026-08-18T02:45:00Z` |
-| `docs/WORKSPACES_DESIGN.md` | `d81c8f893f1ada95c4e65b88f1a42ce9f1d74529840e2f7e05e35f957d70edef` | 8881 | `2026-08-18T02:45:00Z` |
-| `README.md` | `f02cd82446bdac2837ea0617f3e2c4e4c2e094e2039d3de410b3e7de868de96f` | 4683 | `2026-08-18T02:45:00Z` |
+| `README.md` | `c4d8d108e5406fee2ccbaf982a51daa1de9c9000d73701f00f83e6d4c731f492` | 6476 | `2026-08-20T08:27:52Z` |
+| `docs/API_CONTRACT.md` | `0c5fe8d7f0dee25f2648543f180bbdc8c84c5e4ee63aba70a3c21bad9eb3445e` | 27648 | `2026-08-19T09:56:29Z` |
+| `docs/CLERK_AUTH_DESIGN.md` | `ee704b756f4264a5c7c39f38b2db59ab9e387bb0b2ddf4df50dd4994edf8a2c2` | 22156 | `2026-08-19T09:56:29Z` |
+| `docs/CONTRACT_CONFORMANCE.md` | `8624dffefc62de03ec47b9a814d293627f87ef0430e8b12069bdf1df987cfe5c` | 9245 | `2026-08-19T09:56:29Z` |
+| `docs/CROSS_WORKSPACE_E2E_EXECUTION_PHASE_1.md` | `52c5fc1c1efe56a49004204350aac97775898b52316a6434305e7e4ce865dac8` | 4500 | `2026-08-19T09:56:29Z` |
+| `docs/CROSS_WORKSPACE_E2E_RUNBOOK.md` | `3e87ed75ef3a8033b07af8cdd6b4842c51c34c8e93f6070e6e57cff3f36488d3` | 8634 | `2026-08-19T09:56:29Z` |
+| `docs/CROSS_WORKSPACE_INTEGRATION_STATUS.md` | `2bde741a3989a2955633814065802d126a778b7c3dd052b6221694cc6787f0b1` | 5982 | `2026-08-19T09:56:29Z` |
+| `docs/DD_API_CONFORMANCE.md` | `202ecee10923e37d04011418a3746486d8b681821ea0b90b9243d7fffd79dafc` | 1422 | `2026-08-19T09:56:29Z` |
+| `docs/DEAL_CHANGE_REQUESTS_API_CONFORMANCE.md` | `68e043bff31ace2bff8ef2aa92650c9022bdd957d274c6243735bd2601cf7746` | 2699 | `2026-08-19T09:56:29Z` |
+| `docs/DEAL_READINESS_FRONTEND_HANDOFF.md` | `ad73e0c8a787a95b3d7535d8ca13af969c850e44a7268fb34881bb79591f977b` | 2852 | `2026-08-19T09:56:29Z` |
+| `docs/E2E_ENVIRONMENT_BOOTSTRAP_CHECKLIST.md` | `0dc4283268059dda808c8b3865f891ef826c739f8405fab88892b4217dd23478` | 5922 | `2026-08-19T09:56:29Z` |
+| `docs/FIGMA_ASSETS.md` | `5130a3fd9db00d07610a1cf0567cabede1d97da5e4a0b3c49c8be2784d9b9857` | 5582 | `2026-08-19T09:56:29Z` |
+| `docs/FIGMA_SCREEN_MAP.md` | `6114b2ab2b4f0c01a3f6d0c933380ed7e4b71b7db3674513c44fbc79a4ba5a4e` | 5664 | `2026-08-19T09:56:29Z` |
+| `docs/FRONTEND_CHECKLIST_AUDIT.md` | `98b868b783aaad262e54789801faaf5a44fa505410905effb975b49fc879e9f3` | 4112 | `2026-08-19T09:56:29Z` |
+| `docs/GPU_RENTAL_CUSTOMER_PORTAL_UX_SPEC.md` | `0e9827a79ef837e6fb5a7d8c6ec219ac5d90cf1d184415338929ea6e8ea1dc47` | 5970 | `2026-08-20T07:43:26Z` |
+| `docs/GPU_RENTAL_STAFF_OPERATIONS_UX_SPEC.md` | `7a3a5ea7a1450fa9a4df328e7b4a1a0a93073c8c2cb8f53090388309b58bd707` | 4748 | `2026-08-20T07:43:26Z` |
+| `docs/INTEGRATION_DEFECT_AUTH_ME_401.md` | `54eec846dcb056bbd85f858877c970ee92fc4240a7c413c693fdc5e9be05b66c` | 18521 | `2026-08-19T09:56:29Z` |
+| `docs/KANBAN_INTEGRATION.md` | `bb9616032bb68609c96185c50fd14127c4d50759a2a91b7a7753b40af5905515` | 5175 | `2026-08-19T09:56:29Z` |
+| `docs/KYC_API_CONFORMANCE.md` | `e199fe0c695f8e42200b027201bc2f7ab68215bcaf630d2fd9c6113bdfe592c9` | 1515 | `2026-08-19T09:56:29Z` |
+| `docs/KYC_NCNDA_INTEGRATION_PHASE_1_HANDOFF.md` | `2fbeac4b342964c7e76a5a8206c040ec2d1d98882dc67af170894f784bb5e679` | 4986 | `2026-08-19T09:56:29Z` |
+| `docs/LEGAL_COMPLIANCE_BACKEND_REQUIREMENTS.md` | `18cb4c97b53fde4d5ad9d0dccbc0d189d93d7b1df3b30d36aa37b6720f583c3d` | 3469 | `2026-08-19T09:56:29Z` |
+| `docs/MANAGER_ADMIN_INTEGRATION_PHASE_1_HANDOFF.md` | `38c50fdcd0a68143b8b97ffbb38ba679c76ca6217a2939540f1a2f5802485855` | 3922 | `2026-08-19T09:56:29Z` |
+| `docs/MOTION.md` | `9eb1b8f6b1f9fea64af705092362c1f7759767c9ff3df3388b5f29e7178127e7` | 3229 | `2026-08-19T09:56:29Z` |
+| `docs/PANDA_CLOUD_ROLE_PERMISSION_MATRIX.md` | `576204a850a1d2a8e515cf80389fe4158f5699ac203a8914923fec8cec1c4a29` | 19974 | `2026-08-19T09:56:29Z` |
+| `docs/PIPELINE_TRANSITION_POLICY_HANDOFF.md` | `f4c629f6cd0550a6352fd87684f622577131cf13feac2d7d40c70a555dfa8c35` | 3430 | `2026-08-19T09:56:29Z` |
+| `docs/PRODUCT_DATA_BACKEND_REQUIREMENTS.md` | `a72fa7d714d9a4ac75c6e3734bedd492151d8f8d96a80b4d6ca97c3f66ebf9ce` | 2188 | `2026-08-19T09:56:29Z` |
+| `docs/SALES_BOARD_CONTRACT_GAP.md` | `a8080655eb3523e9f677bf10aa730ec80de40b5112cdf85b0f42af652a706dc9` | 7952 | `2026-08-19T09:56:29Z` |
+| `docs/SALES_INTEGRATION_CANDIDATE_V1_HANDOFF.md` | `60f618c4e065e59d3c71fb1e8691b802c142a9afbf3abe9d11eebaf22c0288c3` | 7388 | `2026-08-19T09:56:29Z` |
+| `docs/SALES_WORKSPACE_API_CONFORMANCE.md` | `17d6e625d80ba101f2efd12c596791b46604014edd0eb1fef284109eb766caec` | 1691 | `2026-08-19T09:56:29Z` |
+| `docs/SITE_INSPECTION_DOCUMENTATION_MAP.md` | `5fdc3ccfb0b4d856125ab28c43d22167c2c9d9525937cd83b002602532279cbb` | 4076 | `2026-08-20T08:27:52Z` |
+| `docs/SITE_INSPECTION_FE_DEVELOPMENT_GUIDE.md` | `c40e84cd813716d31d3d2467abc5a48d3ad4f56ddb5f38e1d0a6fe6d2b9f75e4` | 13966 | `2026-08-20T08:27:52Z` |
+| `docs/SITE_INSPECTION_MOCK_DEMO_SPEC.md` | `08deba8a022c765bad745336f815f283740f16ac6348540cc178b7e19e4ab813` | 17876 | `2026-08-20T08:04:15Z` |
+| `docs/SITE_INSPECTION_UX_FRONTEND_SPEC.md` | `c1e611a11e06057304757c03465206c9eeb79296365b258a4252c3ecba605ca0` | 19948 | `2026-08-20T08:04:15Z` |
+| `docs/SUBMISSIONS_API_CONFORMANCE.md` | `1fcec4daf3a71f2da3952fe988211f1f12bc353bcb55244faf2cfbac2c1f87d1` | 1221 | `2026-08-19T09:56:29Z` |
+| `docs/TECHNICAL_DD_SECURE_DOCUMENTS_INTEGRATION_HANDOFF.md` | `de527e2db36ab4c21f50da63390007a7fb7a6c4f7216b31c36395391c58bace3` | 6402 | `2026-08-19T09:56:29Z` |
+| `docs/VERIFICATION.md` | `ded70d6a41ee66bf68f7690b9791654c8e158322a324a68ccc5f092266a3b21b` | 5704 | `2026-08-19T09:56:29Z` |
+| `docs/WORKSPACES_DESIGN.md` | `ad7544376098917cdad9b86c0a71a9af9d1681530c34140853c222b16d7acfed` | 9072 | `2026-08-19T09:56:29Z` |
 
 ## 2026-08-17 frontend API migration
 

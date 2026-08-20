@@ -114,3 +114,21 @@ compatible with the Liberation Serif used in the Figma file).
 
 See [`docs/FIGMA_SCREEN_MAP.md`](docs/FIGMA_SCREEN_MAP.md) for the node-by-node
 map of all 35 screens and what has been built so far.
+
+## Proposed GPU Rental v1 UX
+
+- [`docs/GPU_RENTAL_CUSTOMER_PORTAL_UX_SPEC.md`](docs/GPU_RENTAL_CUSTOMER_PORTAL_UX_SPEC.md) defines the customer journey from public estimate through quote, deployment, usage, billing, support, and termination.
+- [`docs/GPU_RENTAL_STAFF_OPERATIONS_UX_SPEC.md`](docs/GPU_RENTAL_STAFF_OPERATIONS_UX_SPEC.md) defines partner/catalog, quote, provisioning, finance, support, and lifecycle workspaces.
+
+These documents describe a proposed partner-managed product. Their new HTTP
+operations are not implemented or frozen; frontend development must wait for a
+released backend-owned OpenAPI contract and generated client.
+
+## Proposed AI-Assisted Site Inspection frontend
+
+- [`docs/SITE_INSPECTION_DOCUMENTATION_MAP.md`](docs/SITE_INSPECTION_DOCUMENTATION_MAP.md) is the frontend entry point and identifies the authoritative FE and BE source for every subject.
+- [`docs/SITE_INSPECTION_UX_FRONTEND_SPEC.md`](docs/SITE_INSPECTION_UX_FRONTEND_SPEC.md) owns customer, Technical reviewer, and profile-administration UX behavior.
+- [`docs/SITE_INSPECTION_MOCK_DEMO_SPEC.md`](docs/SITE_INSPECTION_MOCK_DEMO_SPEC.md) owns the disclosed backend-free demo and deterministic mock scenarios.
+- [`docs/SITE_INSPECTION_FE_DEVELOPMENT_GUIDE.md`](docs/SITE_INSPECTION_FE_DEVELOPMENT_GUIDE.md) provides the executable FE demo and HTTP-integration backlog, dependencies, acceptance and handoff evidence.
+
+Product requirements, backend/API/data, AI/standards, security/operations, cross-system QA, and delivery governance live in the sibling `PandaCloudBackend` repository. The frontend consumes only a released backend-owned OpenAPI/client artifact for HTTP mode.
