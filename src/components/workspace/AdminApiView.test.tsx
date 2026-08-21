@@ -2,10 +2,13 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import type { AdminUserSummary } from "@/models/admin";
+import type { AuthProfile } from "@/models/auth";
 
 /* ------------------------------------------------------------------ */
 /*  Mock setup                                                         */
 /* ------------------------------------------------------------------ */
+
+let currentProfile: AuthProfile | null = null;
 
 const mocks = vi.hoisted(() => ({
   admin: {
@@ -55,6 +58,10 @@ vi.mock("@/components/admin/AdminActionGuard", () => ({
   AdminActionGuard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("@/controllers/AuthContext", () => ({
+  useAuth: () => ({ profile: currentProfile }),
+}));
+
 vi.mock("./WorkspacePage", () => ({
   WorkspacePage: ({
     children,
@@ -96,6 +103,16 @@ function makeUser(overrides: Partial<AdminUserSummary> = {}): AdminUserSummary {
   };
 }
 
+function makeProfile(roles: string[]): AuthProfile {
+  return {
+    user: { id: "actor_1", email: "admin@test.com", fullName: "Admin", userType: "staff", status: "active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+    authorization: {
+      isStaff: true,
+      memberships: roles.map((role) => ({ organizationId: "org_admin", role: role as AuthProfile["authorization"]["memberships"][number]["role"] })),
+    },
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Tests                                                              */
 /* ------------------------------------------------------------------ */
@@ -104,9 +121,11 @@ describe("AdminApiView — UserTable regression", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    currentProfile = null;
   });
 
   it("renders list items without crash (list DTO has no memberships)", async () => {
+    currentProfile = makeProfile(["admin"]);
     const users = [
       makeUser({ userId: "u1", fullName: "Alice", email: "alice@example.com" }),
       makeUser({ userId: "u2", fullName: "Bob", email: "bob@example.com" }),
@@ -122,6 +141,7 @@ describe("AdminApiView — UserTable regression", () => {
   });
 
   it("renders empty state when no items returned", async () => {
+    currentProfile = makeProfile(["admin"]);
     mocks.admin.users.mockResolvedValue({ items: [], isDone: true, nextCursor: null });
 
     render(<AdminApiView kind="users" />);
@@ -130,6 +150,7 @@ describe("AdminApiView — UserTable regression", () => {
   });
 
   it("renders user detail link correctly", async () => {
+    currentProfile = makeProfile(["admin"]);
     const users = [makeUser({ userId: "u_abc123", fullName: "Carol" })];
     mocks.admin.users.mockResolvedValue({ items: users, isDone: true, nextCursor: null });
 
@@ -140,6 +161,7 @@ describe("AdminApiView — UserTable regression", () => {
   });
 
   it("does not render a Memberships column (list DTO omits memberships)", async () => {
+    currentProfile = makeProfile(["admin"]);
     const users = [makeUser()];
     mocks.admin.users.mockResolvedValue({ items: users, isDone: true, nextCursor: null });
 
@@ -150,6 +172,7 @@ describe("AdminApiView — UserTable regression", () => {
   });
 
   it("uses fullName fallback to email when fullName is empty", async () => {
+    currentProfile = makeProfile(["admin"]);
     const users = [makeUser({ fullName: "", email: "fallback@example.com" })];
     mocks.admin.users.mockResolvedValue({ items: users, isDone: true, nextCursor: null });
 
@@ -160,6 +183,7 @@ describe("AdminApiView — UserTable regression", () => {
   });
 
   it("requires a reason and sends the current revision when suspending a user", async () => {
+    currentProfile = makeProfile(["admin"]);
     const user = makeUser({ status: "active", revision: 7 });
     mocks.admin.users.mockResolvedValue({ items: [user], isDone: true, nextCursor: null });
     mocks.admin.updateUser.mockResolvedValue({ ...user, status: "suspended", revision: 8 });
@@ -183,6 +207,7 @@ describe("AdminApiView — UserTable regression", () => {
   });
 
   it("updates a membership role with reason and expected revision", async () => {
+    currentProfile = makeProfile(["admin"]);
     mocks.admin.user.mockResolvedValue({ ...makeUser(), memberships: [{
       membershipId: "membership_1",
       organizationId: "org_1",
@@ -214,5 +239,101 @@ describe("AdminApiView — UserTable regression", () => {
       expectedRevision: 4,
     }));
     expect(await screen.findByText("Role updated and audited.")).toBeDefined();
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/*  Privileged role regression tests                                   */
+/* ------------------------------------------------------------------ */
+
+describe("Privileged role filtering — Admin identity contract", () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+    currentProfile = null;
+  });
+
+  function renderUserDetail(memberships: Array<{ membershipId: string; organizationId: string; role: string; status: string; revision: number }>) {
+    mocks.admin.user.mockResolvedValue({
+      ...makeUser(),
+      memberships: memberships.map((m) => ({ ...m, user: makeUser(), updatedAt: "2026-01-15T10:30:00.000Z" })),
+    });
+    render(<AdminUserDetailView userId="user_1" />);
+    return screen.findByText("org_1");
+  }
+
+  it("manager sees no role editor (read-only)", async () => {
+    currentProfile = makeProfile(["manager"]);
+    await renderUserDetail([{ membershipId: "m1", organizationId: "org_1", role: "sales", status: "active", revision: 1 }]);
+    expect(screen.queryByLabelText("Role for org_1")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save role" })).toBeNull();
+  });
+
+  it("ordinary admin does not see admin or super_admin as assignable roles", async () => {
+    currentProfile = makeProfile(["admin"]);
+    await renderUserDetail([{ membershipId: "m1", organizationId: "org_1", role: "sales", status: "active", revision: 1 }]);
+    const select = screen.getByLabelText("Role for org_1") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toContain("manager");
+    expect(optionValues).toContain("technical");
+    expect(optionValues).not.toContain("admin");
+    expect(optionValues).not.toContain("super_admin");
+  });
+
+  it("ordinary admin cannot edit an existing admin membership", async () => {
+    currentProfile = makeProfile(["admin"]);
+    await renderUserDetail([{ membershipId: "m1", organizationId: "org_1", role: "admin", status: "active", revision: 1 }]);
+    expect(screen.queryByLabelText("Role for org_1")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save role" })).toBeNull();
+  });
+
+  it("ordinary admin cannot edit an existing super_admin membership", async () => {
+    currentProfile = makeProfile(["admin"]);
+    await renderUserDetail([{ membershipId: "m1", organizationId: "org_1", role: "super_admin", status: "active", revision: 1 }]);
+    expect(screen.queryByLabelText("Role for org_1")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save role" })).toBeNull();
+  });
+
+  it("super_admin sees admin and super_admin as assignable roles", async () => {
+    currentProfile = makeProfile(["super_admin"]);
+    await renderUserDetail([{ membershipId: "m1", organizationId: "org_1", role: "sales", status: "active", revision: 1 }]);
+    const select = screen.getByLabelText("Role for org_1") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toContain("admin");
+    expect(optionValues).toContain("super_admin");
+    expect(optionValues).toContain("manager");
+  });
+
+  it("super_admin can edit an existing admin membership", async () => {
+    currentProfile = makeProfile(["super_admin"]);
+    await renderUserDetail([{ membershipId: "m1", organizationId: "org_1", role: "admin", status: "active", revision: 1 }]);
+    expect(screen.getByLabelText("Role for org_1")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Save role" })).toBeDefined();
+  });
+
+  it("reason is required and expectedRevision is sent on role change", async () => {
+    currentProfile = makeProfile(["super_admin"]);
+    mocks.admin.user.mockResolvedValue({
+      ...makeUser(),
+      memberships: [{ membershipId: "m1", organizationId: "org_1", user: makeUser(), role: "sales", status: "active", updatedAt: "2026-01-15T10:30:00.000Z", revision: 3 }],
+    });
+    mocks.admin.updateMembership.mockResolvedValue({
+      membershipId: "m1", organizationId: "org_1", user: makeUser(), role: "admin", status: "active", updatedAt: "2026-01-15T10:30:00.000Z", revision: 4,
+    });
+    render(<AdminUserDetailView userId="user_1" />);
+    await screen.findByText("org_1");
+
+    fireEvent.change(screen.getByLabelText("Role for org_1"), { target: { value: "admin" } });
+    expect(screen.getByRole("button", { name: "Save role" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Reason for org_1"), { target: { value: "Promote to admin" } });
+    expect(screen.getByRole("button", { name: "Save role" })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save role" }));
+
+    await vi.waitFor(() => expect(mocks.admin.updateMembership).toHaveBeenCalledWith("org_1", "m1", {
+      role: "admin",
+      reason: "Promote to admin",
+      expectedRevision: 3,
+    }));
   });
 });

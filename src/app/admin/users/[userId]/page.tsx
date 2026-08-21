@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import type { AdminMembership, AdminOrganizationDetail, AdminUser, AdminUserUpdateRequest } from "@/models/admin";
-import { MEMBERSHIP_ROLES, isAdmin, type MembershipRole } from "@/models/auth";
+import { isAdmin, isSuperAdmin, assignableRoles, canEditMembership, type MembershipRole, type AuthProfile } from "@/models/auth";
 
 type Transition = { from: string; to: AdminUserUpdateRequest["status"] };
 
@@ -153,7 +153,7 @@ export default function UserDetailPage({ params }: { params: UserDetailParams })
                   {user.memberships.map((m) => (
                     <tr key={`${m.membershipId ?? m.organizationId}-${m.role}`} className="border-b border-line/60">
                       <td className="p-4"><OrganizationLabel organizationId={m.organizationId} /></td>
-                      <td className="p-4">{admin ? <MembershipRoleControl membership={m} /> : <StatusBadge status={m.role} />}</td>
+                      <td className="p-4">{canEditMembership(profile, m) ? <MembershipRoleControl membership={m} profile={profile} /> : <StatusBadge status={m.role} />}</td>
                       <td className="p-4"><StatusBadge status={m.status} /></td>
                     </tr>
                   ))}
@@ -185,12 +185,13 @@ function isPromiseLike(value: UserDetailParams): value is Promise<{ userId: stri
   return typeof value === "object" && value !== null && "then" in value && typeof value.then === "function";
 }
 
-function MembershipRoleControl({ membership }: { membership: AdminMembership }) {
+function MembershipRoleControl({ membership, profile }: { membership: AdminMembership; profile: AuthProfile | null }) {
   const [role, setRole] = useState<MembershipRole>(membership.role);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const changed = role !== membership.role;
+  const options = assignableRoles(profile, membership.role);
 
   async function saveRole() {
     if (!changed || reason.trim().length < 3) return;
@@ -223,7 +224,7 @@ function MembershipRoleControl({ membership }: { membership: AdminMembership }) 
           className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
         >
           <option value={membership.role}>{membership.role}</option>
-          {MEMBERSHIP_ROLES.filter((candidate) => candidate !== membership.role).map((candidate) => (
+          {options.map((candidate) => (
             <option key={candidate} value={candidate}>{candidate}</option>
           ))}
         </select>
