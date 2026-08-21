@@ -241,42 +241,17 @@ export const httpApi: ApiClient = {
       const persona = personaForInterest(primaryInterest);
       const created = await http.post<Submission>(endpoints.submissions.collection, {
         source: "website",
-<<<<<<< Updated upstream
-        intake: "marketing",
-        summary: payload.useCase ?? `${payload.contactName}: ${payload.interests.join(", ")}`,
-        sourcePayload: {
-          interests: payload.interests.join(","),
-          ...(payload.gpuType ? { gpuType: payload.gpuType } : {}),
-          ...(payload.quantity !== undefined ? { quantity: payload.quantity } : {}),
-          ...(payload.timeline ? { timeline: payload.timeline } : {}),
-          ...(payload.budget ? { budget: payload.budget } : {}),
-          ...(payload.locationPreference ? { locationPreference: payload.locationPreference } : {}),
-        },
-=======
-        // intake="marketing": form ngắn này KHÔNG gửi `vertical`.
-        //
-        // `vertical` ở backend là lời cam kết rằng lead đã đi qua một luồng sản
-        // phẩm đầy đủ và mang theo ảnh chụp báo giá đã kiểm (xem
-        // validateSubmissionPayload trong convex/leads.ts: vertical "gpu" đòi
-        // gpuCount, quoteValidUntil, quoteMonthlyTotalUsd…). Form liên hệ chỉ
-        // có tên, email, công ty và mục quan tâm — gửi vertical là nói dối, và
-        // trước đây chính nó khiến 4 trên 5 mục quan tâm bị trả 400.
-        //
-        // Mục quan tâm vẫn được giữ nguyên trong sourcePayload.interests để đội
-        // Sales phân loại.
+        // Marketing intake không gửi vertical; backend sẽ không áp dụng các
+        // validation dành cho customer-flow như GPU quote hoặc hyperscale.
         intake: "marketing",
         ...(persona ? { persona } : {}),
         summary: payload.useCase?.trim() || `${payload.contactName}: ${payload.interests.join(", ")}`,
->>>>>>> Stashed changes
         contact: {
           fullName: payload.contactName,
           email: payload.email,
           ...(payload.phone ? { phone: payload.phone } : {}),
           ...(payload.companyName ? { companyName: payload.companyName } : {}),
         },
-<<<<<<< Updated upstream
-      }, { anonymous: true }),
-=======
         sourcePayload: scalarPayload({
           page: payload.source ?? null,
           path: payload.path ?? null,
@@ -301,7 +276,6 @@ export const httpApi: ApiClient = {
         createdAt: created.updatedAt,
       } satisfies LeadResponse;
     },
->>>>>>> Stashed changes
   },
 
   submissions: {

@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/Field";
 import { useAuth } from "@/controllers/AuthContext";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, minLength } from "@/lib/validation";
-import { safeReturnTo } from "@/lib/safeReturnTo";
 import { homeForProfile } from "@/config/access";
 import { clerkEnabled } from "@/services/config";
 import { safeReturnTo } from "@/lib/returnTo";
@@ -55,12 +54,7 @@ function LoginView() {
    * accepted — an absolute URL here would be an open-redirect vector.
    * Luật kiểm nằm ở lib/returnTo, dùng chung với signup và forgot-password.
    */
-<<<<<<< Updated upstream
-  const rawReturnTo = params.get("returnTo");
-  const returnTo = safeReturnTo(rawReturnTo);
-=======
   const returnTo = safeReturnTo(params.get("returnTo"));
->>>>>>> Stashed changes
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [verificationRequired, setVerificationRequired] = useState(false);
@@ -134,14 +128,6 @@ function LoginView() {
         });
 
         if (attempt.status === "needs_second_factor") {
-<<<<<<< Updated upstream
-          const supportedSecondFactors = signIn.supportedSecondFactors ?? [];
-          if (!supportedSecondFactors.some((factor) => factor.strategy === "email_code")) {
-            setFormError("Multi-factor authentication is enabled, but no supported verification method is configured. Contact an administrator.");
-            return;
-          }
-          await signIn.prepareSecondFactor({ strategy: "email_code" });
-=======
           // Chọn theo thứ tự ưu tiên trong SỐ CÁI TÀI KHOẢN THỰC SỰ BẬT. Bản
           // trước rơi thẳng vào nhánh phone_code khi không thấy totp, không hề
           // kiểm phone_code có tồn tại không — với tài khoản chỉ bật
@@ -169,7 +155,6 @@ function LoginView() {
             setNotice("Nhập một mã dự phòng của bạn.");
           }
           setSecondFactorStrategy(chosen);
->>>>>>> Stashed changes
           setVerificationRequired(true);
           return;
         }
