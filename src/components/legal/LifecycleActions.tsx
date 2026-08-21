@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/Field";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   transitionRequiresEffectiveDate,
   transitionRequiresReason,
@@ -27,8 +28,13 @@ import { normalizeError } from "@/services/api";
  * They are convenience, not the control: the backend rejects a transition
  * missing either regardless of what this form did.
  *
+<<<<<<< Updated upstream
  * The HTTP adapter maps this request to the released BFF NCNDA update route;
  * the mock adapter uses the same transition payload and revision rules.
+=======
+ * The HTTP adapter maps this action to the released BFF NCNDA update route;
+ * the backend remains the authority for the transition graph and revision.
+>>>>>>> Stashed changes
  */
 export function LifecycleActions({
   item,
@@ -42,6 +48,7 @@ export function LifecycleActions({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDestructive, setConfirmDestructive] = useState(false);
 
   if (item.allowedTransitions.length === 0) {
     return (
@@ -63,8 +70,7 @@ export function LifecycleActions({
     setPending((current) => (current === status ? null : status));
   }
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function performSubmit() {
     if (!pending) return;
     setBusy(true);
     setError(null);
@@ -89,7 +95,7 @@ export function LifecycleActions({
         normalized.status === 409
           ? "This agreement changed on the server. Reload the queue before retrying."
           : normalized.status === 404
-            ? "The lifecycle operation is not deployed yet (CR-004). Nothing was changed."
+            ? "The lifecycle operation is unavailable right now. Nothing was changed."
             : normalized.correlationId
               ? `${normalized.message} (correlation ${normalized.correlationId})`
               : normalized.message,
@@ -98,6 +104,16 @@ export function LifecycleActions({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!pending) return;
+    if ((pending === "rejected" || pending === "cancelled") && !confirmDestructive) {
+      setConfirmDestructive(true);
+      return;
+    }
+    await performSubmit();
   }
 
   return (
@@ -172,6 +188,7 @@ export function LifecycleActions({
         </form>
       ) : null}
 
+      {confirmDestructive ? <ConfirmDialog title={`Move agreement to ${NCNDA_STATUS_LABELS[pending!] }?`} message="This lifecycle transition is destructive and will be recorded in the legal audit trail." confirmLabel="Confirm transition" busy={busy} onCancel={() => setConfirmDestructive(false)} onConfirm={() => { setConfirmDestructive(false); void performSubmit(); }} /> : null}
       {error ? (
         <p role="alert" className="mt-3 text-xs leading-5 text-red-400">
           {error}

@@ -17,8 +17,10 @@
  */
 
 type TokenProvider = () => Promise<string | null>;
+type UnauthorizedHandler = () => Promise<void>;
 
 let tokenProvider: TokenProvider | null = null;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
 let identityHint: string | null = null;
 
 export const sessionBridge = {
@@ -31,6 +33,17 @@ export const sessionBridge = {
     return () => {
       if (tokenProvider === provider) tokenProvider = null;
     };
+  },
+
+  registerUnauthorizedHandler(handler: UnauthorizedHandler): () => void {
+    unauthorizedHandler = handler;
+    return () => {
+      if (unauthorizedHandler === handler) unauthorizedHandler = null;
+    };
+  },
+
+  async handleUnauthorized(): Promise<void> {
+    if (unauthorizedHandler) await unauthorizedHandler();
   },
 
   /**

@@ -59,4 +59,6 @@ export interface ResourceTable {
   rows: ResourceRow[];
   /** Total matching records, when the backend paginates. */
   total?: number;
+  continueCursor?: string | null;
+  isDone?: boolean;
 }

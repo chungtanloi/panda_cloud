@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DataTable, type TableColumn } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ErrorState, LoadingState, Skeleton } from "@/components/ui/states";
@@ -36,9 +36,32 @@ const META: Record<WorkspaceResourceKind, { eyebrow: string; title: string; desc
 
 export function ResourcePage({ kind }: { kind: WorkspaceResourceKind }) {
   const meta = META[kind];
+  const [search, setSearch] = useState("");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [history, setHistory] = useState<string[]>([]);
 
-  const fetchResource = useCallback(() => api.workspace.getResource(kind), [kind]);
-  const { state, run } = useAsync(fetchResource, { immediate: [] });
+  const fetchResource = useCallback((query: { search?: string; cursor?: string }) => api.workspace.getResource(kind, query), [kind]);
+  const { state, run } = useAsync(fetchResource);
+  useEffect(() => { void run({ ...(search ? { search } : {}), ...(cursor ? { cursor } : {}) }); }, [cursor, run, search]);
+
+  function resetSearch(value: string) {
+    setSearch(value);
+    setCursor(undefined);
+    setHistory([]);
+  }
+
+  function nextPage() {
+    if (state.status !== "success" || !state.data.continueCursor) return;
+    setHistory((current) => [...current, cursor ?? ""]);
+    setCursor(state.data.continueCursor);
+  }
+
+  function previousPage() {
+    const previous = history[history.length - 1];
+    if (previous === undefined) return;
+    setHistory((current) => current.slice(0, -1));
+    setCursor(previous || undefined);
+  }
 
   return (
     <WorkspacePage {...meta}>
@@ -57,7 +80,7 @@ export function ResourcePage({ kind }: { kind: WorkspaceResourceKind }) {
       ) : null}
 
       {state.status === "error" ? (
-        <ErrorState error={state.error} onRetry={() => void run()} />
+        <ErrorState error={state.error} onRetry={() => void run({ ...(search ? { search } : {}), ...(cursor ? { cursor } : {}) })} />
       ) : state.status === "success" ? (
         state.data.rows.length === 0 ? (
           <EmptyTable title={meta.title} />
@@ -66,6 +89,14 @@ export function ResourcePage({ kind }: { kind: WorkspaceResourceKind }) {
             rows={state.data.rows}
             columns={state.data.columns.map(toTableColumn)}
             getRowKey={(row) => row.id}
+            serverSide
+            search={search}
+            onSearch={resetSearch}
+            total={state.data.total}
+            hasPreviousPage={history.length > 0}
+            hasNextPage={state.data.isDone === false || Boolean(state.data.continueCursor)}
+            onPreviousPage={previousPage}
+            onNextPage={nextPage}
           />
         )
       ) : (

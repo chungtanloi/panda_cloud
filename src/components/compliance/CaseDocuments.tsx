@@ -12,6 +12,7 @@ import { api, normalizeError } from "@/services/api";
 import { SecureDocumentUpload } from "@/components/documents/SecureDocumentUpload";
 import { DocumentDownloadButton } from "@/components/documents/DocumentDownloadButton";
 import { notifyDealReadinessChanged } from "@/controllers/ReadinessContext";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 export function CaseDocuments({ caseId, dealId, backHref }: { caseId: string; dealId?: string; backHref?: string }) {
   const { profile } = useAuth();
@@ -22,6 +23,7 @@ export function CaseDocuments({ caseId, dealId, backHref }: { caseId: string; de
   const [role, setRole] = useState<KycDocumentRole>("supporting");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [pendingDetach, setPendingDetach] = useState<KycDocument | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -47,6 +49,7 @@ export function CaseDocuments({ caseId, dealId, backHref }: { caseId: string; de
     {loading ? <LoadingState label="Loading documents" /> : null}
     {!loading && error ? <ErrorState error={error} onRetry={() => void load()} /> : null}
     {!loading && !error && documents?.length === 0 ? <EmptyState title="No documents attached" message="Attach a registered document after its malware scan is clean." /> : null}
-    {!loading && !error && documents && documents.length > 0 ? <ul className="grid gap-3">{documents.map((document) => <li key={document.linkId} className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-line bg-surface p-4"><div><p className="text-sm text-ink">Attached document</p><p className="mt-1 text-xs text-ink-dim">{KYC_DOCUMENT_ROLE_LABELS[document.documentRole]}</p></div><div className="flex items-center gap-2"><DocumentDownloadButton documentId={document.documentId} />{canManage ? <button type="button" disabled={saving} onClick={() => void detach(document)} className="rounded-full border border-red-400/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}</div></li>)}</ul> : null}
+    {!loading && !error && documents && documents.length > 0 ? <ul className="grid gap-3">{documents.map((document) => <li key={document.linkId} className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-line bg-surface p-4"><div><p className="text-sm text-ink">Attached document</p><p className="mt-1 text-xs text-ink-dim">{KYC_DOCUMENT_ROLE_LABELS[document.documentRole]}</p></div><div className="flex items-center gap-2"><DocumentDownloadButton documentId={document.documentId} />{canManage ? <button type="button" disabled={saving} onClick={() => setPendingDetach(document)} className="min-h-[44px] rounded-full border border-red-400/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}</div></li>)}</ul> : null}
+    {pendingDetach ? <ConfirmDialog title="Detach this KYC document?" message="The document will remain in secure storage, but it will no longer be attached to this case." confirmLabel="Detach document" onConfirm={() => { const document = pendingDetach; setPendingDetach(null); void detach(document); }} onCancel={() => setPendingDetach(null)} busy={saving} /> : null}
   </WorkspacePage>;
 }

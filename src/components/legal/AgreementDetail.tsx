@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { StatusPill } from "@/components/workspace/StatusPill";
 import { ErrorState, LoadingState } from "@/components/ui/states";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input, Select } from "@/components/ui/Field";
 import { useAuth } from "@/controllers/AuthContext";
 import { hasPermission } from "@/config/access";
@@ -61,6 +62,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
   const [documentRole, setDocumentRole] = useState<"draft" | "redline" | "signed" | "countersigned">("draft");
   const [documentSaving, setDocumentSaving] = useState(false);
   const [documentMessage, setDocumentMessage] = useState<string | null>(null);
+  const [pendingDetach, setPendingDetach] = useState<Detail["versions"][number] | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -278,7 +280,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
                   <div className="flex items-center gap-2">
                     {version.isCurrent ? <StatusPill label="Current" tone="good" /> : null}
                     <DocumentDownloadButton documentId={version.documentId} />
-                    {canManage ? <button type="button" disabled={documentSaving} onClick={() => void detachDocument(version)} className="rounded-full border border-red-400/50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}
+                    {canManage ? <button type="button" disabled={documentSaving} onClick={() => setPendingDetach(version)} className="rounded-full border border-red-400/50 px-2 py-1 text-[9px] font-bold uppercase tracking-wider text-red-300 disabled:opacity-50">Detach</button> : null}
                   </div>
                     </div>
                     <p className="mt-2 truncate text-xs text-ink">
@@ -296,6 +298,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
           {canManage ? (<div className="grid gap-4"><div className="max-w-xs"><Select label="Document role" value={documentRole} onChange={(event) => setDocumentRole(event.target.value as typeof documentRole)} options={( ["draft", "redline", "signed", "countersigned"] as const).map((value) => ({ value, label: NCNDA_DOCUMENT_ROLE_LABELS[value] }))} /></div><SecureDocumentUpload contextType="ncnda" resourceId={detail.agreementId} retentionClass="legal" onFinalized={(finalized) => { if (finalized.malwareScanStatus === "clean") { void api.legal.attachDocument(detail.agreementId, { documentId: finalized.documentId, documentRole }).then(() => { notifyDealReadinessChanged(detail.dealId); return load(); }).catch((cause) => setDocumentMessage(normalizeError(cause).message)); } else { setDocumentMessage(`Upload complete. Attachment is waiting for malware scan (${finalized.malwareScanStatus}).`); } }} />{documentMessage ? <p role="alert" className="text-xs text-ink-dim">{documentMessage}</p> : null}</div>) : null}
         </div>
       </div>
+      {pendingDetach ? <ConfirmDialog title="Detach this legal document?" message="The document will be removed from this NCNDA version and the action will be audited." confirmLabel="Detach document" busy={documentSaving} onCancel={() => setPendingDetach(null)} onConfirm={() => { const version = pendingDetach; setPendingDetach(null); void detachDocument(version); }} /> : null}
     </WorkspacePage>
   );
 }

@@ -1214,7 +1214,16 @@ export const mockApi: ApiClient = {
   },
 
   workspace: {
-    getResource: (kind: WorkspaceResourceKind) => delay(mockWorkspaceTables[kind]),
+    getResource: async (kind: WorkspaceResourceKind, query = {}) => {
+      const table = mockWorkspaceTables[kind];
+      const search = query.search?.trim().toLowerCase() ?? "";
+      const filtered = search ? table.rows.filter((row) => Object.values(row).some((value) => String(value).toLowerCase().includes(search))) : table.rows;
+      const pageSize = 6;
+      const start = query.cursor ? Number.parseInt(query.cursor, 10) || 0 : 0;
+      const rows = filtered.slice(start, start + pageSize);
+      const next = start + pageSize < filtered.length ? String(start + pageSize) : null;
+      return delay({ ...table, rows, total: filtered.length, continueCursor: next, isDone: next === null });
+    },
   },
 
   sales: {
