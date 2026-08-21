@@ -55,52 +55,84 @@ export default function DashboardPage() {
                   className="hover-lift h-full"
                   label="Active Projects"
                   value={String(state.data.activeProjects.count)}
-                  footer={
-                    <div className="flex items-center gap-[8px]">
-                      <Badge variant="chip">{state.data.activeProjects.statusLabel}</Badge>
-                      <span className="font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-ink-dim">
-                        {state.data.activeProjects.detail}
+                  footer={<KpiFooter kpi={state.data.activeProjects} />}
+                />
+              </Reveal>
+
+              {/* gpuUsage và tokenBalance là `null` khi backend chưa có nguồn
+                  dữ liệu. Ẩn thẻ thay vì hiện 0: một khách hàng đang chạy cụm
+                  GPU mà thấy "0%" sẽ hiểu là cụm đã chết, và "0 CPT" cho người
+                  có token là một lời nói dối về tài sản của họ. Khi có nguồn
+                  thật, backend trả object và thẻ tự hiện lại. */}
+              {state.data.gpuUsage ? (
+                <Reveal delay={70}>
+                  <KpiCard
+                    className="hover-lift h-full"
+                    label="Global GPU Usage"
+                    value={String(state.data.gpuUsage.percent)}
+                    unit="%"
+                    footer={
+                      <MiniProgressBar
+                        percent={state.data.gpuUsage.percent}
+                        label="Global GPU usage"
+                      />
+                    }
+                  />
+                </Reveal>
+              ) : state.data.assessments ? (
+                <Reveal delay={70}>
+                  <KpiCard
+                    className="hover-lift h-full"
+                    label="Assessments"
+                    value={String(state.data.assessments.count)}
+                    footer={<KpiFooter kpi={state.data.assessments} />}
+                  />
+                </Reveal>
+              ) : null}
+
+              {state.data.tokenBalance ? (
+                <Reveal delay={140}>
+                  <KpiCard
+                    className="hover-lift h-full"
+                    label="Token Balance"
+                    value={state.data.tokenBalance.amount.toLocaleString("en-US")}
+                    unit={state.data.tokenBalance.symbol}
+                    footer={
+                      <span className="font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-accent">
+                        {state.data.tokenBalance.weeklyDelta >= 0 ? "+" : ""}
+                        {state.data.tokenBalance.weeklyDelta.toLocaleString("en-US")} this week
                       </span>
-                    </div>
-                  }
-                />
-              </Reveal>
-
-              <Reveal delay={70}>
-                <KpiCard
-                  className="hover-lift h-full"
-                  label="Global GPU Usage"
-                  value={String(state.data.gpuUsage.percent)}
-                  unit="%"
-                  footer={
-                    <MiniProgressBar
-                      percent={state.data.gpuUsage.percent}
-                      label="Global GPU usage"
-                    />
-                  }
-                />
-              </Reveal>
-
-              <Reveal delay={140}>
-                <KpiCard
-                  className="hover-lift h-full"
-                  label="Token Balance"
-                  value={state.data.tokenBalance.amount.toLocaleString("en-US")}
-                  unit={state.data.tokenBalance.symbol}
-                  footer={
-                    <span className="font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-accent">
-                      {state.data.tokenBalance.weeklyDelta >= 0 ? "+" : ""}
-                      {state.data.tokenBalance.weeklyDelta.toLocaleString("en-US")} this week
-                    </span>
-                  }
-                />
-              </Reveal>
+                    }
+                  />
+                </Reveal>
+              ) : state.data.requests ? (
+                <Reveal delay={140}>
+                  <KpiCard
+                    className="hover-lift h-full"
+                    label="Requests"
+                    value={String(state.data.requests.count)}
+                    footer={<KpiFooter kpi={state.data.requests} />}
+                  />
+                </Reveal>
+              ) : null}
             </section>
             <CustomerOverviewExtras />
           </>
         )}
       </div>
     </>
+  );
+}
+
+/** Chip trạng thái + chú thích, dùng chung cho mọi thẻ KPI có nguồn dữ liệu thật. */
+function KpiFooter({ kpi }: { kpi: { statusLabel: string; detail: string } }) {
+  return (
+    <div className="flex items-center gap-[8px]">
+      <Badge variant="chip">{kpi.statusLabel}</Badge>
+      <span className="font-sans text-[12px] font-medium leading-[12px] tracking-[1.2px] text-ink-dim">
+        {kpi.detail}
+      </span>
+    </div>
   );
 }
 

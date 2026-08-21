@@ -13,6 +13,7 @@ export * from "./kyc";
 export * from "./workspace";
 export * from "./platform";
 export * from "./submission";
+export * from "./siteContent";
 
 export * from "./salesWorkspace";
 export * from "./manager";

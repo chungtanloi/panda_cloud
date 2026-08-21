@@ -1214,6 +1214,17 @@ export const mockApi: ApiClient = {
   },
 
   workspace: {
+    getPortfolio: () =>
+      delay({
+        organizations: [{ id: "org_mock", name: "Northwind Data Labs", status: "active", countryCode: "VN" }],
+        totals: { organizations: 1, openDeals: 2, paidAssessments: 1, activeEntitlements: 1 },
+        spendByCurrency: [{ currency: "USD", amountMinor: 5900 }],
+        recentPayments: [
+          { id: "pay_mock", amountMinor: 5900, currency: "USD", status: "paid", createdAt: "2026-08-01T09:00:00.000Z", paidAt: "2026-08-01T09:01:00.000Z" },
+        ],
+        wallet: null,
+      }),
+
     getResource: async (kind: WorkspaceResourceKind, query = {}) => {
       const table = mockWorkspaceTables[kind];
       const search = query.search?.trim().toLowerCase() ?? "";
@@ -1347,6 +1358,14 @@ export const mockApi: ApiClient = {
     listDocuments: async () => ({ caseId: "", documents: [] }),
     attachDocument: async () => ({ linkId: "mock-link", documentId: "mock-document" }),
     detachDocument: async (_caseId: string, documentId: string) => ({ documentId, detached: true }),
+  },
+
+  siteContent: {
+    // Mock trả rỗng: mọi trang rơi về nội dung tĩnh trong config/*.ts, đúng
+    // như hành vi khi CMS chưa có bản ghi nào.
+    getPublished: () => delay({ content: {} }),
+    list: () => delay({ items: [] }),
+    upsert: async () => { throw new ApiError({ code: "NOT_IMPLEMENTED", message: "Site content mock is read-only.", status: 501 }); },
   },
 
   leads: {

@@ -8,7 +8,7 @@ import { HowItWorks } from "@/components/marketing/sections/HowItWorks";
 import { SocialProof } from "@/components/marketing/sections/SocialProof";
 import { UseCases } from "@/components/marketing/sections/UseCases";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
-import { CountUp } from "@/components/motion/CountUp";
+import { CmsMetrics } from "@/components/marketing/CmsMetrics";
 import { Reveal } from "@/components/motion/Reveal";
 import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { AIScan } from "@/components/effects/AIScan";
@@ -341,21 +341,10 @@ function MetricsSection() {
           </div>
         </Reveal>
 
-        <div className="grid w-full flex-1 grid-cols-1 gap-[32px] sm:grid-cols-2">
-          {METRICS.map((metric, index) => (
-            <Reveal key={metric.label} delay={index * 60}>
-              <div className="card-highlight hover-lift flex min-h-[142px] flex-col items-center justify-center gap-[8px] rounded-card border border-line-hair bg-card p-[25px]">
-                <CountUp
-                  value={metric.value}
-                  className="text-gradient-accent text-center font-sans text-[40px] font-bold leading-[60px]"
-                />
-                <p className="text-center font-sans text-[16px] font-bold leading-[24px] text-ink-dim">
-                  {metric.label}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
+        {/* Số liệu lấy từ CMS khi có bản published, ngược lại giữ nguyên
+            nội dung tĩnh chép từ Figma. Xem CmsMetrics để biết vì sao bốn con
+            số này không đến từ cơ sở dữ liệu. */}
+        <CmsMetrics fallback={METRICS} />
       </div>
     </section>
   );

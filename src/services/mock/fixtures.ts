@@ -196,6 +196,8 @@ export const mockDashboard: DashboardSummary = {
   activeProjects: { count: 3, statusLabel: "Active", detail: "Across 2 regions" },
   gpuUsage: { percent: 64 },
   tokenBalance: { amount: 12_400, symbol: "CPT", weeklyDelta: 450 },
+  assessments: { count: 2, statusLabel: "Completed", detail: "1 of 2 completed" },
+  requests: { count: 4, statusLabel: "Open", detail: "2 still open" },
 };
 
 export const mockReceipt: RequestReceipt = {

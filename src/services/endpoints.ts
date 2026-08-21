@@ -81,6 +81,14 @@ export const endpoints = {
    */
   workspace: {
     resource: (kind: string) => `/workspace/resources/${kind}`,
+    /** Tổng quan danh mục của khách hàng đang đăng nhập. */
+    portfolio: "/workspace/portfolio",
+  },
+
+  /** Nội dung marketing. GET công khai; ghi qua nhánh admin. */
+  siteContent: {
+    published: "/site-content",
+    admin: "/admin/site-content",
   },
 
   /**
