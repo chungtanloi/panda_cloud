@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 
 const mocks = vi.hoisted(() => ({
   manager: { overview: vi.fn(), team: vi.fn(), teamMember: vi.fn(), projects: vi.fn(), project: vi.fn(), projectReport: vi.fn(), convertDealToProject: vi.fn() },
@@ -7,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   salesWorkspace: { overview: vi.fn(), conversionReport: vi.fn(), activityReport: vi.fn(), forecastReport: vi.fn() },
 }));
 vi.mock("@/services/api", () => ({ api: mocks, normalizeError: (cause: unknown) => cause }));
+vi.mock("@/components/admin/AdminActionGuard", () => ({ AdminActionGuard: ({ children }: { children: ReactNode }) => <>{children}</> }));
 
 import { ManagerOverviewView, ManagerProjectsView, ManagerProjectDetailView, ManagerReportsView, ManagerSalesPerformanceView, ManagerTeamMemberView, ManagerTeamView } from "./workspace/ManagerViews";
 import { AdminApiView, AdminAuditDetailView, AdminIntegrationEventDetailView, AdminUserDetailView } from "./workspace/AdminApiView";

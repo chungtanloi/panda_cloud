@@ -11,8 +11,8 @@ import { Input, Select } from "@/components/ui/Field";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
-import type { AdminUser, AdminUserUpdateRequest } from "@/models/admin";
-import { isAdmin } from "@/models/auth";
+import type { AdminMembership, AdminOrganizationDetail, AdminUser, AdminUserUpdateRequest } from "@/models/admin";
+import { MEMBERSHIP_ROLES, isAdmin, type MembershipRole } from "@/models/auth";
 
 type Transition = { from: string; to: AdminUserUpdateRequest["status"] };
 
@@ -30,8 +30,13 @@ const STATUS_OPTIONS = [
   { label: "disabled", value: "disabled" },
 ];
 
-export default function UserDetailPage({ params }: { params: Promise<{ userId: string }> }) {
-  const { userId } = use(params);
+type UserDetailParams = Promise<{ userId: string }> | { userId: string };
+
+export default function UserDetailPage({ params }: { params: UserDetailParams }) {
+  // Next 15 supplies a Promise, while the current dev runtime can still
+  // provide the resolved object. Do not pass a plain object to React use().
+  const resolvedParams = isPromiseLike(params) ? use(params) : params;
+  const { userId } = resolvedParams;
   const { profile } = useAuth();
   const admin = isAdmin(profile);
 
@@ -146,9 +151,9 @@ export default function UserDetailPage({ params }: { params: Promise<{ userId: s
                 </thead>
                 <tbody>
                   {user.memberships.map((m) => (
-                    <tr key={`${m.organizationId}-${m.role}`} className="border-b border-line/60">
-                      <td className="p-4 font-medium text-ink">{m.organizationId}</td>
-                      <td className="p-4"><StatusBadge status={m.role} /></td>
+                    <tr key={`${m.membershipId ?? m.organizationId}-${m.role}`} className="border-b border-line/60">
+                      <td className="p-4"><OrganizationLabel organizationId={m.organizationId} /></td>
+                      <td className="p-4">{admin ? <MembershipRoleControl membership={m} /> : <StatusBadge status={m.role} />}</td>
                       <td className="p-4"><StatusBadge status={m.status} /></td>
                     </tr>
                   ))}
@@ -174,6 +179,66 @@ export default function UserDetailPage({ params }: { params: Promise<{ userId: s
       )}
     </WorkspacePage>
   );
+}
+
+function isPromiseLike(value: UserDetailParams): value is Promise<{ userId: string }> {
+  return typeof value === "object" && value !== null && "then" in value && typeof value.then === "function";
+}
+
+function MembershipRoleControl({ membership }: { membership: AdminMembership }) {
+  const [role, setRole] = useState<MembershipRole>(membership.role);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const changed = role !== membership.role;
+
+  async function saveRole() {
+    if (!changed || reason.trim().length < 3) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const updated = await api.admin.updateMembership(membership.organizationId, membership.membershipId, {
+        role,
+        reason: reason.trim(),
+        expectedRevision: membership.revision,
+      });
+      setRole(updated.role);
+      setReason("");
+      setMessage("Role updated.");
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : "Unable to update role.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="min-w-64">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          aria-label={`Role for ${membership.organizationId}`}
+          value={role}
+          onChange={(event) => setRole(event.target.value as MembershipRole)}
+          style={{ colorScheme: "dark" }}
+          className="min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-sm font-medium text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <option value={membership.role}>{membership.role}</option>
+          {MEMBERSHIP_ROLES.filter((candidate) => candidate !== membership.role).map((candidate) => (
+            <option key={candidate} value={candidate}>{candidate}</option>
+          ))}
+        </select>
+        {changed ? <button type="button" className="min-h-11 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-accent-fg disabled:opacity-50" disabled={saving || reason.trim().length < 3} onClick={() => void saveRole()}>{saving ? "Saving…" : "Save"}</button> : null}
+      </div>
+      {changed ? <input aria-label={`Reason for ${membership.organizationId}`} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Reason required" maxLength={500} className="mt-2 min-h-11 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-xs text-ink" /> : null}
+      {message ? <p role="status" className="mt-1 text-xs text-ink-dim">{message}</p> : null}
+    </div>
+  );
+}
+
+function OrganizationLabel({ organizationId }: { organizationId: string }) {
+  const organizationAsync = useAsync(() => api.admin.organization(organizationId), { immediate: [] });
+  const organization = organizationAsync.data as AdminOrganizationDetail | undefined;
+  return <div><p className="font-medium text-ink">{organization?.displayName || organization?.legalName || (organizationAsync.error ? "Organization unavailable" : "Loading organization…")}</p><p className="text-[11px] text-ink-dim" title={organizationId}>ID: {organizationId}</p></div>;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {

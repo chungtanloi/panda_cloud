@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   admin: {
     users: vi.fn(),
     updateUser: vi.fn(),
+    user: vi.fn(),
+    updateMembership: vi.fn(),
   },
 }));
 
@@ -74,7 +76,7 @@ vi.mock("./WorkspacePage", () => ({
 /*  Imports AFTER mocks                                                */
 /* ------------------------------------------------------------------ */
 
-import { AdminApiView } from "./AdminApiView";
+import { AdminApiView, AdminUserDetailView } from "./AdminApiView";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -178,5 +180,39 @@ describe("AdminApiView — UserTable regression", () => {
       expectedRevision: 7,
     }));
     expect(await screen.findByText("suspended")).toBeDefined();
+  });
+
+  it("updates a membership role with reason and expected revision", async () => {
+    mocks.admin.user.mockResolvedValue({ ...makeUser(), memberships: [{
+      membershipId: "membership_1",
+      organizationId: "org_1",
+      user: makeUser(),
+      role: "sales",
+      status: "active",
+      updatedAt: "2026-01-15T10:30:00.000Z",
+      revision: 4,
+    }] });
+    mocks.admin.updateMembership.mockResolvedValue({
+      membershipId: "membership_1",
+      organizationId: "org_1",
+      user: makeUser(),
+      role: "manager",
+      status: "active",
+      updatedAt: "2026-01-15T10:30:00.000Z",
+      revision: 5,
+    });
+
+    render(<AdminUserDetailView userId="user_1" />);
+    expect(await screen.findByText("org_1")).toBeDefined();
+    fireEvent.change(screen.getByLabelText("Role for org_1"), { target: { value: "manager" } });
+    fireEvent.change(screen.getByLabelText("Reason for org_1"), { target: { value: "Team responsibility changed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save role" }));
+
+    await vi.waitFor(() => expect(mocks.admin.updateMembership).toHaveBeenCalledWith("org_1", "membership_1", {
+      role: "manager",
+      reason: "Team responsibility changed",
+      expectedRevision: 4,
+    }));
+    expect(await screen.findByText("Role updated and audited.")).toBeDefined();
   });
 });
