@@ -40,16 +40,10 @@ export function EvidenceViewerModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-line bg-card/60">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-surface border border-line">
-              {isPdf ? (
-                <svg className="w-5 h-5 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              )}
+            <div className="px-2.5 py-1 rounded-lg bg-surface border border-line">
+              <span className={`font-mono text-xs font-bold uppercase ${isPdf ? "text-rose-400" : "text-accent"}`}>
+                {isPdf ? "PDF" : "IMG"}
+              </span>
             </div>
             <div>
               <h3 id="evidence-modal-title" className="text-base font-semibold text-ink">
@@ -66,12 +60,10 @@ export function EvidenceViewerModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-ink-dim hover:text-ink hover:bg-surface border border-transparent hover:border-line transition focus:outline-none focus:ring-1 focus:ring-accent"
+              className="px-2.5 py-1 rounded-lg text-ink-dim hover:text-ink hover:bg-surface border border-line text-xs font-mono uppercase transition focus:outline-none focus:ring-1 focus:ring-accent"
               aria-label="Close modal"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              Close
             </button>
           </div>
         </div>
@@ -80,10 +72,8 @@ export function EvidenceViewerModal({
         <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-deep/80 min-h-[360px]">
           {isPdf ? (
             <div className="text-center p-8 rounded-xl border border-line-soft bg-surface/60 max-w-md">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 font-mono text-sm font-bold uppercase">
+                PDF
               </div>
               <h4 className="text-base font-medium text-ink mb-1">{evidence.fileName}</h4>
               <p className="text-xs text-ink-dim mb-4">Official Engineering Document (PDF)</p>
@@ -100,10 +90,8 @@ export function EvidenceViewerModal({
             />
           ) : (
             <div className="text-center p-8 rounded-xl border border-dashed border-line bg-surface/30 max-w-md">
-              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-accent-soft border border-accent-line flex items-center justify-center text-accent">
-                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-accent-soft border border-accent-line flex items-center justify-center text-accent font-mono text-xs font-bold uppercase">
+                IMG
               </div>
               <h4 className="text-sm font-medium text-ink mb-1">Standard Visual Evidence Record</h4>
               <p className="text-xs text-ink-dim font-mono">ID: {evidence.id}</p>
@@ -125,7 +113,7 @@ export function EvidenceViewerModal({
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-mono text-xs font-semibold text-ink-bright">AI Preflight Feedback:</span>
                 <span className={evidence.feedback.usableQuality ? "text-emerald-400 font-mono text-[11px]" : "text-amber-400 font-mono text-[11px]"}>
-                  {evidence.feedback.usableQuality ? "✓ QUALITY VERIFIED" : "⚠ ACTION NEEDED"}
+                  {evidence.feedback.usableQuality ? "QUALITY VERIFIED" : "ACTION NEEDED"}
                 </span>
               </div>
               <p className="text-ink-dim">{evidence.feedback.summary}</p>

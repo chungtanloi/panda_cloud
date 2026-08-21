@@ -105,7 +105,7 @@ export default function SiteInspectionsMarketingPage() {
               <div className="space-y-[12px]">
                 <div className="flex items-center justify-between rounded-field border border-line bg-deep/80 p-[14px]">
                   <div className="flex items-center gap-[10px]">
-                    <span className="text-accent text-[14px]">⚡</span>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/30 rounded px-[6px] py-[2px] bg-accent-soft">POWER</span>
                     <span className="font-sans text-[13px] text-ink">Primary Switchgear &amp; Transformer</span>
                   </div>
                   <span className="font-mono text-[11px] text-emerald-400 font-semibold">VERIFIED</span>
@@ -113,7 +113,7 @@ export default function SiteInspectionsMarketingPage() {
 
                 <div className="flex items-center justify-between rounded-field border border-line bg-deep/80 p-[14px]">
                   <div className="flex items-center gap-[10px]">
-                    <span className="text-accent text-[14px]">🔋</span>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/30 rounded px-[6px] py-[2px] bg-accent-soft">BACKUP</span>
                     <span className="font-sans text-[13px] text-ink">UPS Topology &amp; N+1 Redundancy</span>
                   </div>
                   <span className="font-mono text-[11px] text-emerald-400 font-semibold">VERIFIED</span>
@@ -121,8 +121,8 @@ export default function SiteInspectionsMarketingPage() {
 
                 <div className="flex items-center justify-between rounded-field border border-line bg-deep/80 p-[14px]">
                   <div className="flex items-center gap-[10px]">
-                    <span className="text-accent text-[14px]">❄️</span>
-                    <span className="font-sans text-[13px] text-ink">CRAC/CRAH HVAC Containment</span>
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/30 rounded px-[6px] py-[2px] bg-accent-soft">HVAC</span>
+                    <span className="font-sans text-[13px] text-ink">CRAC/CRAH Containment</span>
                   </div>
                   <span className="font-mono text-[11px] text-emerald-400 font-semibold">VERIFIED</span>
                 </div>
@@ -281,9 +281,9 @@ export default function SiteInspectionsMarketingPage() {
                 </tr>
                 <tr>
                   <td className="py-[14px] px-[16px] font-medium text-white">In-field Capture Feedback</td>
-                  <td className="py-[14px] px-[16px] text-emerald-400">✓ Instant Preflight AI</td>
-                  <td className="py-[14px] px-[16px] text-emerald-400">✓ Full History Audited</td>
-                  <td className="py-[14px] px-[16px] text-ink-mute">— Offline Report</td>
+                  <td className="py-[14px] px-[16px] text-emerald-400 font-medium">Instant Preflight AI</td>
+                  <td className="py-[14px] px-[16px] text-emerald-400 font-medium">Full History Audited</td>
+                  <td className="py-[14px] px-[16px] text-ink-mute">Offline Report</td>
                 </tr>
                 <tr>
                   <td className="py-[14px] px-[16px] font-medium text-white">Reviewer Accountability</td>

@@ -140,7 +140,7 @@ export default function TechnicalQueuePage() {
 
                       <td className="py-4 px-4 font-mono text-[11px]">
                         <span className={item.isSlaBreached ? "text-rose-400 font-bold" : "text-ink-dim"}>
-                          {item.isSlaBreached ? "⚠ BREACHED" : "On Track"}
+                          {item.isSlaBreached ? "BREACHED" : "On Track"}
                         </span>
                         <span className="block text-[10px] text-ink-dim">
                           Target: {new Date(item.slaTargetAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

@@ -83,32 +83,32 @@ export default function InspectionReviewPage() {
         {/* Group Counts Metric Cards */}
         <Reveal delay={60} className="grid grid-cols-2 sm:grid-cols-4 gap-[16px] mb-[32px]">
           <div className="p-[20px] rounded-card bg-surface border border-line-card backdrop-blur-card">
-            <span className="text-[11px] font-mono text-emerald-400 uppercase block mb-[4px]">
-              ✓ Accepted Records
+            <span className="text-[11px] font-mono text-emerald-400 uppercase block mb-[4px] font-semibold">
+              Accepted Records
             </span>
             <span className="text-[28px] font-bold text-ink font-sans">{groups?.acceptedCount || 0}</span>
             <span className="text-[12px] text-ink-dim block mt-[4px]">Ready for synthesis</span>
           </div>
 
           <div className="p-[20px] rounded-card bg-surface border border-line-card backdrop-blur-card">
-            <span className="text-[11px] font-mono text-amber-400 uppercase block mb-[4px]">
-              ⚠ Retake Needed
+            <span className="text-[11px] font-mono text-amber-400 uppercase block mb-[4px] font-semibold">
+              Retake Needed
             </span>
             <span className="text-[28px] font-bold text-ink font-sans">{groups?.retakeCount || 0}</span>
             <span className="text-[12px] text-ink-dim block mt-[4px]">Preflight action required</span>
           </div>
 
           <div className="p-[20px] rounded-card bg-surface border border-line-card backdrop-blur-card">
-            <span className="text-[11px] font-mono text-rose-400 uppercase block mb-[4px]">
-              ✕ Missing Required
+            <span className="text-[11px] font-mono text-rose-400 uppercase block mb-[4px] font-semibold">
+              Missing Required
             </span>
             <span className="text-[28px] font-bold text-ink font-sans">{groups?.missingRequiredCount || 0}</span>
             <span className="text-[12px] text-ink-dim block mt-[4px]">Not uploaded</span>
           </div>
 
           <div className="p-[20px] rounded-card bg-surface border border-line-card backdrop-blur-card">
-            <span className="text-[11px] font-mono text-ink-dim uppercase block mb-[4px]">
-              ⊘ Unavailable
+            <span className="text-[11px] font-mono text-ink-dim uppercase block mb-[4px] font-semibold">
+              Unavailable
             </span>
             <span className="text-[28px] font-bold text-ink font-sans">{groups?.unavailableCount || 0}</span>
             <span className="text-[12px] text-ink-dim block mt-[4px]">Marked inaccessible</span>
@@ -119,9 +119,11 @@ export default function InspectionReviewPage() {
         {completeness?.criticalMissingItems && completeness.criticalMissingItems.length > 0 && (
           <Reveal delay={120} className="p-[24px] rounded-card bg-amber-950/40 border border-amber-500/40 mb-[32px] space-y-[12px]">
             <div className="flex items-center gap-[10px]">
-              <span className="text-amber-400 text-[18px]">⚠</span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/40 rounded px-[6px] py-[2px] bg-amber-950/60">
+                CRITICAL NOTICE
+              </span>
               <h3 className="font-sans text-[15px] font-semibold text-amber-300">
-                Notice: Critical Items Pending or Inaccessible
+                Critical Items Pending or Inaccessible
               </h3>
             </div>
             <p className="font-sans text-[13px] text-amber-200/90 leading-[20px]">

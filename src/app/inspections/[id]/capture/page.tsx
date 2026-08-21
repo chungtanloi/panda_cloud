@@ -65,12 +65,9 @@ export default function InspectionCapturePage() {
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/site-inspections"
-              className="p-1.5 rounded-lg text-ink-dim hover:text-ink hover:bg-card transition"
-              title="Return"
+              className="px-3 py-1.5 rounded-lg text-ink-dim hover:text-ink hover:bg-card border border-line text-xs font-mono transition"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              &larr; Back
             </Link>
 
             <div className="min-w-0">
@@ -102,11 +99,8 @@ export default function InspectionCapturePage() {
             <button
               type="button"
               onClick={() => setIsCopilotOpenMobile(true)}
-              className="md:hidden px-3 py-1.5 rounded-lg bg-surface hover:bg-card border border-line text-accent text-xs font-mono flex items-center gap-1.5"
+              className="md:hidden px-3 py-1.5 rounded-lg bg-surface hover:bg-card border border-line text-accent text-xs font-mono"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
               Copilot
             </button>
 
@@ -135,9 +129,9 @@ export default function InspectionCapturePage() {
           <button
             type="button"
             onClick={() => setConditionalNotice(null)}
-            className="text-ink-dim hover:text-ink text-xs"
+            className="text-ink-dim hover:text-ink text-xs font-mono uppercase"
           >
-            ✕
+            Dismiss
           </button>
         </div>
       )}
@@ -231,9 +225,9 @@ export default function InspectionCapturePage() {
                       {task.isUnavailable ? (
                         <span className="text-zinc-400">Unavailable</span>
                       ) : hasIssue ? (
-                        <span className="text-amber-400 font-semibold">⚠ Retake Needed</span>
+                        <span className="text-amber-400 font-semibold">Retake Needed</span>
                       ) : hasEvidence ? (
-                        <span className="text-emerald-400">✓ Ready ({task.evidence.length})</span>
+                        <span className="text-emerald-400 font-medium">Ready ({task.evidence.length})</span>
                       ) : (
                         <span className="text-ink-mute">Pending</span>
                       )}
@@ -265,9 +259,9 @@ export default function InspectionCapturePage() {
 
               {/* Safety & Non-invasive Warning */}
               <div className="p-3.5 rounded-xl bg-deep border border-line-soft flex items-start gap-3 text-xs text-ink-dim">
-                <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-400 border border-amber-500/40 rounded px-[6px] py-[2px] bg-amber-950/40 flex-shrink-0">
+                  SAFETY
+                </span>
                 <div className="space-y-0.5">
                   <strong className="text-ink font-semibold">Safety Boundary Protocol:</strong>
                   <p>
@@ -302,14 +296,12 @@ export default function InspectionCapturePage() {
                       className="hidden"
                     />
 
-                    <div className="w-12 h-12 rounded-full bg-accent-soft border border-accent-line flex items-center justify-center text-accent mb-3">
-                      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                    </div>
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-accent border border-accent/40 rounded-full px-4 py-1.5 bg-accent-soft mb-3">
+                      {isUploading ? "PROCESSING..." : "SELECT EVIDENCE FILE"}
+                    </span>
 
                     <h3 className="text-sm font-semibold text-ink mb-1">
-                      {isUploading ? "Uploading & Running AI Preflight..." : "Select Photo or PDF to Upload"}
+                      {isUploading ? "Uploading & Running AI Preflight..." : "Upload Photo or PDF Engineering Record"}
                     </h3>
                     <p className="text-xs text-ink-dim max-w-sm mb-2">
                       Supports JPEG, PNG, WebP or official engineering PDF scan logs (max 3 files).

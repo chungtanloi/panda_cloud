@@ -99,9 +99,9 @@ export function DemoPresenterDrawer() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg text-ink-dim hover:text-ink hover:bg-card"
+              className="px-2.5 py-1 rounded-lg text-ink-dim hover:text-ink hover:bg-card border border-line text-xs font-mono uppercase"
             >
-              ✕
+              Close
             </button>
           </div>
 

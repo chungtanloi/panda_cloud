@@ -250,7 +250,7 @@ export default function TechnicalInspectionDetailPage() {
                         }
                         className="px-3 py-1.5 rounded-field bg-deep border border-line text-ink hover:border-accent text-xs font-mono flex items-center gap-2 transition"
                       >
-                        <span>📎 {c.fileName}</span>
+                        <span>[FILE] {c.fileName}</span>
                         <span className="text-[10px] text-accent">View</span>
                       </button>
                     ))}

@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useInspectionSetup } from "@/controllers/useInspectionSetup";
 import { SimulationDisclosure } from "@/components/inspection/SimulationDisclosure";
+import { Logo } from "@/components/layout/Logo";
 import { Card, CardHeading } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -45,6 +46,22 @@ export default function NewInspectionPage() {
     <div className="relative min-h-screen bg-base text-ink flex flex-col">
       <AnimatedBackdrop stars />
       <SimulationDisclosure />
+
+      {/* Top Header with Brand Logo & Exit Action */}
+      <header className="relative z-20 border-b border-line bg-surface/90 backdrop-blur-md px-[24px] lg:px-[40px] py-[16px] sticky top-0">
+        <div className="max-w-[1000px] mx-auto flex items-center justify-between gap-4">
+          <Link href="/site-inspections" className="hover:opacity-90 transition" title="Return to Panda Cloud Site Inspections">
+            <Logo />
+          </Link>
+
+          <Link
+            href="/site-inspections"
+            className="px-3.5 py-1.5 rounded-field bg-surface hover:bg-card border border-line text-xs font-mono text-ink-dim hover:text-ink transition"
+          >
+            &larr; Exit Setup
+          </Link>
+        </div>
+      </header>
 
       <main className="relative z-10 flex-1 max-w-[1000px] w-full mx-auto px-[24px] lg:px-[40px] py-[40px] lg:py-[64px]">
         {/* Breadcrumb Header */}

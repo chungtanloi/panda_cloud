@@ -52,7 +52,7 @@ export default function InspectionResultsPage() {
           <Card className="p-[40px] text-center space-y-[24px]">
             <div className="size-[64px] rounded-full mx-auto flex items-center justify-center bg-accent-soft border border-accent-line text-accent">
               {isOutage ? (
-                <span className="text-[28px]">⚠</span>
+                <span className="font-mono text-xs font-bold uppercase text-amber-400">OUTAGE</span>
               ) : (
                 <div className="size-[28px] border-2 border-accent border-t-transparent rounded-full animate-spin" />
               )}
@@ -77,17 +77,25 @@ export default function InspectionResultsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-[8px] text-[11px] font-mono text-ink-dim pt-[4px]">
-                <div className="flex items-center gap-[6px] text-emerald-400">
-                  <span>✓</span> 1. Evidence Verified
+                <div className="flex items-center gap-[6px] text-emerald-400 font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40">DONE</span>
+                  1. Evidence Verified
                 </div>
-                <div className="flex items-center gap-[6px] text-emerald-400">
-                  <span>✓</span> 2. Facts Extracted
+                <div className="flex items-center gap-[6px] text-emerald-400 font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40">DONE</span>
+                  2. Facts Extracted
                 </div>
-                <div className={`flex items-center gap-[6px] ${analysisStatus.progressPercent >= 75 ? "text-emerald-400" : "text-ink-dim"}`}>
-                  <span>{analysisStatus.progressPercent >= 75 ? "✓" : "○"}</span> 3. Criteria Evaluated
+                <div className={`flex items-center gap-[6px] ${analysisStatus.progressPercent >= 75 ? "text-emerald-400 font-medium" : "text-ink-dim"}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${analysisStatus.progressPercent >= 75 ? "bg-emerald-950 border border-emerald-500/40 text-emerald-400" : "bg-deep border border-line text-ink-dim"}`}>
+                    {analysisStatus.progressPercent >= 75 ? "DONE" : "PENDING"}
+                  </span>
+                  3. Criteria Evaluated
                 </div>
-                <div className={`flex items-center gap-[6px] ${analysisStatus.progressPercent >= 100 ? "text-emerald-400" : "text-ink-dim"}`}>
-                  <span>{analysisStatus.progressPercent >= 100 ? "✓" : "○"}</span> 4. Report Prepared
+                <div className={`flex items-center gap-[6px] ${analysisStatus.progressPercent >= 100 ? "text-emerald-400 font-medium" : "text-ink-dim"}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${analysisStatus.progressPercent >= 100 ? "bg-emerald-950 border border-emerald-500/40 text-emerald-400" : "bg-deep border border-line text-ink-dim"}`}>
+                    {analysisStatus.progressPercent >= 100 ? "DONE" : "PENDING"}
+                  </span>
+                  4. Report Prepared
                 </div>
               </div>
             </div>
@@ -129,7 +137,7 @@ export default function InspectionResultsPage() {
               </h1>
               {isFinal ? (
                 <span className="px-[10px] py-[2px] rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold uppercase tracking-wider">
-                  ★ PANDA CLOUD REVIEWED — FINAL
+                  PANDA CLOUD REVIEWED — FINAL
                 </span>
               ) : (
                 <span className="px-[10px] py-[2px] rounded-full bg-amber-950/80 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold uppercase tracking-wider">
@@ -155,9 +163,8 @@ export default function InspectionResultsPage() {
                 href={finalReport.downloadSessionUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="px-[20px] py-[8px] rounded-field bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-sans uppercase tracking-wider transition flex items-center gap-[6px] shadow-md shadow-emerald-950/30"
+                className="px-[20px] py-[8px] rounded-field bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs font-sans uppercase tracking-wider transition flex items-center shadow-md shadow-emerald-950/30"
               >
-                <span>📥</span>
                 Download Official PDF
               </a>
             )}
@@ -287,7 +294,7 @@ export default function InspectionResultsPage() {
                             key={i}
                             className="px-[10px] py-[3px] rounded-field bg-deep border border-line text-accent font-mono text-[11px]"
                           >
-                            📎 {c.fileName}
+                            [CITED] {c.fileName}
                           </span>
                         ))}
                       </div>
