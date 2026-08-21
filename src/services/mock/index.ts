@@ -59,6 +59,11 @@ import { computeQuote } from "@/lib/booking/quote";
 import { mockDealCards, mockSalesColumns } from "./salesFixtures";
 import { mockWorkspaceTables } from "./workspaceFixtures";
 import {
+  mockSiteInspectionService,
+  mockInspectionReviewService,
+  mockInspectionProfileAdminService,
+} from "./siteInspectionMock";
+import {
   mockKycCases,
   mockNcndaAgreements,
   toAgreementSummary,
@@ -1437,4 +1442,7 @@ export const mockApi: ApiClient = {
     createMembership: async (orgId: string, body: import('@/models/admin').AdminMembershipCreateRequest) => ({ membershipId: "mem_mock", organizationId: orgId, user: { userId: body.userId, email: "", fullName: "", userType: "customer", status: "active", lastLoginAt: null, updatedAt: new Date().toISOString(), revision: 1 }, role: body.role, status: "active", updatedAt: new Date().toISOString(), revision: 1 }),
     updateMembership: async (orgId: string, membershipId: string, body: import('@/models/admin').AdminMembershipUpdateRequest) => ({ membershipId, organizationId: orgId, user: { userId: "", email: "", fullName: "", userType: "customer", status: "active", lastLoginAt: null, updatedAt: new Date().toISOString(), revision: 1 }, role: body.role ?? "customer", status: body.status ?? "active", updatedAt: new Date().toISOString(), revision: 2 }),
   },
+  siteInspections: mockSiteInspectionService,
+  inspectionReview: mockInspectionReviewService,
+  inspectionProfiles: mockInspectionProfileAdminService,
 };

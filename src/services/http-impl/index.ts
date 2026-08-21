@@ -568,6 +568,43 @@ export const httpApi: ApiClient = {
     assessmentLeadQueue: () => http.get<AssessmentLeadQueueResponse>(endpoints.manager.assessmentLeads),
     assignAssessmentLead: (leadId: string, salesUserId: string) => http.post<AssessmentLeadAssignmentResponse>(endpoints.manager.assignAssessmentLead(leadId), { salesUserId }),
   },
+
+  siteInspections: {
+    getPublishedProfiles: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getProfileVersion: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    createInspection: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getInspection: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    updateInspection: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getTasks: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    attachEvidence: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    removeEvidence: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    markTaskUnavailable: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getCompleteness: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    submitInspection: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getAnalysisStatus: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    retryAnalysis: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getResult: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getFinalReport: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+    getCopilotContext: async () => { throw new Error("HTTP siteInspections requires pinned backend client release."); },
+  },
+
+  inspectionReview: {
+    listQueue: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+    getDetail: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+    claimInspection: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+    releaseClaim: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+    reassignClaim: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+    resolveCriterion: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+    finalizeInspection: async () => { throw new Error("HTTP inspectionReview requires pinned backend client release."); },
+  },
+
+  inspectionProfiles: {
+    listProfiles: async () => { throw new Error("HTTP inspectionProfiles requires pinned backend client release."); },
+    getProfile: async () => { throw new Error("HTTP inspectionProfiles requires pinned backend client release."); },
+    createProfileDraft: async () => { throw new Error("HTTP inspectionProfiles requires pinned backend client release."); },
+    updateProfileDraft: async () => { throw new Error("HTTP inspectionProfiles requires pinned backend client release."); },
+    publishProfileDraft: async () => { throw new Error("HTTP inspectionProfiles requires pinned backend client release."); },
+  },
 };
 
 type BackendDdMetrics = {

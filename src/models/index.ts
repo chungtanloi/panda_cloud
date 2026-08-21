@@ -21,3 +21,4 @@ export * from "./dealChangeRequests";
 export * from "./admin";
 
 export * from "./documents";
+export * from "./siteInspection";

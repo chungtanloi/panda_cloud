@@ -88,6 +88,25 @@ import type {
   ManagerOverview, ManagerTeamResponse, ManagerTeamMember, ManagerProjectReport, ManagerProjectListResponse, ManagerProjectQuery, AssessmentLeadQueueResponse, AssessmentLeadAssignmentResponse, AdminOverview, AdminUserPage, AdminRoles, AdminHealth, AdminAuditPage, AdminIntegrationEventPage, AdminIntegrationEvent, AdminOrganizationPage, AdminOrganizationDetail, AdminMembershipPage, AdminUserUpdateRequest, AdminOrganizationCreateRequest, AdminOrganizationUpdateRequest, AdminMembershipCreateRequest, AdminMembershipUpdateRequest, AdminUser, AdminOrganizationSummary, AdminMembership,
   SalesOverview, SalesConversionReport, SalesActivityReport, SalesForecastReport, SalesLeadPage, SalesLeadDetail, SalesLeadQualifyRequest, SalesLeadQualifyResponse, ActivityPage, ActivityCreateRequest, TaskPage, TaskUpdateRequest, ActivitySummary, CustomerPage, CustomerDetail,
   DealChangeRequest, DealChangeRequestCreate, DealChangeRequestDecision, DealChangeRequestPage,
+  InspectionProfile,
+  InspectionProfileVersion,
+  SiteInspection,
+  SiteInspectionCreateRequest,
+  SiteInspectionUpdateRequest,
+  CaptureTask,
+  EvidenceRecord,
+  EvidenceAttachRequest,
+  CompletenessSummary,
+  InspectionSubmitRequest,
+  InspectionAnalysisStatus,
+  InspectionResult,
+  FinalReport,
+  TechnicalQueueQuery,
+  TechnicalQueuePage,
+  TechnicalInspectionDetail,
+  ReviewerClaimRequest,
+  ReviewerDecisionRequest,
+  InspectionFinalizeRequest,
 } from "@/models";
 
 /**
@@ -391,6 +410,53 @@ export interface DocumentsService {
   getDocument(documentId: string): Promise<DocumentSummary>;
   createDownloadSession(documentId: string): Promise<DocumentDownloadSessionResponse>;
 }
+
+/**
+ * Site Inspection Customer & Public Journey (INS-PROD-001..006, INS-UX-001..005)
+ */
+export interface SiteInspectionService {
+  getPublishedProfiles(): Promise<InspectionProfileVersion[]>;
+  getProfileVersion(profileId: string, versionId: string): Promise<InspectionProfileVersion>;
+  createInspection(body: SiteInspectionCreateRequest): Promise<SiteInspection>;
+  getInspection(id: string): Promise<SiteInspection>;
+  updateInspection(id: string, body: SiteInspectionUpdateRequest): Promise<SiteInspection>;
+  getTasks(inspectionId: string): Promise<CaptureTask[]>;
+  attachEvidence(inspectionId: string, taskId: string, body: EvidenceAttachRequest): Promise<EvidenceRecord>;
+  removeEvidence(inspectionId: string, taskId: string, evidenceId: string): Promise<void>;
+  markTaskUnavailable(inspectionId: string, taskId: string, reason?: string): Promise<CaptureTask>;
+  getCompleteness(inspectionId: string): Promise<CompletenessSummary>;
+  submitInspection(inspectionId: string, body: InspectionSubmitRequest): Promise<SiteInspection>;
+  getAnalysisStatus(inspectionId: string): Promise<InspectionAnalysisStatus>;
+  retryAnalysis(inspectionId: string): Promise<InspectionAnalysisStatus>;
+  getResult(inspectionId: string): Promise<InspectionResult>;
+  getFinalReport(inspectionId: string): Promise<FinalReport>;
+  getCopilotContext(inspectionId: string, taskId?: string, findingId?: string): Promise<{ suggestedPrompts: string[]; explanation?: string }>;
+}
+
+/**
+ * Technical Review Workbench & Queue (INS-UX-005..006, INS-API-008..009, INS-OPS-002)
+ */
+export interface InspectionReviewService {
+  listQueue(query?: TechnicalQueueQuery): Promise<TechnicalQueuePage>;
+  getDetail(id: string): Promise<TechnicalInspectionDetail>;
+  claimInspection(id: string, body: ReviewerClaimRequest): Promise<TechnicalInspectionDetail>;
+  releaseClaim(id: string, reason?: string): Promise<TechnicalInspectionDetail>;
+  reassignClaim(id: string, reviewerId: string, reason: string): Promise<TechnicalInspectionDetail>;
+  resolveCriterion(id: string, criterionId: string, body: ReviewerDecisionRequest): Promise<TechnicalInspectionDetail>;
+  finalizeInspection(id: string, body: InspectionFinalizeRequest): Promise<FinalReport>;
+}
+
+/**
+ * Profile Administration (INS-UX-007, INS-API-010)
+ */
+export interface InspectionProfileAdminService {
+  listProfiles(): Promise<InspectionProfile[]>;
+  getProfile(id: string): Promise<InspectionProfile>;
+  createProfileDraft(id: string): Promise<InspectionProfileVersion>;
+  updateProfileDraft(id: string, versionId: string, data: Partial<InspectionProfileVersion>): Promise<InspectionProfileVersion>;
+  publishProfileDraft(id: string, versionId: string): Promise<InspectionProfileVersion>;
+}
+
 /** The complete surface exposed by `services/api.ts`. */
 export interface ApiClient {
   auth: AuthService;
@@ -412,4 +478,7 @@ export interface ApiClient {
   manager: ManagerService;
   admin: AdminService;
   siteContent: SiteContentClient;
+  siteInspections: SiteInspectionService;
+  inspectionReview: InspectionReviewService;
+  inspectionProfiles: InspectionProfileAdminService;
 }

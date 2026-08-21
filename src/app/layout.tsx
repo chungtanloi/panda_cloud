@@ -21,6 +21,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Panda Cloud",
   description: "GPU capacity, energy and land infrastructure for AI workloads.",
+  icons: {
+    icon: "data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
