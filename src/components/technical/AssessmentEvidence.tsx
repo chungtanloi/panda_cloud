@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { SecureDocumentUpload } from "@/components/documents/SecureDocumentUpload";
 import { Input, Select } from "@/components/ui/Field";
 import { ErrorState, LoadingState } from "@/components/ui/states";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { WorkspacePage } from "@/components/workspace/WorkspacePage";
 import { hasPermission } from "@/config/access";
 import { useAuth } from "@/controllers/AuthContext";
@@ -30,6 +31,7 @@ export function AssessmentEvidence({ assessmentId }: { assessmentId: string }) {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [error, setError] = useState<NormalizedError | null>(null);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [pendingDetach, setPendingDetach] = useState<string | null>(null);
 
   const selectedItem = useMemo(
     () => items?.find((item) => item.id === selectedItemId) ?? null,
@@ -223,7 +225,7 @@ export function AssessmentEvidence({ assessmentId }: { assessmentId: string }) {
                   Download
                 </button>
                 {canWrite ? (
-                  <button type="button" onClick={() => void detach(document.documentId)} className="rounded-full border border-red-400/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-300">
+                    <button type="button" onClick={() => setPendingDetach(document.documentId)} className="rounded-full border border-red-400/50 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-300">
                     Detach
                   </button>
                 ) : null}
@@ -232,6 +234,7 @@ export function AssessmentEvidence({ assessmentId }: { assessmentId: string }) {
           ))}
         </ul>
       </section>
+      {pendingDetach ? <ConfirmDialog title="Detach this document?" message="The document will be removed from this DD requirement. The original file remains in secure storage." confirmLabel="Detach document" onCancel={() => setPendingDetach(null)} onConfirm={() => { const documentId = pendingDetach; setPendingDetach(null); void detach(documentId); }} /> : null}
     </WorkspacePage>
   );
 }

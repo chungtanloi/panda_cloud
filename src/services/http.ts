@@ -144,9 +144,12 @@ async function execute<T>(path: string, options: RequestOptions): Promise<T> {
   const { method = "GET", body, query, anonymous, signal } = options;
   const correlationId = options.correlationId ?? newCorrelationId();
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), apiConfig.timeoutMs);
-  if (signal) signal.addEventListener("abort", () => controller.abort(), { once: true });
+  if (signal?.aborted) {
+    throw new ApiError({ code: "TIMEOUT", message: "The request was cancelled.", correlationId });
+  }
+
+  const retryable = method === "GET";
+  const maxAttempts = retryable ? 3 : 1;
 
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -163,38 +166,53 @@ async function execute<T>(path: string, options: RequestOptions): Promise<T> {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  let response: Response;
-  try {
-    response = await fetch(buildUrl(path, query), {
-      method,
-      headers,
-      body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (cause) {
-    const aborted = cause instanceof DOMException && cause.name === "AbortError";
-    // No response, so no gateway-assigned correlation id — send ours, which is
-    // still the id the backend will have logged against the attempt.
-    throw new ApiError({
-      code: aborted ? "TIMEOUT" : "NETWORK_ERROR",
-      message: aborted
-        ? "The request timed out. Please try again."
-        : "Could not reach the server. Check your connection and try again.",
-      correlationId,
-    });
-  } finally {
-    clearTimeout(timeout);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (signal?.aborted) throw new ApiError({ code: "TIMEOUT", message: "The request was cancelled.", correlationId });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), apiConfig.timeoutMs);
+    if (signal) signal.addEventListener("abort", () => controller.abort(), { once: true });
+    try {
+      const response = await fetch(buildUrl(path, query), {
+        method,
+        headers,
+        body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        if (retryable && [502, 503, 504].includes(response.status) && attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+          continue;
+        }
+        const normalized = await toNormalizedError(response, correlationId);
+        if (response.status === 401 && !anonymous && typeof window !== "undefined") {
+          void sessionBridge.handleUnauthorized();
+        }
+        throw new ApiError(normalized);
+      }
+      if (response.status === 204) return undefined as T;
+      const payload = (await response.json()) as ApiResponse<T> | T;
+      return (payload && typeof payload === "object" && "data" in payload
+        ? (payload as ApiResponse<T>).data
+        : (payload as T)) as T;
+    } catch (cause) {
+      if (cause instanceof ApiError) throw cause;
+      const aborted = cause instanceof DOMException && cause.name === "AbortError";
+      if (retryable && !aborted && attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+        continue;
+      }
+      throw new ApiError({
+        code: aborted ? "TIMEOUT" : "NETWORK_ERROR",
+        message: aborted
+          ? "The request timed out. Please try again."
+          : "Could not reach the server. Check your connection and try again.",
+        correlationId,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   }
-
-  if (!response.ok) throw new ApiError(await toNormalizedError(response, correlationId));
-
-  if (response.status === 204) return undefined as T;
-
-  const payload = (await response.json()) as ApiResponse<T> | T;
-  // Tolerates both a `data`-wrapped and a bare payload — see CR-001.
-  return (payload && typeof payload === "object" && "data" in payload
-    ? (payload as ApiResponse<T>).data
-    : (payload as T)) as T;
+  throw new ApiError({ code: "NETWORK_ERROR", message: "Could not reach the server. Check your connection and try again.", correlationId });
 }
 
 export const http = {

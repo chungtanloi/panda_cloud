@@ -237,8 +237,8 @@ export const httpApi: ApiClient = {
   },
 
   workspace: {
-    getResource: (kind: WorkspaceResourceKind) =>
-      http.get<ResourceTable>(endpoints.workspace.resource(kind)),
+    getResource: (kind: WorkspaceResourceKind, query = {}) =>
+      http.get<ResourceTable>(endpoints.workspace.resource(kind), { query }),
   },
 
   // Staff only — every call carries the bearer token, and the backend must

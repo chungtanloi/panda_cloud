@@ -23,6 +23,15 @@ export function ClerkSessionProvider({
   }, [getToken]);
 
   useEffect(() => {
+    const unregister = sessionBridge.registerUnauthorizedHandler(async () => {
+      const returnTo = `${window.location.pathname}${window.location.search}`;
+      await signOut();
+      window.location.assign(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+    });
+    return unregister;
+  }, [signOut]);
+
+  useEffect(() => {
     sessionBridge.setIdentityHint(
       user?.primaryEmailAddress?.emailAddress ?? null,
     );

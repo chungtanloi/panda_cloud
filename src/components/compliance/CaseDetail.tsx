@@ -28,6 +28,7 @@ import {
 import type { NormalizedError } from "@/models/common";
 import { api, normalizeError } from "@/services/api";
 import { notifyDealReadinessChanged } from "@/controllers/ReadinessContext";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 function dateTime(iso: string | null): string {
   if (!iso) return "—";
@@ -71,6 +72,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
   const [expiresOn, setExpiresOn] = useState("");
   const [saving, setSaving] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [confirmReject, setConfirmReject] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,6 +119,15 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
       return;
     }
 
+    if (status === "rejected" && detail.status !== "rejected") {
+      setConfirmReject(true);
+      return;
+    }
+    await persist(body);
+  }
+
+  async function persist(body: KycCaseUpdate) {
+    if (!detail) return;
     setSaving(true);
     try {
       await api.compliance.updateCase(detail.caseId, body);
@@ -191,7 +202,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
             />
           </div>
 
-          <form onSubmit={save} className="mt-5 grid gap-4">
+            <form onSubmit={save} className="mt-5 grid gap-4">
             <Select
               label="Status *"
               value={status}
@@ -318,6 +329,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
           </GapNotice>
         </div>
       </div>
+      {confirmReject ? <ConfirmDialog title="Reject this KYC case?" message="This decision will be recorded in the compliance audit trail and may block the deal." confirmLabel="Reject case" onConfirm={() => { setConfirmReject(false); if (detail) void persist({ expectedRevision: detail.revision, status: "rejected", ...(risk ? { riskLevel: risk } : {}), ...(detail.assignedToId ? { assignedTo: detail.assignedToId } : {}), ...(reason.trim() ? { rejectionReason: reason.trim() } : {}), ...(detail.submittedAt ? { submittedAt: detail.submittedAt } : {}), ...(verifiedOn ? { verifiedAt: new Date(`${verifiedOn}T00:00:00Z`).toISOString() } : {}), ...(expiresOn ? { expiresAt: new Date(`${expiresOn}T00:00:00Z`).toISOString() } : {}) }); }} onCancel={() => setConfirmReject(false)} busy={saving} /> : null}
     </WorkspacePage>
   );
 }

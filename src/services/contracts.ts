@@ -181,7 +181,7 @@ export interface SubmissionService {
 }
 
 export interface WorkspaceService {
-  getResource(kind: WorkspaceResourceKind): Promise<ResourceTable>;
+  getResource(kind: WorkspaceResourceKind, query?: { search?: string; cursor?: string }): Promise<ResourceTable>;
 }
 
 export interface AdminService {
