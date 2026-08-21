@@ -1,10 +1,13 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 import { useAsync } from "@/controllers/useAsync";
-import { api } from "@/services/api";
+import { api, normalizeError } from "@/services/api";
 import { WorkspacePage } from "./WorkspacePage";
 import { ErrorState, LoadingState } from "@/components/ui/states";
+import { AdminActionGuard } from "@/components/admin/AdminActionGuard";
 import type { AdminUserSummary, AdminAuditRecord, AdminIntegrationEvent } from "@/models/admin";
+import type { AdminUserUpdateRequest } from "@/models/admin";
 
 const labels = { overview: ["Admin / Overview", "System Administration"], users: ["Admin / Identity", "User Management"], roles: ["Admin / Governance", "Roles"], system: ["Admin / System", "System Health"], audit: ["Admin / Governance", "Audit Logs"], events: ["Admin / Governance", "Integration Events"] } as const;
 type Kind = keyof typeof labels;
@@ -15,7 +18,7 @@ export function AdminApiView({ kind }: { kind: Kind }) {
   if (state.status === "loading" || state.status === "idle") return <WorkspacePage eyebrow={eyebrow} title={title} description="Backend-owned administrative data."><LoadingState label={`Loading ${title}`} /></WorkspacePage>;
   if (state.status === "error") return <WorkspacePage eyebrow={eyebrow} title={title} description="Backend-owned administrative data."><ErrorState error={state.error} onRetry={() => void run()} /></WorkspacePage>;
   if (kind === "overview") return <AdminOverviewView data={state.data as import("@/models/admin").AdminOverview} />;
-  if (kind === "users") return <WorkspacePage eyebrow={eyebrow} title={title} description="Read-only identity and membership projections."><UserTable items={pageItems<AdminUserSummary>(state.data)} /></WorkspacePage>;
+  if (kind === "users") return <WorkspacePage eyebrow={eyebrow} title={title} description="Identity management is restricted to Admin and Super Admin. Every change is audited."><UserTable items={pageItems<AdminUserSummary>(state.data)} /></WorkspacePage>;
   if (kind === "roles") return <WorkspacePage eyebrow={eyebrow} title={title} description="Canonical roles are read-only backend policy."><RoleView roles={arrayField<string>(state.data, "roles")} /></WorkspacePage>;
   if (kind === "system") return <WorkspacePage eyebrow={eyebrow} title={title} description="Only backend-reported health facts are shown."><HealthView data={state.data as unknown as import("@/models/admin").AdminHealth} /></WorkspacePage>;
   if (kind === "audit") return <WorkspacePage eyebrow={eyebrow} title={title} description="Redacted, read-only audit history."><AuditTable items={pageItems<AdminAuditRecord>(state.data)} /></WorkspacePage>;
@@ -29,7 +32,66 @@ export function AdminAuditDetailView({ auditId }: { auditId: string }) { const {
 export function AdminIntegrationEventDetailView({ eventId }: { eventId: string }) { const { state, run } = useAsync(() => api.admin.event(eventId), { immediate: [] }); if (state.status === "loading" || state.status === "idle") return <WorkspacePage eyebrow="Admin / Governance" title="Integration event" description="Safe webhook lifecycle metadata only."><LoadingState label="Loading integration event" /></WorkspacePage>; if (state.status === "error") return <WorkspacePage eyebrow="Admin / Governance" title="Integration event" description="Safe webhook lifecycle metadata only."><ErrorState error={state.error} onRetry={() => void run()} /></WorkspacePage>; const event = state.data; return <WorkspacePage eyebrow="Admin / Governance" title={`${event.provider} · ${event.eventType}`} description="Safe lifecycle metadata; payloads, signatures, tokens and retry controls are never exposed."><dl className="grid gap-3 rounded-2xl border border-line bg-surface p-5 text-sm sm:grid-cols-2"><Info label="Status" value={event.status} /><Info label="Attempts" value={String(event.attemptCount)} /><Info label="External event ID" value={event.externalEventId} /><Info label="Retry exhausted" value={event.retryExhausted ? "yes" : "no"} /><Info label="Received" value={new Date(event.receivedAt).toLocaleString()} /><Info label="Last attempt" value={event.lastAttemptAt ? new Date(event.lastAttemptAt).toLocaleString() : "—"} /><Info label="Next attempt" value={event.nextAttemptAt ? new Date(event.nextAttemptAt).toLocaleString() : "—"} /><Info label="Processed" value={event.processedAt ? new Date(event.processedAt).toLocaleString() : "—"} /><Info label="Last error summary" value={event.lastErrorSummary ?? "—"} /></dl></WorkspacePage>; }
 
 function AdminOverviewView({ data }: { data: { users: { countsByStatus: Record<string, number>; countsByType: Record<string, number> }; memberships: { countsByRole: Record<string, number>; countsByStatus: Record<string, number> }; governance: { webhookEventCountsByStatus: Record<string, number> }; ddConfiguration: { templateCount: number; versionCountsByStatus: Record<string, number> } } }) { return <WorkspacePage eyebrow="Admin / Overview" title="System Administration" description="Source-backed identity, governance and DD configuration state." stats={[{ label: "Users", value: String(Object.values(data.users.countsByStatus).reduce((a, b) => a + b, 0)) }, { label: "Memberships", value: String(Object.values(data.memberships.countsByStatus).reduce((a, b) => a + b, 0)) }, { label: "DD templates", value: String(data.ddConfiguration.templateCount) }, { label: "Webhook events", value: String(Object.values(data.governance.webhookEventCountsByStatus).reduce((a, b) => a + b, 0)) }]}><div className="grid gap-4 lg:grid-cols-3"><Metric title="Users by status" values={data.users.countsByStatus} /><Metric title="Memberships by role" values={data.memberships.countsByRole} /><Metric title="Webhook events" values={data.governance.webhookEventCountsByStatus} /></div></WorkspacePage>; }
-function UserTable({ items }: { items?: AdminUserSummary[] }) { const safeItems = Array.isArray(items) ? items : []; return <div className="overflow-x-auto rounded-2xl border border-line"><table className="min-w-full text-left text-sm"><thead><tr className="border-b border-line text-ink-dim"><th className="p-4">Identity</th><th className="p-4">Type</th><th className="p-4">Status</th></tr></thead><tbody>{safeItems.map((user) => <tr key={user.userId} className="border-b border-line/60"><td className="p-4"><Link href={`/admin/users/${encodeURIComponent(user.userId)}`} className="font-medium text-accent hover:underline">{user.fullName || user.email}</Link><div className="text-xs text-ink-dim">{user.email}</div></td><td className="p-4">{user.userType}</td><td className="p-4">{user.status}</td></tr>)}</tbody></table>{safeItems.length === 0 ? <p className="p-8 text-center text-sm text-ink-dim">No users returned.</p> : null}</div>; }
+function UserTable({ items }: { items?: AdminUserSummary[] }) {
+  const [rows, setRows] = useState(() => (Array.isArray(items) ? items : []));
+  const [selected, setSelected] = useState<{ user: AdminUserSummary; status: AdminUserUpdateRequest["status"] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateUser = async (reason: string) => {
+    if (!selected) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await api.admin.updateUser(selected.user.userId, {
+        status: selected.status,
+        reason,
+        expectedRevision: selected.user.revision,
+      });
+      setRows((current) => current.map((row) => row.userId === updated.userId ? { ...row, ...updated } : row));
+      setSelected(null);
+    } catch (cause) {
+      setError(normalizeError(cause).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <>
+    <div className="overflow-x-auto rounded-2xl border border-line">
+      <table className="min-w-full text-left text-sm">
+        <thead><tr className="border-b border-line text-ink-dim"><th className="p-4">Identity</th><th className="p-4">Type</th><th className="p-4">Status</th><AdminActionGuard><th className="p-4">Actions</th></AdminActionGuard></tr></thead>
+        <tbody>{rows.map((user) => <tr key={user.userId} className="border-b border-line/60">
+          <td className="p-4"><Link href={`/admin/users/${encodeURIComponent(user.userId)}`} className="font-medium text-accent hover:underline">{user.fullName || user.email}</Link><div className="text-xs text-ink-dim">{user.email}</div></td>
+          <td className="p-4">{user.userType}</td>
+          <td className="p-4">{user.status}</td>
+          <AdminActionGuard><td className="p-4"><div className="flex flex-wrap gap-2">
+            {user.status !== "active" ? <button type="button" className="min-h-11 rounded-lg border border-line px-3 py-2 text-xs text-ink hover:border-accent" onClick={() => setSelected({ user, status: "active" })}>Reactivate</button> : null}
+            {user.status !== "suspended" ? <button type="button" className="min-h-11 rounded-lg border border-line px-3 py-2 text-xs text-ink hover:border-accent" onClick={() => setSelected({ user, status: "suspended" })}>Suspend</button> : null}
+            {user.status !== "disabled" ? <button type="button" className="min-h-11 rounded-lg border border-danger/50 px-3 py-2 text-xs text-danger hover:border-danger" onClick={() => setSelected({ user, status: "disabled" })}>Disable</button> : null}
+          </div></td></AdminActionGuard>
+        </tr>)}</tbody>
+      </table>
+      {rows.length === 0 ? <p className="p-8 text-center text-sm text-ink-dim">No users returned.</p> : null}
+    </div>
+    {error ? <p role="alert" className="mt-3 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{error}</p> : null}
+    {selected ? <AdminUserStatusDialog user={selected.user} status={selected.status} busy={busy} onCancel={() => { if (!busy) setSelected(null); }} onConfirm={updateUser} /> : null}
+  </>;
+}
+
+function AdminUserStatusDialog({ user, status, busy, onCancel, onConfirm }: { user: AdminUserSummary; status: AdminUserUpdateRequest["status"]; busy: boolean; onCancel: () => void; onConfirm: (reason: string) => Promise<void> }) {
+  const [reason, setReason] = useState("");
+  const action = status === "active" ? "reactivate" : status === "suspended" ? "suspend" : "disable";
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="admin-user-status-title">
+    <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
+      <h2 id="admin-user-status-title" className="text-lg font-semibold text-ink">{action.charAt(0).toUpperCase() + action.slice(1)} user</h2>
+      <p className="mt-2 text-sm text-ink-dim">This changes <span className="font-medium text-ink">{user.fullName || user.email}</span> to <span className="font-medium text-ink">{status}</span>. The action is audited and protected by the current revision.</p>
+      <label className="mt-5 block text-sm font-medium text-ink" htmlFor="admin-user-reason">Reason <span className="text-danger">*</span></label>
+      <textarea id="admin-user-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={4} maxLength={500} className="mt-2 w-full rounded-xl border border-line bg-canvas p-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent" placeholder="Explain why this account is being changed." />
+      <div className="mt-5 flex justify-end gap-3"><button type="button" className="min-h-11 rounded-lg border border-line px-4 py-2 text-sm text-ink" onClick={onCancel} disabled={busy}>Cancel</button><button type="button" className="min-h-11 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void onConfirm(reason.trim())} disabled={busy || reason.trim().length < 3}>{busy ? "Saving…" : `Confirm ${action}`}</button></div>
+    </div>
+  </div>;
+}
 function AuditTable({ items }: { items: AdminAuditRecord[] }) { return <div className="overflow-x-auto rounded-2xl border border-line"><table className="min-w-full text-left text-sm"><thead><tr className="border-b border-line text-ink-dim"><th className="p-4">Action</th><th className="p-4">Resource</th><th className="p-4">Actor</th><th className="p-4">Created</th></tr></thead><tbody>{items.map((item) => <tr key={item.auditId} className="border-b border-line/60"><td className="p-4"><Link href={`/admin/audit-logs/${encodeURIComponent(item.auditId)}`} className="font-medium text-accent hover:underline">{item.action}</Link></td><td className="p-4">{item.resourceType} · {item.resourceId}</td><td className="p-4">{item.actorUserId ?? item.actorType}</td><td className="p-4">{new Date(item.createdAt).toLocaleString()}</td></tr>)}</tbody></table>{items.length === 0 ? <p className="p-8 text-center text-sm text-ink-dim">No audit records returned.</p> : null}</div>; }
 function EventTable({ items }: { items: AdminIntegrationEvent[] }) { return <div className="overflow-x-auto rounded-2xl border border-line"><table className="min-w-full text-left text-sm"><thead><tr className="border-b border-line text-ink-dim"><th className="p-4">Provider / type</th><th className="p-4">Status</th><th className="p-4">Attempts</th><th className="p-4">Received</th></tr></thead><tbody>{items.map((item) => <tr key={item.eventId} className="border-b border-line/60"><td className="p-4"><Link href={`/admin/integrations/events/${encodeURIComponent(item.eventId)}`} className="font-medium text-accent hover:underline">{item.provider} · {item.eventType}</Link></td><td className="p-4">{item.status}{item.retryExhausted ? " · retry exhausted" : ""}</td><td className="p-4">{item.attemptCount}</td><td className="p-4">{new Date(item.receivedAt).toLocaleString()}</td></tr>)}</tbody></table>{items.length === 0 ? <p className="p-8 text-center text-sm text-ink-dim">No integration events returned.</p> : null}</div>; }
 function pageItems<T>(value: unknown): T[] { if (Array.isArray(value)) return value as T[]; if (!value || typeof value !== "object") return []; const page = value as { items?: unknown; data?: { items?: unknown } }; if (Array.isArray(page.items)) return page.items as T[]; return Array.isArray(page.data?.items) ? page.data.items as T[] : []; }

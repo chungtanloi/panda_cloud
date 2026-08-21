@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import type { AdminUserSummary } from "@/models/admin";
@@ -10,6 +10,7 @@ import type { AdminUserSummary } from "@/models/admin";
 const mocks = vi.hoisted(() => ({
   admin: {
     users: vi.fn(),
+    updateUser: vi.fn(),
   },
 }));
 
@@ -46,6 +47,10 @@ vi.mock("@/components/ui/states", () => ({
   ErrorState: ({ error }: { error: unknown }) => (
     <div data-testid="error">{String(error)}</div>
   ),
+}));
+
+vi.mock("@/components/admin/AdminActionGuard", () => ({
+  AdminActionGuard: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("./WorkspacePage", () => ({
@@ -150,5 +155,28 @@ describe("AdminApiView — UserTable regression", () => {
 
     const emails = await screen.findAllByText("fallback@example.com");
     expect(emails.length).toBe(2);
+  });
+
+  it("requires a reason and sends the current revision when suspending a user", async () => {
+    const user = makeUser({ status: "active", revision: 7 });
+    mocks.admin.users.mockResolvedValue({ items: [user], isDone: true, nextCursor: null });
+    mocks.admin.updateUser.mockResolvedValue({ ...user, status: "suspended", revision: 8 });
+
+    render(<AdminApiView kind="users" />);
+    await screen.findByText("Test User");
+    fireEvent.click(screen.getByRole("button", { name: "Suspend" }));
+
+    expect(screen.getByRole("button", { name: "Confirm suspend" })).toBeDisabled();
+    const reason = screen.getByLabelText("Reason *") as HTMLTextAreaElement;
+    fireEvent.change(reason, { target: { value: "Security review" } });
+    expect(screen.getByRole("button", { name: "Confirm suspend" })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm suspend" }));
+
+    await vi.waitFor(() => expect(mocks.admin.updateUser).toHaveBeenCalledWith("user_1", {
+      status: "suspended",
+      reason: "Security review",
+      expectedRevision: 7,
+    }));
+    expect(await screen.findByText("suspended")).toBeDefined();
   });
 });
