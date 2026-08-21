@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 export function ConfirmDialog({
   title,
   message,
@@ -15,14 +17,25 @@ export function ConfirmDialog({
   onCancel: () => void;
   busy?: boolean;
 }) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) onCancel();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [busy, onCancel]);
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-5" role="presentation" onMouseDown={onCancel}>
       <section role="dialog" aria-modal="true" aria-labelledby="confirm-title" className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
         <h2 id="confirm-title" className="text-lg font-semibold text-ink">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-ink-dim">{message}</p>
         <div className="mt-6 flex justify-end gap-3">
-          <button type="button" onClick={onCancel} disabled={busy} className="rounded-full border border-line-strong px-4 py-2 text-xs text-ink-dim disabled:opacity-50">Cancel</button>
-          <button type="button" onClick={onConfirm} disabled={busy} className="rounded-full bg-accent px-4 py-2 text-xs font-bold text-accent-fg disabled:opacity-50">{busy ? "Working…" : confirmLabel}</button>
+          <button ref={cancelRef} type="button" onClick={onCancel} disabled={busy} className="min-h-[44px] rounded-full border border-line-strong px-4 py-2 text-xs text-ink-dim disabled:opacity-50">Cancel</button>
+          <button type="button" onClick={onConfirm} disabled={busy} className="min-h-[44px] rounded-full bg-accent px-4 py-2 text-xs font-bold text-accent-fg disabled:opacity-50">{busy ? "Working…" : confirmLabel}</button>
         </div>
       </section>
     </div>

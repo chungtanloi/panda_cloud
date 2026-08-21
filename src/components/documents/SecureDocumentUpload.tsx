@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Hash } from "fast-sha256";
 import type {
   DocumentFinalizeResponse,
   DocumentRetentionClass,
@@ -24,12 +25,30 @@ const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "image/png",
   "image/jpeg",
-  "application/zip",
 ]);
 
 async function sha256(file: File): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-  return Array.from(new Uint8Array(digest))
+  const hasher = new Hash();
+  // Browser File objects expose a stream; the arrayBuffer fallback only keeps
+  // older test/runtime shims working and is not used by supported browsers.
+  const stream = typeof file.stream === "function" ? file.stream() : null;
+  if (!stream) {
+    hasher.update(new Uint8Array(await file.arrayBuffer()));
+    return Array.from(hasher.digest())
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  const reader = stream.getReader();
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      hasher.update(chunk.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Array.from(hasher.digest())
     .map((value) => value.toString(16).padStart(2, "0"))
     .join("");
 }
@@ -80,7 +99,7 @@ export function SecureDocumentUpload({
       return;
     }
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.type)) {
-      setError("This file type is not supported. Use PDF, DOCX, XLSX, PNG, JPG or ZIP.");
+      setError("This file type is not supported. Use PDF, DOCX, XLSX, PNG or JPG.");
       return;
     }
     setError(null);

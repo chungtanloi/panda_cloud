@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/Field";
 import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
 import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
 import { useForm } from "@/controllers/useForm";
-import { email as emailRule, minLength, required } from "@/lib/validation";
+import { email as emailRule, required, strongPassword } from "@/lib/validation";
 import { clerkEnabled } from "@/services/config";
 import { ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
@@ -70,7 +70,7 @@ function SignUpView() {
     {
       fullName: required("Full name"),
       email: emailRule(),
-      password: minLength(8, "Password"),
+      password: strongPassword,
     },
   );
 

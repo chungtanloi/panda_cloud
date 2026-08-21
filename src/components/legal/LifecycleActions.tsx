@@ -27,9 +27,8 @@ import { normalizeError } from "@/services/api";
  * They are convenience, not the control: the backend rejects a transition
  * missing either regardless of what this form did.
  *
- * ⚠ Every call here targets `POST /ncnda/{id}/transitions`, which CR-004
- * proposes and no backend route serves yet. On the mock adapter this works end
- * to end; on the HTTP adapter it answers 404 until CR-004 ships.
+ * The HTTP adapter maps this request to the released BFF NCNDA update route;
+ * the mock adapter uses the same transition payload and revision rules.
  */
 export function LifecycleActions({
   item,
@@ -71,6 +70,9 @@ export function LifecycleActions({
     setError(null);
     try {
       await legalQueue.transition(item.agreementId, {
+        dealId: item.dealId,
+        counterpartyOrganizationId: item.counterpartyOrganizationId,
+        ownerId: item.ownerId,
         toStatus: pending,
         expectedRevision: item.revision,
         // A fresh key per submit: retrying a failed submit must not be

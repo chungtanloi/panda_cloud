@@ -60,6 +60,10 @@ export const clerkEnabled: boolean = apiConfig.clerkPublishableKey.length > 0;
  * expects.
  */
 export function assertApiConfig(): void {
+  if (process.env.NODE_ENV === "production" && apiConfig.adapter === "mock") {
+    throw new Error("[config] Production builds must use NEXT_PUBLIC_API_ADAPTER=http.");
+  }
+
   if (apiConfig.contractVersion === "unpinned") {
     // Warn rather than throw: local UI work can continue, but integration and
     // release builds must pin an immutable contract artifact.

@@ -149,7 +149,7 @@ function HeroSection() {
                 in docs/FIGMA_SCREEN_MAP.md. */}
             <Link
               href={HERO.primaryCta.href}
-              className="cta-connect inline-flex items-center gap-[8px] rounded-panel px-[32px] py-[16px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-deep transition-colors hover:text-accent"
+              className="cta-connect inline-flex items-center gap-[8px] rounded-panel px-[32px] py-[16px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-dim transition-colors hover:text-accent"
             >
               {HERO.primaryCta.label}
               <ArrowRight />

@@ -55,6 +55,17 @@ export const minLength =
     return undefined;
   };
 
+export const strongPassword: Validator<string> = (value) => {
+  if (!value || value.length < 8) return "Password must be at least 8 characters.";
+  const score = [
+    value.length >= 8,
+    /\d/.test(value),
+    /[a-z]/.test(value) && /[A-Z]/.test(value),
+    /[^A-Za-z0-9]/.test(value),
+  ].filter(Boolean).length;
+  return score < 3 ? "Use at least 3 of: 8 characters, a number, upper/lowercase, and a symbol." : undefined;
+};
+
 export const positiveNumber =
   (label = "This field"): Validator<number | undefined> =>
   (value) => {

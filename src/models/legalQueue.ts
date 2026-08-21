@@ -140,6 +140,9 @@ export interface NcndaSummary {
 }
 
 export interface NcndaTransitionRequest {
+  dealId?: string;
+  counterpartyOrganizationId?: string;
+  ownerId?: string;
   toStatus: NcndaStatus;
   expectedRevision: number;
   /** Required by the backend when `toStatus` is `active`. */

@@ -18,16 +18,16 @@ export const INVESTMENT_TOTAL_STEPS = 5;
 /* ------------------------------- Landing -------------------------------- */
 
 export const INVESTMENT_LANDING = {
-  badge: "Live Funding Round",
+  badge: "Investment Inquiry",
   titleLead: "AI Token ",
   titleAccent: "Investment",
   body:
     "Earn passive income from AI infrastructure. Stake your compute tokens to participate in " +
     "the high-yield GPU economy and secure your position in the future of distributed " +
     "intelligence.",
-  primaryCta: { label: "Invest Now", href: "/investment/intent" },
+  primaryCta: { label: "Start an Inquiry", href: "/investment/intent" },
   secondaryCta: { label: "View Prospectus", href: "/submit-request" },
-  chips: ["Instant USDC settlement", "Fiat wire supported", "SEC Reg D Compliant"],
+  chips: ["USDC preference supported", "Bank-wire preference supported", "Compliance review required"],
   cards: [
     {
       title: "Staking yield 8-15% APY",
@@ -114,13 +114,13 @@ export const STEP_VOLUME = {
     breakEvenLabel: "Break Even",
     maxYieldLabel: "Max Yield",
   },
-  footer: "© 2024 Panda Cloud Inc. Secure Transaction Gateway.",
+  footer: "© 2024 Panda Cloud Inc. Non-binding inquiry estimates.",
 } as const;
 
 /* -------------------------------- Step 3 -------------------------------- */
 
 export const STEP_PAYMENT = {
-  statusRight: "SECURE CHECKOUT",
+  statusRight: "INQUIRY PREFERENCE",
   stepLabel: "STEP 03 / 05",
   title: "Payment Method",
   body: "Record a preferred funding route for compliance follow-up. No payment or settlement occurs in this inquiry.",
@@ -155,16 +155,16 @@ export const STEP_PAYMENT = {
     { value: "arbitrum", label: "Arbitrum" },
   ] as readonly { value: SettlementNetwork; label: string }[],
   panel: {
-    title: "Settlement Details",
+    title: "Estimate Details",
     rows: {
       volume: "Token Allocation Volume",
       value: "Estimated USD Value",
       fee: "Network Fee (Est.)",
-      time: "Settlement Time",
+      time: "Estimated Follow-up Time",
     },
     notice: "These are non-binding estimates. Rates are not locked and no payment or token allocation is executed.",
   },
-  next: "REVIEW & EXECUTE",
+  next: "CONTINUE TO COMPLIANCE",
   back: "BACK TO VOLUME",
 } as const;
 
