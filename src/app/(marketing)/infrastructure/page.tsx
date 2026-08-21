@@ -6,6 +6,7 @@ import { CtaBand } from "@/components/marketing/sections/CtaBand";
 import { FaqAccordion } from "@/components/marketing/sections/FaqAccordion";
 import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
+import { SpotlightCard } from "@/components/motion/SpotlightCard";
 import { EmptyState } from "@/components/ui/states";
 import { INFRA_FAQ, INFRA_HERO, INVENTORY, type InventoryItem } from "@/config/infrastructure";
 import { cn } from "@/lib/cn";
@@ -77,6 +78,84 @@ export default function InfrastructurePage() {
             />
           </Reveal>
         </section>
+      </ViewportSection>
+
+      {/* Featured Feature: Standards-Aligned Site Inspection */}
+      <ViewportSection id="site-inspection">
+        <Reveal>
+          <SpotlightCard className="flex flex-col gap-[28px] rounded-card border border-line-card bg-surface p-[32px] lg:p-[48px] backdrop-blur-card">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-[24px]">
+              <div className="space-y-[12px] max-w-[720px]">
+                <span className="inline-flex items-center gap-[8px] rounded-full border border-accent/30 bg-accent-soft px-[13px] py-[5px]">
+                  <span aria-hidden className="pulse-dot size-[6px] rounded-full bg-accent" />
+                  <span className="font-mono text-[11px] font-semibold uppercase tracking-[1.2px] text-accent">
+                    INFRASTRUCTURE READINESS AUDIT
+                  </span>
+                </span>
+
+                <h2 className="font-sans text-[26px] font-bold leading-[1.2] tracking-[-0.6px] text-white lg:text-[32px]">
+                  Rapid Standards-Aligned Site Inspection
+                </h2>
+
+                <p className="font-sans text-[15px] leading-[24px] text-ink-dim">
+                  Verify on-site electrical switchgear, transformers, UPS redundancy, battery rooms, and cooling containment before deploying compute workloads. Combine rapid mobile preflight with a licensed Professional Engineer review within 1 business day.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-[14px] flex-shrink-0">
+                <Link
+                  href="/inspections/new"
+                  className="rounded-full bg-accent px-[24px] py-[12px] font-sans text-[13px] font-bold tracking-[0.7px] text-accent-fg transition-all hover:-translate-y-[2px] hover:drop-shadow-[0px_0px_20px_rgba(0,242,255,0.45)]"
+                >
+                  START AI-ASSISTED INSPECTION &rarr;
+                </Link>
+
+                <Link
+                  href="/site-inspections"
+                  className="rounded-full border border-line-strong px-[22px] py-[12px] font-sans text-[13px] font-bold text-ink transition-colors hover:border-accent hover:text-accent"
+                >
+                  EXPLORE INSPECTION PROCESS
+                </Link>
+              </div>
+            </div>
+
+            {/* 3-Step Highlights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-[16px] border-t border-line pt-[24px]">
+              <div className="p-[20px] rounded-field bg-deep/80 border border-line space-y-[8px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] font-bold text-accent">01</span>
+                  <span className="font-mono text-[10px] uppercase text-ink-dim">&le; 8s FEEDBACK</span>
+                </div>
+                <h3 className="font-sans text-[14px] font-semibold text-white">Guided Mobile Preflight</h3>
+                <p className="font-sans text-[12px] text-ink-dim leading-[18px]">
+                  In-field capture automatically checks nameplate focus, angle, and ratings before leaving the site.
+                </p>
+              </div>
+
+              <div className="p-[20px] rounded-field bg-deep/80 border border-line space-y-[8px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] font-bold text-accent">02</span>
+                  <span className="font-mono text-[10px] uppercase text-ink-dim">&le; 5 MIN P95</span>
+                </div>
+                <h3 className="font-sans text-[14px] font-semibold text-white">Provisional AI Synthesis</h3>
+                <p className="font-sans text-[12px] text-ink-dim leading-[18px]">
+                  Evaluates power topology and flags critical safety or capacity blockers against governed standards.
+                </p>
+              </div>
+
+              <div className="p-[20px] rounded-field bg-deep/80 border border-line space-y-[8px]">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] font-bold text-accent">03</span>
+                  <span className="font-mono text-[10px] uppercase text-emerald-400">1 DAY SLA</span>
+                </div>
+                <h3 className="font-sans text-[14px] font-semibold text-white">PE Reviewed Final Report</h3>
+                <p className="font-sans text-[12px] text-ink-dim leading-[18px]">
+                  Panda Cloud Technical Reviewer audits citations and issues an immutable, cryptographically signed readiness report.
+                </p>
+              </div>
+            </div>
+          </SpotlightCard>
+        </Reveal>
       </ViewportSection>
 
       {/* Available Infrastructure table */}
