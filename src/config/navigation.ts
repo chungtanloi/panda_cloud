@@ -14,6 +14,7 @@ export const MARKETING_NAV: readonly NavLink[] = [
   { label: "Energy & Land", href: "/energy-land" },
   { label: "Financing", href: "/financing" },
   { label: "Infrastructure", href: "/infrastructure" },
+  { label: "Site Inspection", href: "/site-inspections" },
 ] as const;
 
 /** The footer omits "Platform" and appends the Get Started link (node 1:159). */
