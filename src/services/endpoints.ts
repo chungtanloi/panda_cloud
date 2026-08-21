@@ -121,7 +121,7 @@ export const endpoints = {
     owners: "/lookups/owners",
   },
 
-  /** NCNDA gateway operations (see ncnda api.md). */
+  /** NCNDA operations served by the BFF. */
   ncnda: {
     agreementsForDeal: (dealId: string) => `/deals/${dealId}/ncnda`,
     agreementById: (agreementId: string) => `/ncnda/${agreementId}`,
@@ -129,18 +129,6 @@ export const endpoints = {
     agreementDocument: (agreementId: string, documentId: string) =>
       `/ncnda/${agreementId}/documents/${documentId}`,
 
-    /**
-     * ⚠ CR-004 — PROPOSED, NOT IMPLEMENTED BY ANY BACKEND ROUTE.
-     *
-     * Drafted in `PandaCloudBackend/api-contracts/proposals/CR-004/`, which sits
-     * outside `openapi.yaml` on purpose. These three answer 404 today.
-     * `services/legalQueue.ts` treats that specific outcome as "not deployed"
-     * and falls back to the deal-scoped landing, so the Legal workspace ships
-     * now and starts showing the queue the day the backend deploys.
-     *
-     * Delete this note — not the paths — once CR-004 is approved, merged into
-     * the contract and released.
-     */
     queue: "/ncnda",
     summary: "/ncnda/summary",
     transitions: (agreementId: string) => `/ncnda/${agreementId}/transitions`,

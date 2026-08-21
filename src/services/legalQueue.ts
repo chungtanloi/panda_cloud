@@ -142,8 +142,25 @@ const httpLegalQueue: LegalQueueService = {
 
   summary: (query = {}) => http.get<NcndaSummary>(endpoints.ncnda.summary, { query: { ...query } }),
 
-  transition: (agreementId, body) =>
-    http.post<NcndaTransitionResponse>(endpoints.ncnda.transitions(agreementId), body),
+  transition: (agreementId, body) => {
+    if (!body.dealId || !body.counterpartyOrganizationId || !body.ownerId) {
+      return Promise.reject(new Error("NCNDA transition context is incomplete."));
+    }
+    return http.patch<NcndaTransitionResponse>(
+      endpoints.ncnda.agreementsForDeal(body.dealId),
+      {
+        agreementId,
+        dealId: body.dealId,
+        counterpartyOrganizationId: body.counterpartyOrganizationId,
+        ownerId: body.ownerId,
+        status: body.toStatus,
+        expectedRevision: body.expectedRevision,
+        ...(body.effectiveDate ? { effectiveDate: body.effectiveDate } : {}),
+        ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
+        ...(body.reason ? { notes: body.reason } : {}),
+      },
+    );
+  },
 };
 
 /* ------------------------------ Mock adapter ------------------------------ */
@@ -164,8 +181,8 @@ const MOCK_TRANSITIONS: Record<NcndaStatus, readonly NcndaStatus[]> = {
   not_requested: ["drafting", "cancelled"],
   drafting: ["sent", "cancelled"],
   sent: ["received", "rejected", "expired", "cancelled"],
-  received: ["under_review", "rejected", "cancelled"],
-  under_review: ["sent", "signed", "rejected", "cancelled"],
+  received: ["under_review", "drafting", "rejected", "cancelled"],
+  under_review: ["drafting", "sent", "signed", "rejected", "cancelled"],
   signed: ["countersigned", "rejected", "cancelled"],
   countersigned: ["active", "cancelled"],
   active: ["expired", "cancelled"],

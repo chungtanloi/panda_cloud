@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MARKETING_NAV } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { BrandMark } from "./BrandMark";
@@ -22,6 +22,17 @@ import { BrandMark } from "./BrandMark";
 export function TopNavBar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    drawerRef.current?.querySelector<HTMLElement>("a")?.focus();
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-line bg-base/80 backdrop-blur-chrome">
@@ -65,18 +76,15 @@ export function TopNavBar() {
           <span aria-hidden className="text-[20px] leading-none">{open ? "×" : "☰"}</span>
         </button>
 
-        {/* Low contrast is intentional — it matches the design exactly.
-            Flagged in docs/FIGMA_SCREEN_MAP.md as an accessibility question
-            for the designer rather than silently "corrected" here. */}
         <Link
           href="/choose-path"
-          className="shrink-0 rounded-full px-[24px] py-[10px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-deep transition-colors hover:text-accent"
+          className="shrink-0 rounded-full px-[24px] py-[10px] font-sans text-[14px] font-bold leading-[20px] tracking-[0.7px] text-accent-dim transition-colors hover:text-accent"
         >
           Get Started
         </Link>
       </div>
       {open ? (
-        <nav aria-label="Mobile primary" className="border-t border-line bg-base px-[24px] py-[14px] lg:hidden">
+        <nav ref={drawerRef} aria-label="Mobile primary" className="border-t border-line bg-base px-[24px] py-[14px] lg:hidden">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-[4px]">
             {MARKETING_NAV.map((link) => {
               const isActive = pathname === link.href;

@@ -184,10 +184,7 @@ export default function PaymentPage() {
               {settlement ? (
                 <p className="rounded-field border border-line-soft bg-surface p-[12px] font-sans text-[11px] leading-[17px] text-ink-dim">
                   ⓘ{" "}
-                  {config.panel.notice.replace(
-                    "{minutes}",
-                    String(settlement.rateLockMinutes),
-                  )}
+                  {config.panel.notice}
                 </p>
               ) : null}
 

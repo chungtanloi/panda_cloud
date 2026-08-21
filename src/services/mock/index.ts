@@ -366,7 +366,7 @@ function uploadedDocument(file: File) {
   };
 }
 
-/** Assembles the Investment Confirmed screen's payload. */
+/** Assembles the investment inquiry receipt payload. */
 function buildInvestmentResult(id: string, amountUsd: number): InvestmentResult {
   const projection = projectVolume(amountUsd);
 
@@ -377,8 +377,6 @@ function buildInvestmentResult(id: string, amountUsd: number): InvestmentResult 
     totalInvestmentUsd: amountUsd,
     tokenAllocation: projection.tokenAllocation,
     tokenSymbol: projection.tokenSymbol,
-    transactionId: "0x7a…f92b",
-    transactionDate: new Date().toISOString(),
     network: "Solana",
     estimatedApyPercent: 14.2,
     // Compound the estimated APY over five years.

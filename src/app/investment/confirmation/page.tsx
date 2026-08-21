@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback } from "react";
 import { Footer } from "@/components/layout/Footer";
 import { FlowHeader } from "@/components/wizard/FlowChrome";
-import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { CountUp } from "@/components/motion/CountUp";
+import { AnimatedBackdrop } from "@/components/motion/AnimatedBackdrop";
 import { Reveal } from "@/components/motion/Reveal";
 import { ErrorState, LoadingState, Skeleton } from "@/components/ui/states";
 import { useAsync } from "@/controllers/useAsync";
@@ -115,11 +115,9 @@ function ConfirmationBody({ result }: { result: InvestmentResult }) {
                   {config.totalLabel}
                 </span>
                 <span className="flex items-baseline">
-                  <CountUp
-                    value={`$${result.totalInvestmentUsd.toLocaleString("en-US")}`}
-                    className="font-sans text-[34px] font-bold leading-[42px] text-accent [text-shadow:0px_0px_16px_rgba(0,242,255,0.35)]"
-                  />
-                  <span className="font-sans text-[16px] text-accent/70">.00</span>
+                  <span className="font-sans text-[34px] font-bold leading-[42px] text-accent [text-shadow:0px_0px_16px_rgba(0,242,255,0.35)]">
+                    ${result.totalInvestmentUsd.toLocaleString("en-US")} estimated
+                  </span>
                 </span>
               </div>
 
@@ -131,10 +129,9 @@ function ConfirmationBody({ result }: { result: InvestmentResult }) {
                   <span aria-hidden className="text-accent">
                     ◈
                   </span>
-                  <CountUp
-                    value={result.tokenAllocation.toLocaleString("en-US")}
-                    className="font-sans text-[18px] font-semibold leading-[24px] text-white"
-                  />
+                  <span className="font-sans text-[18px] font-semibold leading-[24px] text-white">
+                    {result.tokenAllocation.toLocaleString("en-US")} projected
+                  </span>
                   <span className="font-mono text-[10px] uppercase tracking-[1.1px] text-accent">
                     {result.tokenSymbol}
                   </span>
