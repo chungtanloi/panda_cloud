@@ -18,9 +18,17 @@ function readInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
-/** Strip any trailing slash so path joining stays predictable. */
+/**
+ * Cắt khoảng trắng hai đầu và mọi dấu "/" ở cuối, để việc ghép đường dẫn luôn
+ * đoán trước được.
+ *
+ * `.trim()` không thừa: một dòng `.env` viết `NEXT_PUBLIC_API_BASE_URL= http://...`
+ * (dư một dấu cách sau dấu bằng) sẽ lọt qua mọi kiểm tra bên dưới —
+ * `endsWith("/api/v1")` vẫn đúng — rồi tạo ra URL bắt đầu bằng dấu cách. Đó là
+ * loại lỗi cấu hình mất hàng giờ để tìm, nên chặn ngay tại đây.
+ */
 function normalizeBaseUrl(raw: string | undefined): string {
-  return (raw ?? "").replace(/\/+$/, "");
+  return (raw ?? "").trim().replace(/\/+$/, "");
 }
 
 export const apiConfig = {

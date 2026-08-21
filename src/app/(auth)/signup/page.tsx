@@ -13,6 +13,7 @@ import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, required, strongPassword } from "@/lib/validation";
 import { clerkEnabled } from "@/services/config";
+import { safeReturnTo } from "@/lib/returnTo";
 import { ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
 /**
@@ -52,11 +53,16 @@ function SignUpView() {
   const params = useSearchParams();
   const { isLoaded, signUp, setActive } = useSignUp();
 
-  /** Same-origin relative paths only — guards against open redirects. */
-  const rawReturnTo = params.get("returnTo");
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
-    ? rawReturnTo
-    : null;
+  /**
+   * Same-origin relative paths only — guards against open redirects.
+   *
+   * Luật kiểm nằm ở lib/returnTo, dùng chung với login và forgot-password. Bản
+   * kiểm cũ tại chỗ này (`startsWith("/") && !startsWith("//")`) để lọt
+   * "/\evil.com": trình duyệt chuẩn hoá "\" thành "/", nên nó tương đương
+   * "//evil.com" và mở redirect ra ngoài NGAY SAU khi tài khoản vừa được tạo
+   * và phiên vừa active.
+   */
+  const returnTo = safeReturnTo(params.get("returnTo"));
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [awaitingCode, setAwaitingCode] = useState(false);

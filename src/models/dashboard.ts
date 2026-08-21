@@ -15,12 +15,59 @@ export interface DashboardSummary {
   /** Status line beneath the greeting (node 2:1500). */
   systemMessage: string;
 
-  /** KPI Card 1 — node 2:1502. */
+  /** KPI Card 1 — node 2:1502. Đếm từ bảng `projects` theo tổ chức. */
   activeProjects: ActiveProjectsKpi;
-  /** KPI Card 2 — node 2:1516. */
-  gpuUsage: GpuUsageKpi;
-  /** KPI Card 3 — node 2:1529. */
-  tokenBalance: TokenBalanceKpi;
+
+  /**
+   * KPI Card 2 — node 2:1516.
+   *
+   * `null` khi hệ thống CHƯA có nguồn dữ liệu (không có telemetry cụm GPU).
+   * Giao diện phải ẩn thẻ, không được hiện 0%: một khách hàng đang chạy cụm
+   * mà thấy "0%" sẽ hiểu là cụm chết.
+   */
+  gpuUsage: GpuUsageKpi | null;
+
+  /**
+   * KPI Card 3 — node 2:1529.
+   *
+   * `null` khi chưa có sổ cái token. Xem ghi chú ở `gpuUsage`: hiện "0 CPT"
+   * cho một người có token là sai nghiêm trọng hơn là không hiện gì.
+   */
+  tokenBalance: TokenBalanceKpi | null;
+
+  /** Thẻ bổ sung, có nguồn thật: phiên đánh giá AI của chính người dùng. */
+  assessments?: ActiveProjectsKpi;
+  /** Thẻ bổ sung, có nguồn thật: yêu cầu (lead) của tổ chức người dùng. */
+  requests?: ActiveProjectsKpi;
+}
+
+/* ------------------------------ Portfolio ------------------------------ */
+
+/**
+ * Trang /dashboard/portfolio.
+ *
+ * Mọi trường ở đây đều suy ra từ dữ liệu có thật (tổ chức, deal, thanh toán
+ * đánh giá, quyền sử dụng). `wallet` là `null` vì chưa có sổ cái token —
+ * giao diện ẩn khối ví thay vì hiện số dư bịa.
+ */
+export interface CustomerPortfolio {
+  organizations: { id: string; name: string; status: string; countryCode: string | null }[];
+  totals: {
+    organizations: number;
+    openDeals: number;
+    paidAssessments: number;
+    activeEntitlements: number;
+  };
+  spendByCurrency: { currency: string; amountMinor: number }[];
+  recentPayments: {
+    id: string;
+    amountMinor: number;
+    currency: string;
+    status: string;
+    createdAt: IsoDateTime;
+    paidAt: IsoDateTime | null;
+  }[];
+  wallet: null;
 }
 
 export interface ActiveProjectsKpi {

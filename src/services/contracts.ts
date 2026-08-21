@@ -3,6 +3,10 @@ import type {
   AssessmentSubmission,
   AuthProfile,
   DashboardSummary,
+  CustomerPortfolio,
+  SiteContentResponse,
+  SiteContentEntry,
+  SiteContentUpsertRequest,
   GpuModel,
   ResourceTable,
   WorkspaceResourceKind,
@@ -201,6 +205,21 @@ export interface SubmissionService {
 
 export interface WorkspaceService {
   getResource(kind: WorkspaceResourceKind, query?: { search?: string; cursor?: string }): Promise<ResourceTable>;
+  /** Tổng quan danh mục của chính người dùng — /dashboard/portfolio. */
+  getPortfolio(): Promise<CustomerPortfolio>;
+}
+
+/**
+ * Nội dung marketing sửa được.
+ *
+ * `getPublished` là bề mặt CÔNG KHAI — không gắn token, gọi được từ trang chưa
+ * đăng nhập. `list`/`upsert` chỉ dành cho admin và backend là nơi thực thi
+ * điều đó, không phải route guard ở frontend.
+ */
+export interface SiteContentClient {
+  getPublished(keys?: string[]): Promise<SiteContentResponse>;
+  list(): Promise<{ items: SiteContentEntry[] }>;
+  upsert(body: SiteContentUpsertRequest): Promise<{ key: string; status: string; revision: number; updatedAt: string }>;
 }
 
 export interface AdminService {
@@ -458,6 +477,7 @@ export interface ApiClient {
   workspace: WorkspaceService;
   manager: ManagerService;
   admin: AdminService;
+  siteContent: SiteContentClient;
   siteInspections: SiteInspectionService;
   inspectionReview: InspectionReviewService;
   inspectionProfiles: InspectionProfileAdminService;

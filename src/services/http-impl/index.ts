@@ -41,6 +41,11 @@ import type {
   WorkloadRecommendation,
   WorkloadType,
   DashboardSummary,
+  CustomerPortfolio,
+  SiteContentResponse,
+  SiteContentEntry,
+  SiteContentUpsertRequest,
+  SubmissionPersona,
   GpuModel,
   ResourceTable,
   WorkspaceResourceKind,
@@ -217,12 +222,60 @@ export const httpApi: ApiClient = {
   },
 
   leads: {
-    create: (payload: LeadRequest) =>
-      http.post<LeadResponse>(endpoints.submissions.collection, {
+    /**
+     * Form liên hệ trên trang marketing → POST /submissions.
+     *
+     * Bản trước gửi đúng ba trường (source / persona / summary) và bỏ hết phần
+     * còn lại của form. Hậu quả:
+     *   1. Backend BẮT BUỘC `contact.fullName` + `contact.email` → mọi lần gửi
+     *      đều trả 400, không lead nào tới được Sales.
+     *   2. `source` được truyền là đường dẫn trang ("/energy-land"), không nằm
+     *      trong enum SubmissionSource → cũng 400.
+     *   3. Tên, email, công ty, số lượng, ngân sách, mốc thời gian bị vứt bỏ.
+     *
+     * Giờ: enum hợp lệ cho `source`, đường dẫn trang đi vào `sourcePayload.page`,
+     * và mọi trường người dùng nhập đều được giữ lại.
+     */
+    create: async (payload: LeadRequest) => {
+      const primaryInterest = payload.interests[0];
+      const persona = personaForInterest(primaryInterest);
+      const created = await http.post<Submission>(endpoints.submissions.collection, {
         source: "website",
-        persona: "other",
-        summary: payload.useCase ?? `${payload.contactName}: ${payload.interests.join(", ")}`,
-      }, { anonymous: true }),
+        // Marketing intake không gửi vertical; backend sẽ không áp dụng các
+        // validation dành cho customer-flow như GPU quote hoặc hyperscale.
+        intake: "marketing",
+        ...(persona ? { persona } : {}),
+        summary: payload.useCase?.trim() || `${payload.contactName}: ${payload.interests.join(", ")}`,
+        contact: {
+          fullName: payload.contactName,
+          email: payload.email,
+          ...(payload.phone ? { phone: payload.phone } : {}),
+          ...(payload.companyName ? { companyName: payload.companyName } : {}),
+        },
+        sourcePayload: scalarPayload({
+          page: payload.source ?? null,
+          path: payload.path ?? null,
+          interests: payload.interests.join(","),
+          gpuType: payload.gpuType ?? null,
+          quantity: payload.quantity ?? null,
+          timeline: payload.timeline ?? null,
+          budget: payload.budget ?? null,
+          locationPreference: payload.locationPreference ?? null,
+        }),
+        idempotencyKey: newIdempotencyKey(),
+      }, { anonymous: true });
+
+      // Backend trả về bản ghi Submission, KHÔNG có trường `reference`. Giao
+      // diện lại đọc `result.reference` để hiện màn hình xác nhận và điều
+      // hướng sang /requests/{reference}; không ánh xạ ở đây thì người dùng
+      // gửi form xong rơi vào /requests/undefined.
+      return {
+        id: created.leadId,
+        reference: created.leadId,
+        status: "received" as const,
+        createdAt: created.updatedAt,
+      } satisfies LeadResponse;
+    },
   },
 
   submissions: {
@@ -239,6 +292,19 @@ export const httpApi: ApiClient = {
   workspace: {
     getResource: (kind: WorkspaceResourceKind, query = {}) =>
       http.get<ResourceTable>(endpoints.workspace.resource(kind), { query }),
+    getPortfolio: () => http.get<CustomerPortfolio>(endpoints.workspace.portfolio),
+  },
+
+  siteContent: {
+    // anonymous: trang chủ phải đọc được khi chưa đăng nhập.
+    getPublished: (keys?: string[]) =>
+      http.get<SiteContentResponse>(endpoints.siteContent.published, {
+        ...(keys && keys.length > 0 ? { query: { keys: keys.join(",") } } : {}),
+        anonymous: true,
+      }),
+    list: () => http.get<{ items: SiteContentEntry[] }>(endpoints.siteContent.admin),
+    upsert: (body: SiteContentUpsertRequest) =>
+      http.put<{ key: string; status: string; revision: number; updatedAt: string }>(endpoints.siteContent.admin, body),
   },
 
   // Staff only — every call carries the bearer token, and the backend must
@@ -641,4 +707,46 @@ function normalizeAuthProfile(profile: AuthProfile): AuthProfile {
     }
   }
   return { ...profile, authorization: { ...profile.authorization, memberships } };
+}
+
+
+/* ------------------------- Marketing lead helpers ------------------------ */
+
+/**
+ * Ánh xạ ô "quan tâm" trên form sang `persona` mà backend chấp nhận.
+ *
+ * Mọi giá trị trả về đều nằm trong VALID_PERSONAS của backend. "procurement"
+ * ở bản trước KHÔNG tồn tại phía backend nên bị âm thầm bỏ, khiến lead thuê
+ * GPU tới Sales mà không có persona.
+ *
+ * KHÔNG có hàm ánh xạ vertical: form marketing cố ý không gửi vertical — xem
+ * ghi chú trong leads.create.
+ */
+function personaForInterest(interest: string | undefined): SubmissionPersona | undefined {
+  switch (interest) {
+    case "energy_land": return "asset_owner";
+    case "buy_gpu": return "gpu_buyer";
+    case "gpu_renting": return "enterprise_leaser";
+    case "financing": return "investor";
+    case "infrastructure": return "hyperscaler";
+    default: return undefined;
+  }
+}
+
+/** Bỏ khoá rỗng; backend chỉ nhận giá trị vô hướng trong sourcePayload. */
+function scalarPayload(input: Record<string, string | number | boolean | null>) {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== null && value !== ""));
+}
+
+/**
+ * Khoá idempotency cho một lần gửi form.
+ *
+ * `crypto.randomUUID` chỉ tồn tại trong secure context và không có trên trình
+ * duyệt cũ, nên cần đường lui — thiếu khoá thì backend từ chối submission
+ * thuộc luồng gpu/token/hyperscale.
+ */
+function newIdempotencyKey(): string {
+  const uuid = globalThis.crypto?.randomUUID?.();
+  if (uuid) return uuid;
+  return `lead-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
