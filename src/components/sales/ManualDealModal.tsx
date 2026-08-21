@@ -459,7 +459,7 @@ export function ManualDealModal({ open, columns, onClose, onCreated }: Props) {
               rows={3}
               value={form.description}
               onChange={(event) => field("description", event.target.value)}
-              className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent focus:outline-none"
+              className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent"
             />
           </label>
         </Section>

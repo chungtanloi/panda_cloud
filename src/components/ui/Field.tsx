@@ -45,7 +45,7 @@ const inputStyles: Record<FieldVariant, string> = {
 
 const borderStyles: Record<FieldVariant, string> = {
   boxed: "border-line-strong",
-  pill: "border-ink-faint",
+  pill: "border-line-subtle",
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
@@ -73,7 +73,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-describedby={describedBy}
           className={cn(
             "w-full border bg-deep font-sans leading-normal text-ink",
-            "transition-colors focus:border-accent focus:outline-none",
+            "transition-colors focus:border-accent",
             inputStyles[variant],
             trailing ? "pr-[44px]" : undefined,
             error ? "border-red-400/70" : borderStyles[variant],
@@ -128,7 +128,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         className={cn(
           "w-full rounded-field border bg-deep px-[17px] py-[15px]",
           "font-sans text-[16px] text-ink",
-          "transition-colors focus:border-accent focus:outline-none",
+          "transition-colors focus:border-accent",
           error ? "border-red-400/70" : "border-line-strong",
           className,
         )}

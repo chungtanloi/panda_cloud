@@ -140,7 +140,7 @@ export function DealChangeRequestPanel({
               maxLength={1000}
               onChange={(event) => setReason(event.target.value)}
               placeholder={type === "mark_won" ? "Why is this deal ready to close?" : type === "mark_lost" ? "Why was this opportunity lost?" : "Why should this card leave the active pipeline?"}
-              className="resize-y rounded-field border border-line-strong bg-deep px-[12px] py-[9px] text-[12px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+              className="resize-y rounded-field border border-line-strong bg-deep px-[12px] py-[9px] text-[12px] text-ink placeholder:text-ink-faint focus:border-accent"
             />
           </label>
           <button

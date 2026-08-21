@@ -36,7 +36,14 @@
   /* Text */
   --color-ink: #e2e2e8;
   --color-ink-dim: #b9cacb;
-  --color-ink-faint: #3a494b; /* Log In placeholder, node 2:946 */
+  /* ⚠ ĐỔI SO VỚI FIGMA — cần designer duyệt lại.
+     Giá trị gốc #3a494b (node 2:946) có tương phản 1.98:1 trên nền tối, dưới xa
+     ngưỡng WCAG AA 4.5:1, và đang được dùng làm màu CHỮ ở 63 vị trí (kể cả
+     placeholder ô đăng nhập). Giá trị mới giữ nguyên hue 187° và độ bão hoà,
+     chỉ nâng độ sáng, đạt >= 4.63:1 trên mọi nền của hệ thống.
+     Giá trị gốc được giữ lại ở --color-line-subtle cho các dùng làm VIỀN. */
+  --color-ink-faint: #8ca3a6;
+  --color-line-subtle: #3a494b; /* giá trị Figma gốc, chỉ dùng cho viền/nền */
   --color-ink-placeholder: #849495; /* Sign Up placeholder, node 2:909 */
   --color-ink-search: #6b7280; /* Dashboard search placeholder, node 2:1485 */
   --color-ink-bright: #d1d5db; /* GPU page body copy, node 2:15 */

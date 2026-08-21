@@ -186,7 +186,7 @@ export default function KycPage() {
                   placeholder={
                     classification === "institutional" ? "Registered entity name" : "—"
                   }
-                  className="w-full rounded-field border border-line-strong bg-deep px-[16px] py-[12px] font-sans text-[14px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+                  className="w-full rounded-field border border-line-strong bg-deep px-[16px] py-[12px] font-sans text-[14px] text-ink placeholder:text-ink-faint focus:border-accent"
                 />
 
                 {needsOrganization ? (

@@ -207,7 +207,7 @@ export function AgreementDetail({ agreementId, backHref = "/legal/agreements" }:
                 value={notes}
                 disabled={!canManage || saving}
                 onChange={(event) => setNotes(event.target.value)}
-                className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent focus:outline-none disabled:opacity-60"
+                className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent disabled:opacity-60"
               />
             </label>
 

@@ -58,7 +58,12 @@ export function AuthProvider({
   children: React.ReactNode;
 }) {
   const [profile, setProfile] = useState<AuthProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(false);
+  // Khởi tạo true khi provider đã báo có phiên: ở lần render đầu, useEffect gọi
+  // load() CHƯA chạy nên profile vẫn null và loadingProfile vẫn false — khi đó
+  // `initializing` thành false và RoleGuard render thẳng màn hình 403 rồi mới
+  // nhảy về nội dung thật. Người dùng hợp lệ thấy chớp "Forbidden" mỗi lần vào
+  // workspace.
+  const [loadingProfile, setLoadingProfile] = useState(session.isSignedIn);
   const [error, setError] = useState<NormalizedError | null>(null);
   const mounted = useRef(true);
 

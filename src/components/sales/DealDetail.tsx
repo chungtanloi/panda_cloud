@@ -248,7 +248,7 @@ export function DealDetail({
             value={expectedCloseDate}
             disabled={!canEdit}
             onChange={(event) => setExpectedCloseDate(event.target.value)}
-            className="w-full rounded-field border border-line-strong bg-deep px-[14px] py-[10px] font-sans text-[13px] text-ink focus:border-accent focus:outline-none disabled:opacity-40"
+            className="w-full rounded-field border border-line-strong bg-deep px-[14px] py-[10px] font-sans text-[13px] text-ink focus:border-accent disabled:opacity-40"
           />
         </label>
 
@@ -262,7 +262,7 @@ export function DealDetail({
             disabled={!canEdit}
             placeholder="Scope, next actions, blockers…"
             onChange={(event) => setDescription(event.target.value)}
-            className="w-full resize-y rounded-field border border-line-strong bg-deep px-[14px] py-[10px] font-sans text-[13px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none disabled:opacity-40"
+            className="w-full resize-y rounded-field border border-line-strong bg-deep px-[14px] py-[10px] font-sans text-[13px] text-ink placeholder:text-ink-faint focus:border-accent disabled:opacity-40"
           />
         </label>
 

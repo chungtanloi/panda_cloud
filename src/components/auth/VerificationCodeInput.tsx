@@ -84,7 +84,7 @@ export function VerificationCodeInput({
             onPaste={handlePaste}
             className={cn(
               "size-[52px] rounded-field border bg-deep text-center font-sans text-[24px] font-semibold text-ink",
-              "transition-colors focus:border-accent focus:outline-none disabled:opacity-40",
+              "transition-colors focus:border-accent disabled:opacity-40",
               error ? "border-red-400/70" : "border-line-strong",
             )}
           />

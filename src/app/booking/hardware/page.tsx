@@ -212,7 +212,7 @@ function ModelCard({
                 "size-[5px] rounded-full",
                 model.stock === "in_stock" && "pulse-dot bg-accent",
                 model.stock === "limited" && "bg-amber-300",
-                model.stock === "pre_order" && "bg-ink-faint",
+                model.stock === "pre_order" && "bg-line-subtle",
               )}
             />
             {stockLabel}

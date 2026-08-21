@@ -324,7 +324,7 @@ function ConvertForm({
             value={projectCode}
             onChange={(event) => setProjectCode(event.target.value)}
             placeholder="PRJ-2026-014"
-            className="rounded-lg border border-line bg-deep px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+            className="rounded-lg border border-line bg-deep px-3 py-2 text-sm text-ink focus:border-accent"
           />
         </label>
         <label className="flex flex-col gap-2">
@@ -335,7 +335,7 @@ function ConvertForm({
             value={projectName}
             onChange={(event) => setProjectName(event.target.value)}
             placeholder={deal.title}
-            className="rounded-lg border border-line bg-deep px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
+            className="rounded-lg border border-line bg-deep px-3 py-2 text-sm text-ink focus:border-accent"
           />
         </label>
       </div>

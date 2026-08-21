@@ -143,7 +143,7 @@ export function DealChangeRequestQueue({ workspace = "Manager" }: { workspace?: 
                     value={comments[item.requestId] ?? ""}
                     onChange={(event) => setComments((current) => ({ ...current, [item.requestId]: event.target.value }))}
                     placeholder="Decision note (required when rejecting)"
-                    className="resize-y rounded-field border border-line-strong bg-deep px-[12px] py-[9px] text-[12px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+                    className="resize-y rounded-field border border-line-strong bg-deep px-[12px] py-[9px] text-[12px] text-ink placeholder:text-ink-faint focus:border-accent"
                   />
                   <div className="flex flex-wrap gap-[8px]">
                     <button type="button" disabled={busy || stale} onClick={() => setConfirming({ item, decision: "approve" })} className="rounded-full bg-emerald-300 px-[15px] py-[8px] text-[11px] font-bold text-black disabled:opacity-40">

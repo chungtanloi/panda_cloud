@@ -235,7 +235,7 @@ export function CaseDetail({ caseId, backHref = "/compliance/cases", documentsHr
                   value={reason}
                   disabled={!canManage || saving}
                   onChange={(event) => setReason(event.target.value)}
-                  className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent focus:outline-none disabled:opacity-60"
+                  className="w-full rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[14px] text-ink transition-colors focus:border-accent disabled:opacity-60"
                 />
                 <span className="text-[11px] leading-4 text-ink-faint">
                   Required — the backend rejects a rejection without one.

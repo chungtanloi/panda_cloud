@@ -90,7 +90,7 @@ export default function GeographyPage() {
                   onChange={(event) => update("geography", { region: event.target.value })}
                   className={cn(
                     "w-full rounded-field border border-line-strong bg-deep px-[16px] py-[12px]",
-                    "font-sans text-[13px] focus:border-accent focus:outline-none",
+                    "font-sans text-[13px] focus:border-accent",
                     region ? "text-ink" : "text-ink-faint",
                   )}
                 >
@@ -135,7 +135,7 @@ export default function GeographyPage() {
                   onChange={(event) =>
                     update("geography", { targetGoLive: event.target.value })
                   }
-                  className="w-full rounded-field border border-line-strong bg-deep px-[16px] py-[12px] font-sans text-[13px] text-ink focus:border-accent focus:outline-none"
+                  className="w-full rounded-field border border-line-strong bg-deep px-[16px] py-[12px] font-sans text-[13px] text-ink focus:border-accent"
                 />
 
                 {schedule?.expediteWarning ? (

@@ -28,13 +28,8 @@ import { normalizeError } from "@/services/api";
  * They are convenience, not the control: the backend rejects a transition
  * missing either regardless of what this form did.
  *
-<<<<<<< Updated upstream
- * The HTTP adapter maps this request to the released BFF NCNDA update route;
- * the mock adapter uses the same transition payload and revision rules.
-=======
  * The HTTP adapter maps this action to the released BFF NCNDA update route;
  * the backend remains the authority for the transition graph and revision.
->>>>>>> Stashed changes
  */
 export function LifecycleActions({
   item,
@@ -161,7 +156,7 @@ export function LifecycleActions({
                 rows={3}
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
-                className="rounded-field border border-line-strong bg-deep px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
+                className="rounded-field border border-line-strong bg-deep px-4 py-3 text-sm text-ink focus:border-accent"
               />
               <span className="text-xs text-ink-faint">
                 A terminal status with no recorded reason is not reviewable six months later.

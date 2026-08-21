@@ -24,13 +24,13 @@ const META: Record<WorkspaceResourceKind, { eyebrow: string; title: string; desc
   projects: { eyebrow: "Customer / Projects", title: "Projects", description: "Track every Panda Cloud request from draft through delivery." },
   clusters: { eyebrow: "Customer / Compute", title: "GPU Clusters", description: "Capacity, utilization, deployment status and backend-provided costs." },
   transactions: { eyebrow: "Customer / Finance", title: "Transactions", description: "Search and review wallet, token and infrastructure activity." },
-  leads: { eyebrow: "Sales / CRM", title: "Leads", description: "Qualify inbound demand, assign ownership and keep follow-ups moving." },
-  quotes: { eyebrow: "Sales / Commercial", title: "Quotes", description: "Manage proposal lifecycle without calculating commercial terms in the browser." },
+  leads: { eyebrow: "Sales / CRM", title: "Leads", description: "Danh sách lead. Thao tác qualify và gán phụ trách nằm ở trang chi tiết lead." },
+  quotes: { eyebrow: "Sales / Commercial", title: "Quotes", description: "Danh sách báo giá (chỉ đọc). Chưa có thao tác tạo hoặc sửa báo giá ở màn hình này." },
   tasks: { eyebrow: "Sales / Follow-up", title: "Tasks", description: "Today, upcoming and overdue commitments across the pipeline." },
   customers: { eyebrow: "Sales / Accounts", title: "Customers", description: "Every account with an open or completed request." },
   team: { eyebrow: "Manager / People", title: "Team Performance", description: "Compare workload, pipeline and conversion across the sales team." },
-  approvals: { eyebrow: "Manager / Governance", title: "Approvals", description: "Review actions exposed by backend permission and policy responses." },
-  users: { eyebrow: "Admin / Identity", title: "User Management", description: "Manage account lifecycle while backend authorization remains authoritative." },
+  approvals: { eyebrow: "Manager / Governance", title: "Approvals", description: "Danh sách yêu cầu chờ duyệt (chỉ đọc). Thao tác duyệt hoặc từ chối nằm ở trang chi tiết yêu cầu." },
+  users: { eyebrow: "Admin / Identity", title: "User Management", description: "Danh sách người dùng và vai trò (chỉ đọc). Thao tác cấp/thu hồi quyền nằm ở trang chi tiết người dùng." },
   audit: { eyebrow: "Admin / Governance", title: "Audit Logs", description: "Immutable system activity supplied by the backend audit service." },
 };
 

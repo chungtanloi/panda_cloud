@@ -39,7 +39,7 @@ export function Toggle({ checked, onChange, label, disabled = false, className }
           "absolute top-[4px] size-[24px] rounded-full border-4 transition-all",
           checked
             ? "left-[28px] border-accent bg-base drop-shadow-glow"
-            : "left-[4px] border-ink-faint bg-base",
+            : "left-[4px] border-line-subtle bg-base",
         )}
       />
     </button>

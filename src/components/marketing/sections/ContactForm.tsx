@@ -255,7 +255,7 @@ export function ContactForm({
                   placeholder={LEAD_FORM.fields.useCase.placeholder}
                   value={form.values.useCase ?? ""}
                   onChange={(e) => form.setField("useCase", e.target.value)}
-                  className="w-full resize-y rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[16px] leading-normal text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+                  className="w-full resize-y rounded-field border border-line-strong bg-deep px-[17px] py-[15px] font-sans text-[16px] leading-normal text-ink placeholder:text-ink-faint focus:border-accent"
                 />
               </div>
 

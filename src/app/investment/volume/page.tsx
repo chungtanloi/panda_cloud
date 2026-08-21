@@ -77,7 +77,7 @@ export default function VolumePage() {
                         amountUsd: clamp(Number(event.target.value), config.min, config.max),
                       })
                     }
-                    className="w-full rounded-full border border-line-strong bg-deep py-[14px] pl-[34px] pr-[18px] font-sans text-[16px] text-ink focus:border-accent focus:outline-none"
+                    className="w-full rounded-full border border-line-strong bg-deep py-[14px] pl-[34px] pr-[18px] font-sans text-[16px] text-ink focus:border-accent"
                   />
                 </div>
               </div>

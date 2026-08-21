@@ -85,7 +85,7 @@ export default function LandProfilePage() {
                     onChange={(event) =>
                       update("landProfile", { areaAcres: Number(event.target.value) || 0 })
                     }
-                    className="w-full rounded-full border border-line-strong bg-deep px-[20px] py-[14px] pr-[56px] font-sans text-[18px] text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none"
+                    className="w-full rounded-full border border-line-strong bg-deep px-[20px] py-[14px] pr-[56px] font-sans text-[18px] text-ink placeholder:text-ink-faint focus:border-accent"
                   />
                   <span className="pointer-events-none absolute right-[20px] top-1/2 -translate-y-1/2 font-mono text-[12px] uppercase tracking-[1.2px] text-ink-dim">
                     {config.fields.size.suffix}
@@ -106,7 +106,7 @@ export default function LandProfilePage() {
                   onChange={(event) =>
                     update("landProfile", { landUse: event.target.value as LandUseType })
                   }
-                  className="w-full rounded-full border border-line-strong bg-deep px-[20px] py-[14px] font-sans text-[16px] text-ink focus:border-accent focus:outline-none"
+                  className="w-full rounded-full border border-line-strong bg-deep px-[20px] py-[14px] font-sans text-[16px] text-ink focus:border-accent"
                 >
                   <option value="" disabled>
                     Select zoning type…

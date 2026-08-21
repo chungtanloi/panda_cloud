@@ -42,7 +42,8 @@ const config: Config = {
         // Text
         ink: "var(--color-ink)", // #e2e2e8 primary
         "ink-dim": "var(--color-ink-dim)", // #b9cacb secondary
-        "ink-faint": "var(--color-ink-faint)", // #3a494b Log In placeholder
+        "ink-faint": "var(--color-ink-faint)", // #8ca3a6 chữ phụ, đạt WCAG AA
+        "line-subtle": "var(--color-line-subtle)", // #3a494b viền mảnh (giá trị Figma gốc)
         "ink-placeholder": "var(--color-ink-placeholder)", // #849495 Sign Up placeholder
         "ink-search": "var(--color-ink-search)", // #6b7280 dashboard search
         "ink-bright": "var(--color-ink-bright)", // #d1d5db GPU page body
