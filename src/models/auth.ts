@@ -209,3 +209,53 @@ export function primaryRole(profile: AuthProfile | null): MembershipRole | null 
   const roles = effectiveRoles(profile);
   return WORKSPACE_ROLE_PRECEDENCE.find((role) => roles.includes(role)) ?? null;
 }
+
+/* --------------------------- Privileged-role guards --------------------------- */
+
+const PRIVILEGED_ROLES: readonly MembershipRole[] = ["admin", "super_admin"];
+
+/**
+ * Roles the current identity may assign to another membership.
+ *
+ * - `super_admin` may assign any role (backend compatibility guards apply).
+ * - Ordinary `admin` may assign every role **except** `admin` and
+ *   `super_admin`.
+ * - All other roles return an empty array (the UI must not render the
+ *   editor for them).
+ */
+export function assignableRoles(
+  profile: AuthProfile | null,
+  currentRole?: MembershipRole,
+): MembershipRole[] {
+  if (!profile) return [];
+  if (isSuperAdmin(profile)) {
+    return (MEMBERSHIP_ROLES as readonly MembershipRole[]).filter(
+      (r) => r !== currentRole,
+    );
+  }
+  if (isAdmin(profile)) {
+    return (MEMBERSHIP_ROLES as readonly MembershipRole[]).filter(
+      (r) => r !== currentRole && !(PRIVILEGED_ROLES as readonly MembershipRole[]).includes(r),
+    );
+  }
+  return [];
+}
+
+/**
+ * Whether the current identity may mutate a specific membership's role.
+ *
+ * - `super_admin` may edit any membership.
+ * - Ordinary `admin` may **not** edit a membership whose current role is
+ *   `admin` or `super_admin` (would allow revoking privileged authority).
+ */
+export function canEditMembership(
+  profile: AuthProfile | null,
+  membership: { role: MembershipRole },
+): boolean {
+  if (!profile) return false;
+  if (isSuperAdmin(profile)) return true;
+  if (isAdmin(profile)) {
+    return !(PRIVILEGED_ROLES as readonly MembershipRole[]).includes(membership.role);
+  }
+  return false;
+}

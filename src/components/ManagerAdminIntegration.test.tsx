@@ -9,6 +9,14 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/services/api", () => ({ api: mocks, normalizeError: (cause: unknown) => cause }));
 vi.mock("@/components/admin/AdminActionGuard", () => ({ AdminActionGuard: ({ children }: { children: ReactNode }) => <>{children}</> }));
+vi.mock("@/controllers/AuthContext", () => ({
+  useAuth: () => ({
+    profile: {
+      user: { id: "user-1", email: "admin@test.com", fullName: "Admin", userType: "staff", status: "active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      authorization: { isStaff: true, memberships: [{ organizationId: "org-1", role: "admin" }] },
+    },
+  }),
+}));
 
 import { ManagerOverviewView, ManagerProjectsView, ManagerProjectDetailView, ManagerReportsView, ManagerSalesPerformanceView, ManagerTeamMemberView, ManagerTeamView } from "./workspace/ManagerViews";
 import { AdminApiView, AdminAuditDetailView, AdminIntegrationEventDetailView, AdminUserDetailView } from "./workspace/AdminApiView";
