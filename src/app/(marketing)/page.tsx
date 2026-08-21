@@ -230,6 +230,15 @@ function AboutSection() {
           <div className="mt-[28px] border-l-2 border-accent pl-5">
             <p className="font-sans text-[15px] font-medium leading-[24px] text-ink">{ABOUT.closing}</p>
           </div>
+
+          <div className="pt-[28px]">
+            <Link
+              href="/about"
+              className="inline-flex min-h-[44px] items-center rounded-full border border-accent/30 px-[22px] font-sans text-[14px] font-bold tracking-[0.5px] text-accent transition-colors hover:border-accent"
+            >
+              Learn more about Panda Cloud.AI
+            </Link>
+          </div>
         </Reveal>
       </div>
     </section>
