@@ -11,8 +11,8 @@ import type { UseCase } from "@/components/marketing/sections/UseCases";
  * If the designer later extends the Figma file, the design wins and this
  * content should be reconciled against it.
  *
- * Everything here is grounded in claims the original design already makes
- * (99.99% uptime, Tier III+, 240 MW ready capacity, the four product tracks).
+ * Product claims must be backed by approved evidence. GPU Rental and Purchase
+ * copy remains consultation-only until their contracts and offers are released.
  * No customer names, logos or quotes are invented — see SOCIAL_PROOF below.
  */
 
@@ -27,7 +27,7 @@ export const LANDING_STEPS: readonly ProcessStep[] = [
   {
     title: "Get a matched plan",
     description:
-      "We return available hardware, sites and pricing that fit your constraints — not a generic catalogue.",
+      "Panda Cloud reviews the applicable product path and identifies the evidence and approvals needed for a proposal.",
   },
   {
     title: "Review the numbers",
@@ -37,17 +37,17 @@ export const LANDING_STEPS: readonly ProcessStep[] = [
   {
     title: "Deploy and scale",
     description:
-      "Provision from the dashboard and add capacity as demand grows, without renegotiating from scratch.",
+      "Proceed only after the applicable offer, contract, operational readiness, and payment conditions are approved.",
   },
 ];
 
 export const LANDING_USE_CASES: readonly UseCase[] = [
   {
     audience: "AI teams",
-    title: "Train without buying a data centre",
+    title: "Plan dedicated compute capacity",
     description:
-      "Reach thousands of current-generation GPUs on demand and release them when the run finishes.",
-    outcomes: ["No long-term lock-in", "Per-second billing", "Dedicated InfiniBand fabric"],
+      "Share workload, region, quantity, and timing requirements for partner and commercial review.",
+    outcomes: ["Quote-led review", "Dedicated GPU or node scope", "Offer-specific terms"],
   },
   {
     audience: "Land owners",
@@ -69,12 +69,12 @@ export const LANDING_FAQ: readonly FaqItem[] = [
   {
     question: "How quickly can I get GPUs?",
     answer:
-      "Cloud capacity is available immediately for the hardware marked live on the GPU Renting page. Dedicated clusters and owned hardware depend on configuration and shipping — the quote states the lead time before you commit.",
+      "Lead time depends on an approved offer and operator confirmation. Published capacity will be indicative until it is reconfirmed during quote review.",
   },
   {
     question: "Do I have to sign a long-term contract?",
     answer:
-      "No. Rented capacity is billed per second with no minimum term. Longer commitments are available and carry a discount, but they are opt-in.",
+      "Billing unit and minimum term are offer-specific. They will be shown in an issued quote before acceptance.",
   },
   {
     question: "What does the land assessment cost?",
@@ -89,7 +89,7 @@ export const LANDING_FAQ: readonly FaqItem[] = [
   {
     question: "How is my data isolated?",
     answer:
-      "Dedicated clusters are physically separate — you are not sharing a GPU with another tenant. Networking is isolated per customer on dedicated InfiniBand.",
+      "The approved offer and contract define tenancy, network, access, and security responsibilities. Panda Cloud reviews those controls before quote issue.",
   },
 ];
 
@@ -103,11 +103,7 @@ export const SOCIAL_PROOF: {
   logos: readonly string[];
   testimonials: readonly Testimonial[];
 } = {
-  stats: [
-    { value: "10,240+", label: "GPUs in operation" },
-    { value: "240 MW", label: "Ready capacity across live sites" },
-    { value: "99.99%", label: "Guaranteed uptime" },
-  ],
+  stats: [],
   logos: [],
   testimonials: [],
 };
@@ -116,21 +112,20 @@ export const SOCIAL_PROOF: {
 
 export const GPU_STEPS: readonly ProcessStep[] = [
   {
-    title: "Pick your hardware",
-    description: "Choose H100, H200 or B200 and the allocation window that matches your run.",
+    title: "Share requirements",
+    description: "Describe workload, quantity, region, term, and requested start date.",
   },
   {
-    title: "Reserve the cluster",
-    description: "Capacity is held while you confirm. Nothing bills until the instance starts.",
+    title: "Review an offer",
+    description: "Panda Cloud reviews operator capacity and prepares approved commercial terms.",
   },
   {
-    title: "Connect and run",
-    description:
-      "Standard tooling, dedicated InfiniBand between nodes, no proprietary runtime to adopt.",
+    title: "Accept the quote",
+    description: "Confirm the issued quote before contract and payment readiness are completed.",
   },
   {
-    title: "Scale or stop",
-    description: "Add nodes mid-project or release everything — billing stops at the second.",
+    title: "Coordinate delivery",
+    description: "Provisioning starts only after the required readiness conditions are satisfied.",
   },
 ];
 
@@ -141,19 +136,19 @@ export const GPU_FAQ: readonly FaqItem[] = [
       "Both deliver 3,958 TFLOPS at FP8. The H200 has 141GB of memory and 4.8 TB/s of bandwidth versus 80GB and 3.35 TB/s, so it suits models that are memory-bound rather than compute-bound.",
   },
   {
-    question: "Is B200 available now?",
+    question: "Which GPU models are available?",
     answer:
-      "B200 is early access. Pricing is by enquiry and allocation is limited — talk to sales about your timeline.",
+      "Models, regions, delivery types, and quantities will appear only in approved, non-expired offers. Availability still requires operator reconfirmation.",
   },
   {
-    question: "How does per-second billing work?",
+    question: "How is billing determined?",
     answer:
-      "You are charged for the exact runtime of the instance. There is no rounding up to the hour and no minimum charge.",
+      "The approved offer defines billing unit, price version, minimum term, fees, and any metered overage. The issued quote records the applicable terms.",
   },
   {
     question: "Can I move to owned hardware later?",
     answer:
-      "Yes. Rented usage can be credited against a purchase — see the Buy GPU page for the trade-offs between OpEx and CapEx.",
+      "GPU Purchase is a separate procurement process. A purchase consultation is required and rental terms do not transfer automatically.",
   },
 ];
 
@@ -163,12 +158,12 @@ export const BUY_FAQ: readonly FaqItem[] = [
   {
     question: "Where is the hardware delivered?",
     answer:
-      "To your facility, or racked at one of ours if you prefer colocation. Both options are quoted separately so you can compare.",
+      "Delivery location and responsibility must be reviewed for each procurement request and stated in an approved offer.",
   },
   {
     question: "What warranty applies?",
     answer:
-      "Manufacturer warranty applies as standard. An optional SLA adds on-site support and spares — this is the main practical difference from renting, where maintenance sits with the provider.",
+      "Warranty, support, spares, exclusions, and responsible parties are offer-specific and require procurement and legal review.",
   },
   {
     question: "What are the lead times?",
@@ -178,7 +173,7 @@ export const BUY_FAQ: readonly FaqItem[] = [
   {
     question: "Can you help finance the purchase?",
     answer:
-      "Yes. Leasing and staged-payment structures are available so a cluster does not have to land as a single capital event. See the Financing page.",
+      "Financing is a separate review. No leasing or staged-payment structure is promised by the purchase consultation page.",
   },
 ];
 

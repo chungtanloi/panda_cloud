@@ -278,7 +278,6 @@ export function ContactForm({
                   />
                 ) : null}
                 {LEAD_FORM.submitLabel}
-                <span aria-hidden>↗</span>
               </button>
 
               <p className="font-sans text-[12px] leading-[18px] text-ink-faint">
@@ -328,16 +327,8 @@ function GpuTypeSelect({
 function SubmittedNotice({ reference, onReset }: { reference: string; onReset: () => void }) {
   return (
     <div role="status" className="flex flex-col items-center gap-[12px] py-[24px] text-center">
-      <span className="grid size-[48px] place-items-center rounded-full border border-accent/30 bg-accent-soft text-accent">
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-          <path
-            d="M4 10.5 8 14.5 16 6"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+      <span className="rounded-[2px] border border-accent/30 bg-accent-soft px-[10px] py-[6px] font-mono text-[11px] uppercase tracking-[1.2px] text-accent">
+        Request received
       </span>
 
       <p className="font-sans text-[20px] font-medium leading-[28px] text-white">

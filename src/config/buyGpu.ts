@@ -8,14 +8,14 @@
  */
 
 export const BUY_HERO = {
-  badge: "HARDWARE ACQUISITION PROGRAM",
+  badge: "GPU PROCUREMENT CONSULTATION",
   /** Split so "compute" can be accented (node 2:226). */
   titleLead: "Own your ",
   titleAccent: "compute",
   titleTail: " outright",
   body:
-    "Deploy proprietary, enterprise-grade AI infrastructure. Secure supply, maximize ROI " +
-    "over time, and build your bespoke sovereign cloud environment.",
+    "Plan an owned GPU deployment with a requirements review covering configuration, " +
+    "location, quantity, timing, commercial terms, and operational responsibilities.",
 } as const;
 
 export interface HardwareOffer {
@@ -99,4 +99,4 @@ export const COMPARISON = {
   ],
 } as const;
 
-export const BUY_CTA = { label: "Request Purchase Quote", href: "/booking" } as const;
+export const BUY_CTA = { label: "Request Purchase Consultation", href: "/buy-gpu" } as const;

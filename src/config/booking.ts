@@ -22,28 +22,28 @@ export const BOOKING_TOTAL_STEPS = 5;
 /* -------------------------------- Entry --------------------------------- */
 
 export const BOOKING_INTRO = {
-  badge: "SYSTEM ONLINE",
-  titleLead: "GPU Cluster ",
-  titleAccent: "Booking",
+  badge: "SUPERSEDED PROTOTYPE",
+  titleLead: "GPU Rental ",
+  titleAccent: "Consultation",
   body:
-    "Rent enterprise GPUs instantly. Deploy massively parallel compute architectures with " +
-    "sub-millisecond latency.",
+    "The previous booking wizard is not a production reservation or deployment service. " +
+    "Use the GPU Renting page to request a reviewed consultation.",
   cards: [
     {
-      title: "Real-time pricing",
-      body: "Spot market rates updated dynamically based on global cluster availability.",
+      title: "Quote-led pricing",
+      body: "Pricing is defined only by an approved, versioned offer and issued quote.",
     },
     {
-      title: "Instant deployment",
-      body: "Bare-metal access provisioned in seconds. Bypass complex infrastructure setup.",
+      title: "Reviewed provisioning",
+      body: "Provisioning begins after capacity, contract, and payment readiness checks.",
     },
     {
-      title: "99.99% SLA",
-      body: "Enterprise-grade reliability guaranteed by redundant global node clusters.",
+      title: "Offer-specific SLA",
+      body: "Lead time, service levels, exclusions, and remedies depend on the approved offer.",
     },
   ],
-  chips: ["No vendor lock-in", "Dedicated InfiniBand", "Scale to zero"],
-  cta: { label: "Get Quote", href: "/booking/workload" },
+  chips: ["Capacity review", "Commercial approval", "Secure delivery"],
+  cta: { label: "Request consultation", href: "/gpu-renting" },
 } as const;
 
 /* -------------------------------- Step 1 -------------------------------- */
@@ -201,7 +201,7 @@ export const STEP_POWER_COOLING = {
       {
         value: "cloud",
         title: "Cloud",
-        caption: "Fully managed infrastructure. Instant provisioning.",
+        caption: "Partner-managed delivery subject to an approved offer.",
       },
       {
         value: "bare_metal",
@@ -242,9 +242,9 @@ export const STEP_POWER_COOLING = {
     rows: { cluster: "Base Cluster", deployment: "Deployment", cooling: "Cooling" },
     slaTitle: "SLA Agreement",
     slaOptions: [
-      { value: "standard", label: "99.5% Uptime (Standard)" },
-      { value: "enterprise", label: "99.99% Uptime (Enterprise)" },
-      { value: "critical", label: "99.999% Uptime (Critical)" },
+      { value: "standard", label: "Standard (Offer-specific)" },
+      { value: "enterprise", label: "Enterprise (Offer-specific)" },
+      { value: "critical", label: "Critical (Requires approval)" },
     ] as readonly { value: SlaTier; label: string }[],
   },
   next: "CONFIRM CONFIGURATION",
@@ -254,11 +254,11 @@ export const STEP_POWER_COOLING = {
 /* -------------------------------- Step 5 -------------------------------- */
 
 export const STEP_DEPLOYMENT_READY = {
-  badge: "ALLOCATION SECURED",
-  title: "Deployment Ready",
+  badge: "PROTOTYPE ONLY",
+  title: "Configuration Review",
   body:
-    "Your high-performance compute cluster has been reserved. Review the final specifications " +
-    "before initialization.",
+    "This prototype does not reserve capacity. A reviewed quote, contract, payment readiness, " +
+    "and staff provisioning workflow are required before delivery.",
   architectureTitle: "Cluster Architecture",
   labels: {
     primaryGpu: "PRIMARY GPU",
@@ -271,12 +271,11 @@ export const STEP_DEPLOYMENT_READY = {
   },
   riskTitle: "Risk Considerations & Acknowledgement",
   riskBody:
-    "By proceeding with this deployment, you acknowledge that cluster provisioning is binding. " +
-    "Cancellation policies apply as per standard enterprise agreements. Hardware availability " +
-    "is guaranteed for the selected duration upon initialization.",
+    "No configuration shown by this legacy prototype is binding. Availability, cancellation, " +
+    "delivery, pricing, and SLA terms must be stated in an approved issued quote.",
   commitmentTitle: "Estimated Monthly Commitment",
   perMonth: "/mo",
-  primaryCta: "Initialize Deployment",
-  pdfCta: "PDF Quote",
-  callCta: "Expert Call",
+  primaryCta: "Request Consultation",
+  pdfCta: "Quote Unavailable",
+  callCta: "Contact Sales",
 } as const;

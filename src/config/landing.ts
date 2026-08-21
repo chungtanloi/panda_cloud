@@ -58,9 +58,9 @@ export const SERVICES: readonly ServiceCard[] = [
     id: "gpu-renting",
     title: "GPU Renting",
     description:
-      "Instant access to thousands of latest generation GPUs (H100, A100) on a flexible " +
-      "cloud platform. Cost optimization, no initial infrastructure investment needed.",
-    linkLabel: "Rent now",
+      "Plan dedicated GPU or node capacity through a quote-led service operated with " +
+      "approved infrastructure partners.",
+    linkLabel: "Request consultation",
     href: "/gpu-renting",
     iconNode: "1:132",
   },
@@ -68,9 +68,9 @@ export const SERVICES: readonly ServiceCard[] = [
     id: "buy-hardware",
     title: "Buy Hardware",
     description:
-      "Providing genuine hardware equipment, dedicated servers, and AI components with a " +
-      "reputable global supply network.",
-    linkLabel: "View catalog",
+      "Discuss an owned GPU deployment through a separate procurement review covering " +
+      "configuration, delivery, warranty, and commercial requirements.",
+    linkLabel: "Request consultation",
     href: "/buy-gpu",
     iconNode: "1:105",
   },
@@ -103,10 +103,10 @@ export interface Metric {
 
 /** Node 1:6 — 2×2 grid. */
 export const METRICS: readonly Metric[] = [
-  { value: "10,240+", label: "GPUs in Operation" },
-  { value: "240 MW", label: "Ready Capacity" },
-  { value: "Tier III+", label: "Data Center Standard" },
-  { value: "99.99%", label: "Guaranteed Uptime" },
+  { value: "Quote-led", label: "Commercial Review" },
+  { value: "Dedicated", label: "GPU or Node Capacity" },
+  { value: "Partner", label: "Managed Operations" },
+  { value: "Reviewed", label: "Availability and Terms" },
 ] as const;
 
 export interface NetworkNode {

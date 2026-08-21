@@ -18,10 +18,8 @@ import { cn } from "@/lib/cn";
 /**
  * Step 5 — Deployment Ready. Transcribed from `dev.png`.
  *
- * This is the only gated point in the flow. The screen states that
- * provisioning is binding, so "Initialize Deployment" requires an account —
- * committing a customer to a contract without knowing who they are is not
- * something the UI should allow. Everything before this stays open.
+ * The prototype originally treated submission as provisioning. The G0
+ * fail-closed layout now prevents this page from becoming a production action.
  */
 export default function ReviewPage() {
   const router = useRouter();
@@ -294,10 +292,10 @@ function SpecCell({ label, value }: { label: string; value: string }) {
 function slaLabel(sla: string | undefined): string {
   switch (sla) {
     case "standard":
-      return "Standard SLA Tier 3 Active (99.5% Uptime)";
+      return "Standard SLA Tier (Requires approved offer)";
     case "critical":
-      return "Critical SLA Tier 0 Active (99.999% Uptime)";
+      return "Critical SLA Tier (Requires approved offer)";
     default:
-      return "Enterprise SLA Tier 1 Active (99.99% Uptime)";
+      return "Enterprise SLA Tier (Requires approved offer)";
   }
 }

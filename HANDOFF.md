@@ -10,6 +10,16 @@
 
 ## 0. Recent changes — newest first
 
+### 2026-08-21 — GPU Rental G0 documentation and fail-closed baseline
+
+The backend-owned GPU Rental execution plan controls G0-G8 delivery. The
+legacy GPU Cluster Booking contract is now marked `Superseded`; the customer
+portal and staff operations UX specifications are restored as `Proposed
+Design`. Production GPU Renting and GPU Buy are consultation-only, and every
+`/booking/*` route is redirected to the safe GPU Renting entry point. No GPU
+Rental schema, released contract, generated client, or new runtime operation
+was added. Product and domain-owner approval is still required before G0 exits.
+
 ### 2026-08-17 — Technical, Legal and Compliance workspaces
 
 Frontend only; no backend file changed. Full write-up in

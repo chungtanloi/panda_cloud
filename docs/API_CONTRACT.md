@@ -320,7 +320,16 @@ Errors: `403` not owner · `404`.
 
 ---
 
-## 4. GPU Cluster Booking
+## 4. GPU Cluster Booking — Superseded Existing Prototype
+
+> **Superseded:** The operations in this section describe the legacy five-step
+> booking prototype. They are not production API authority and must not be
+> extended, adapted, or used for new integration. The Target State is governed
+> by the backend-owned
+> [GPU Rental FE-BE Execution Plan](../../PandaCloudBackend/docs/collaboration/GPU_RENTAL_FE_BE_EXECUTION_PLAN.md)
+> and a future pinned generated client from a reviewed contract release. Until
+> that release is implemented and activated, production GPU entry points remain
+> consultation-only and fail closed.
 
 ### `GET /gpu-models` — _public_
 

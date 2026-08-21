@@ -115,7 +115,7 @@ export const navigationByWorkspace: Record<WorkspaceId, readonly NavigationItem[
     { label: "Overview", href: "/dashboard" }, { label: "Projects", href: "/dashboard/projects", permission: "project:view" },
     { label: "GPU Clusters", href: "/dashboard/gpu-clusters", permission: "gpu:view" }, { label: "Portfolio", href: "/dashboard/portfolio", permission: "portfolio:view" },
     { label: "Wallet", href: "/dashboard/wallet", permission: "wallet:view" }, { label: "Transactions", href: "/dashboard/transactions", permission: "transaction:view" },
-    { label: "New Instance", href: "/booking", externalFlow: true }, { label: "Profile", href: "/dashboard/profile" }, { label: "Settings", href: "/dashboard/settings" },
+    { label: "Request GPU Capacity", href: "/gpu-renting", externalFlow: true }, { label: "Profile", href: "/dashboard/profile" }, { label: "Settings", href: "/dashboard/settings" },
   ],
   sales: [
     { label: "Overview", href: "/sales" }, { label: "Deal Readiness", href: "/deal-readiness", permission: "readiness:view" }, { label: "Leads", href: "/sales/leads", permission: "lead:view" }, { label: "Pipeline", href: "/sales/pipeline", permission: "lead:view" },

@@ -1,13 +1,13 @@
 /** Static marketing copy only. GPU catalog, pricing and stock come from the API. */
 export const GPU_HERO = {
-  badge: "LIVE AVAILABILITY: 99.99% UPTIME",
-  titleLead: "Rent dedicated GPUs",
-  titleAccent: "Unstoppable Compute",
+  badge: "PARTNER-MANAGED GPU RENTAL",
+  titleLead: "Plan dedicated GPU capacity",
+  titleAccent: "with Panda Cloud",
   body:
-    "Deploy high-performance AI infrastructure in seconds. Access premium NVIDIA " +
-    "hardware without long-term commitments or hidden fees.",
-  primaryCta: { label: "Reserve a Cluster", href: "/booking" },
-  secondaryCta: { label: "View Docs", href: "/infrastructure" },
+    "Panda Cloud is preparing a quote-led rental service for dedicated GPU and node " +
+    "capacity operated by approved infrastructure partners.",
+  primaryCta: { label: "Request a consultation", href: "#gpu-consultation" },
+  secondaryCta: { label: "Explore GPU purchase", href: "/buy-gpu" },
 } as const;
 
 /** Presentation options retained for the reusable tab component. */
@@ -37,8 +37,8 @@ export interface GpuOffer {
 }
 
 export const PLATFORM_ADVANTAGES = [
-  "No long-term lock-in",
-  "Scale on demand",
-  "Per-second billing",
-  "Dedicated InfiniBand",
+  "Dedicated GPU or node capacity only",
+  "Availability reconfirmed before quote issue",
+  "Offer-specific lead time, term, billing, and SLA",
+  "Panda Cloud L1 support with disclosed operator support",
 ] as const;

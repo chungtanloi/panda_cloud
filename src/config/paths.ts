@@ -29,9 +29,9 @@ export const PATH_OPTIONS: readonly PathOption[] = [
   {
     id: "gpu_renter",
     badge: "GPU Leasing",
-    title: "GPU Cluster Booking",
-    description: "Rent enterprise GPUs instantly.",
-    route: "/booking",
+    title: "GPU Rental Consultation",
+    description: "Plan dedicated capacity through a reviewed, quote-led process.",
+    route: "/gpu-renting",
   },
   {
     id: "investor",
