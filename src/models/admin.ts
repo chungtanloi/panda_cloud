@@ -3,8 +3,9 @@ import type { MembershipRole } from "./auth";
 export type AdminCounts = Record<string, number>;
 export type AdminOverview = { users: { countsByStatus: AdminCounts; countsByType: AdminCounts }; memberships: { countsByRole: AdminCounts; countsByStatus: AdminCounts }; governance: { webhookEventCountsByStatus: AdminCounts }; ddConfiguration: { templateCount: number; versionCountsByStatus: AdminCounts } };
 
-export type AdminUser = { userId: string; email: string; fullName: string; userType: string; status: string; lastLoginAt: string | null; updatedAt: string; revision: number; memberships: AdminMembership[] };
-export type AdminUserPage = { items: AdminUser[]; nextCursor?: string | null; isDone?: boolean };
+export type AdminUserSummary = { userId: string; email: string; fullName: string; userType: string; status: string; lastLoginAt: string | null; updatedAt: string; revision: number };
+export type AdminUser = AdminUserSummary & { memberships: AdminMembership[] };
+export type AdminUserPage = { items: AdminUserSummary[]; nextCursor?: string | null; isDone?: boolean };
 
 export type AdminMembership = { membershipId: string; organizationId: string; user: AdminMembershipUser; role: MembershipRole; status: string; updatedAt: string; revision: number };
 export type AdminMembershipUser = { userId: string; email: string; fullName: string; userType: string; status: string; lastLoginAt: string | null; updatedAt: string; revision: number };
