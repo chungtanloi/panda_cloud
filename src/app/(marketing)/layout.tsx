@@ -1,5 +1,6 @@
 import { Footer } from "@/components/layout/Footer";
 import { TopNavBar } from "@/components/layout/TopNavBar";
+import { DemoPresenterDrawer } from "@/components/inspection/DemoPresenterDrawer";
 
 /**
  * Shared chrome for every public page — Figma frames 1:2, 2:2, 2:218, 2:379,
@@ -11,6 +12,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       <TopNavBar />
       <main className="flex-1">{children}</main>
       <Footer />
+      <DemoPresenterDrawer />
     </div>
   );
 }
