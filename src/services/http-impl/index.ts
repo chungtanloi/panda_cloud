@@ -220,8 +220,22 @@ export const httpApi: ApiClient = {
     create: (payload: LeadRequest) =>
       http.post<LeadResponse>(endpoints.submissions.collection, {
         source: "website",
-        persona: "other",
+        intake: "marketing",
         summary: payload.useCase ?? `${payload.contactName}: ${payload.interests.join(", ")}`,
+        sourcePayload: {
+          interests: payload.interests.join(","),
+          ...(payload.gpuType ? { gpuType: payload.gpuType } : {}),
+          ...(payload.quantity !== undefined ? { quantity: payload.quantity } : {}),
+          ...(payload.timeline ? { timeline: payload.timeline } : {}),
+          ...(payload.budget ? { budget: payload.budget } : {}),
+          ...(payload.locationPreference ? { locationPreference: payload.locationPreference } : {}),
+        },
+        contact: {
+          fullName: payload.contactName,
+          email: payload.email,
+          ...(payload.phone ? { phone: payload.phone } : {}),
+          ...(payload.companyName ? { companyName: payload.companyName } : {}),
+        },
       }, { anonymous: true }),
   },
 

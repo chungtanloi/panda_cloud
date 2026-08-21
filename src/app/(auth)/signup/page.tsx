@@ -12,6 +12,7 @@ import { PasswordStrengthMeter } from "@/components/auth/PasswordStrengthMeter";
 import { VerificationCodeInput } from "@/components/auth/VerificationCodeInput";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, required, strongPassword } from "@/lib/validation";
+import { safeReturnTo } from "@/lib/safeReturnTo";
 import { clerkEnabled } from "@/services/config";
 import { ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
 
@@ -54,9 +55,7 @@ function SignUpView() {
 
   /** Same-origin relative paths only — guards against open redirects. */
   const rawReturnTo = params.get("returnTo");
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
-    ? rawReturnTo
-    : null;
+  const returnTo = safeReturnTo(rawReturnTo);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [awaitingCode, setAwaitingCode] = useState(false);

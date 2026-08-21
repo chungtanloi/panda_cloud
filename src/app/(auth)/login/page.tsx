@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Field";
 import { useAuth } from "@/controllers/AuthContext";
 import { useForm } from "@/controllers/useForm";
 import { email as emailRule, minLength } from "@/lib/validation";
+import { safeReturnTo } from "@/lib/safeReturnTo";
 import { homeForProfile } from "@/config/access";
 import { clerkEnabled } from "@/services/config";
 import { AuthCard, ClerkNotConfigured, clerkErrorMessage } from "@/components/auth/AuthCard";
@@ -50,9 +51,7 @@ function LoginView() {
    * accepted — an absolute URL here would be an open-redirect vector.
    */
   const rawReturnTo = params.get("returnTo");
-  const returnTo = rawReturnTo?.startsWith("/") && !rawReturnTo.startsWith("//")
-    ? rawReturnTo
-    : null;
+  const returnTo = safeReturnTo(rawReturnTo);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [verificationRequired, setVerificationRequired] = useState(false);
@@ -104,6 +103,11 @@ function LoginView() {
         });
 
         if (attempt.status === "needs_second_factor") {
+          const supportedSecondFactors = signIn.supportedSecondFactors ?? [];
+          if (!supportedSecondFactors.some((factor) => factor.strategy === "email_code")) {
+            setFormError("Multi-factor authentication is enabled, but no supported verification method is configured. Contact an administrator.");
+            return;
+          }
           await signIn.prepareSecondFactor({ strategy: "email_code" });
           setVerificationRequired(true);
           setFormError("A verification code was sent to your email.");
